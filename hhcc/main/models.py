@@ -1,12 +1,14 @@
 from django.db import models
 
+
 class TipoDocumento(models.Model):
     nombre = models.CharField(max_length=50)
     descripcion = models.CharField(max_length=255)
 
     def __str__(self):
         return self.nombre
-    
+
+
 class Identificacion(models.Model):
     numero = models.CharField(max_length=20)
     tipo_documento = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE)
@@ -14,15 +16,16 @@ class Identificacion(models.Model):
     def __str__(self):
         return f"{self.tipo_documento.nombre}: {self.numero}"
 
+
 class Paciente(models.Model):
     SEXO_CHOICES = [
-        ('h', 'Hombre'),
-        ('m', 'Mujer'),
-        ('f', 'Femenino'),
+        ("h", "Hombre"),
+        ("m", "Mujer"),
+        ("f", "Femenino"),
     ]
 
     id = models.AutoField(primary_key=True)
-    idtipodoc = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE) # type: ignore
+    idtipodoc = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE)  # type: ignore
     mail = models.EmailField(max_length=254, blank=True, null=True)
     plan = models.CharField(max_length=100, blank=True, null=True)
     sexo = models.CharField(max_length=1, choices=SEXO_CHOICES)
@@ -44,7 +47,9 @@ class Paciente(models.Model):
     def __str__(self):
         return f"{self.nombre} {self.apellido}"
 
+
 from django.utils import timezone
+
 
 class HistoriaClinica(models.Model):
     paciente = models.OneToOneField(Paciente, on_delete=models.CASCADE)
@@ -52,3 +57,21 @@ class HistoriaClinica(models.Model):
 
     def __str__(self):
         return f"Historia Clínica de {self.paciente.nombre} {self.paciente.apellido}"
+
+
+""" class Enfermedad(models.Model): """
+"""     nombre = models.CharField(max_length=100) """
+"""     descripcion = models.CharField(max_length=255) """
+"""  """
+"""     def __str__(self): """
+"""         return self.nombre """
+
+"""  """
+""" class Antecedente(models.Model): """
+"""     enfermedad = models.ForeignKey(Enfermedad, on_delete=models.CASCADE) """
+"""     historia_clinica = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE) """
+"""     fecha = models.DateField() """
+"""     observaciones = models.CharField(max_length=255) """
+"""  """
+"""     def __str__(self): """
+"""         return f"{self.enfermedad.nombre} en {self.historia_clinica.paciente.nombre} {self.historia_clinica.paciente.apellido}" """
