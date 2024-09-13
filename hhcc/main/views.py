@@ -3,8 +3,17 @@ from django.http import HttpResponse
 from .models import Paciente, TipoDocumento, Identificacion
 from .forms import PacienteForm
 
+def show_image(request):
+    return render(request, 'show_image.html')
+
 def index(request):
     return render(request, 'index.html')
+
+def landing_page(request):
+    return render(request, 'landing_page.html')
+
+def landing_page_2(request):
+    return render(request, 'landing_page_2.html')
 
 def cargar_paciente(request):
     if request.method == 'POST':
@@ -25,3 +34,9 @@ class PacienteListView(ListView):
     template_name = 'pacientes_list.html'
     context_object_name = 'pacientes'
     paginate_by = 20  # Número de pacientes por páginas
+    
+class PacienteListViewTw(ListView):
+    model = Paciente
+    template_name = 'pacientes_list_tw.html'
+    context_object_name = 'pacientes'
+    paginate_by = 20  # Número de pacientes por páginas    

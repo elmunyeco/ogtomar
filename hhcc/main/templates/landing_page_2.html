@@ -1,0 +1,193 @@
+{%load static%}
+
+<html>
+<head>
+  <style type="text/css">
+    .turbo-progress-bar {
+      position: fixed;
+      display: block;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: #0076ff;
+      z-index: 2147483647;
+      transition: width 300ms ease-out, opacity 150ms 150ms ease-in;
+      transform: translate3d(0, 0, 0);
+    }
+
+    /* Clases de alertas */
+    .alert-box {
+      padding: 10px 20px;
+      margin: 10px 0;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      display: none; /* Inicialmente oculto */
+    }
+
+    .informational {
+      background-color: white;
+      color: black;
+      border: 1px solid #ccc;
+    }
+
+    .warning {
+      background-color: yellow;
+      color: black;
+      border: 1px solid #f6c23e;
+    }
+
+    .alert {
+      background-color: orange;
+      color: white;
+      border: 1px solid #e67e22;
+    }
+
+    .critical {
+      background-color: red;
+      color: white;
+      border: 1px solid #e74c3c;
+    }
+
+    /* Ajustes de notificaciones */
+    .notification-area {
+      text-align: center;
+      font-size: 1rem;
+      color: #4F46E5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+    }
+
+    /* Botón Sign In estilo del iframe pero con color lila */
+    .btn-sign-in {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px 24px;
+      background-color: #6b46c1; /* Color lila de "Get template" */
+      color: white;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 16px;
+      text-decoration: none;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-sign-in:hover {
+      background-color: #553c9a; /* Hover: color lila más oscuro */
+    }
+
+    /* Mejoras en el diseño para pantallas pequeñas */
+    iframe {
+      width: 100%;
+      height: calc(100vh - 150px); /* Ajuste dinámico para ocupar el resto del espacio */
+    }
+
+    /* Definimos el fondo como el SVG */
+    .iframe-container {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 150px); /* Ajuste dinámico para ocupar el resto del espacio */
+      background: url("{% static 'main/images/logomar_final.svg' %}") no-repeat center center;
+      background-size: contain; /* El logo se ajustará sin perder la proporción */
+      opacity: 0.3; /* Para que sea una marca de agua sutil */
+    }
+
+
+    /* Ajuste de mensajes toast */
+    #flash-messages {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 9999;
+      max-width: 300px;
+    }
+
+    .toast {
+      background-color: #4F46E5;
+      color: white;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 10px;
+      transition: opacity 0.3s ease-in-out;
+    }
+
+    .toast-error {
+      background-color: #DC2626;
+    }
+  </style>
+  
+  <title>Tailwind Awesome</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  
+  <link rel="stylesheet" href="https://d1w019qw3bn26k.cloudfront.net/assets/application-4861fde41a610277f8aaf63e739f85cba8d6a28167a2ba75fde8d6d0c9dc6afe.css">
+  <script src="https://d1w019qw3bn26k.cloudfront.net/assets/application-96366d9fa3d37bdeb995460f55f39f1fa737e0bd3cd5db696f70c202d85715f1.js" defer="defer"></script>
+
+  <script defer="" src="https://unpkg.com/@alpinejs/ui@3.10.5-beta.7/dist/cdn.min.js"></script>
+  <script defer="" src="https://unpkg.com/@alpinejs/focus@3.10.5/dist/cdn.min.js"></script>
+  <script defer="" src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+  <script defer="" src="https://unpkg.com/alpinejs@3.10.5/dist/cdn.min.js"></script>
+</head>
+
+<body data-controller="lazy-loader">
+  <main data-controller="class-toggler" data-class-toggler-active-toggler-classes-value="['bg-white', 'border-gray-200', 'shadow-sm']" data-class-toggler-inactive-toggler-classes-value="['border-transparent', 'hover:text-gray-700']" data-class-toggler-active-toggleable-classes-value="['max-w-screen-3xl']">
+  
+    <header class="flex items-center justify-between h-16 px-4 leading-6 text-gray-700 border-b border-gray-200 border-solid sm:grid sm:auto-cols-auto sm:grid-cols-3 sm:px-6 lg:px-8">
+      <nav class="flex sm:col-span-1" aria-label="Breadcrumb">
+        <ol role="list" class="flex items-center space-x-1 sm:space-x-2">
+          <li>
+            <a href="/" class="text-gray-500 hover:text-gray-700">
+              <svg class="flex-shrink-0 w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+              </svg>
+              <span class="sr-only">Home</span>
+            </a>
+          </li>
+          <li>
+            <a href="/?type=template" class="ml-1 sm:ml-2 text-sm font-medium">Templates</a>
+          </li>
+          <li>
+            <a href="/resources/tech-landing-page" class="ml-1 sm:ml-2 text-sm font-medium">Tech - Landing Page</a>
+          </li>
+        </ol>
+      </nav>
+
+      <!-- Espacio central para notificaciones -->
+      <div class="notification-area sm:col-span-1">
+        <!-- Aquí puedes añadir notificaciones dinámicas o mensajes de alerta -->
+        <span>No hay notificaciones</span>
+      </div>
+
+      <!-- Botón de Sign In a la derecha -->
+      <div class="flex items-center justify-end sm:col-span-1">
+        <a class="btn-sign-in" href="#">Sign In</a>
+      </div>
+    </header>
+
+    <section class="px-4 py-8 text-gray-700 sm:px-6 lg:px-8 iframe-container">
+      <div class="w-full mx-auto max-w-screen-3xl">
+        <div class="relative overflow-hidden shadow-xl rounded-xl">
+          <div class="flex items-center pl-3 space-x-1 bg-gray-200 rounded-t-xl h-7">
+            <span class="w-2 h-2 bg-white rounded-full"></span>
+            <span class="w-2 h-2 bg-white rounded-full"></span>
+            <span class="w-2 h-2 bg-white rounded-full"></span>
+          </div>
+          <iframe class="w-full h-[calc(100vh_-_10.75rem)] rounded-b-xl" frameborder="0" scrolling="yes" <!--src="https://www.themes.dev/previews/landing-pages/tech/"--></iframe>></iframe>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Global toast live region -->
+  <div aria-live="assertive" id="flash-messages" class="fixed bottom-0 right-0 z-50">
+    <div class="toast">
+      Este es un mensaje de notificación
+    </div>
+  </div>
+
+</body>
+</html>
