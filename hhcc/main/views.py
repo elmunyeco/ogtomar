@@ -15,6 +15,9 @@ def landing_page(request):
 def landing_page_2(request):
     return render(request, 'landing_page_2.html')
 
+def buscador(request):
+    return render(request, 'buscador.html')
+
 def cargar_paciente(request):
     if request.method == 'POST':
         form = PacienteForm(request.POST)

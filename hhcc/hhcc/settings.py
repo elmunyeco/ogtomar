@@ -73,6 +73,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'hhcc.wsgi.application'
 
+X_FRAME_OPTIONS = 'ALLOWALL'
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases

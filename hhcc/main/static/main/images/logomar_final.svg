@@ -12,8 +12,9 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:cc="http://creativecommons.org/ns#" opacity="0.3"><defs
+   xmlns:cc="http://creativecommons.org/ns#" opacity="0.1"><defs
      id="defs1" /><g
+     opacity="0.1"
      id="layer1"
      transform="translate(-44.240978,-87.778122)"><image
        width="121.70834"
