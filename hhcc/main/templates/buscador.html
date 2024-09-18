@@ -1,87 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador estilo Google</title>
-    <style>
-        /* Estilos generales */
-        body, html {
-            height: 100%;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: Arial, sans-serif;
-            background-color: transparent; /* Fondo transparente del iframe */
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Componente de Búsqueda con Fondo Transparente</title>
+  <!-- Incluir Tailwind CSS desde CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Estilos personalizados -->
+  <style>
+    /* Clase personalizada para altura */
+    .h-18 {
+      height: 4.5rem;
+    }
 
-        .search-container {
-            text-align: center;
-        }
-
-        /* Caja de búsqueda sólida */
-        .search-box {
-            width: 400px;
-            padding: 10px;
-            border-radius: 50px;
-            border: 1px solid #ddd;
-            font-size: 18px;
-            box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
-            background-color: white; /* Fondo sólido */
-            opacity: 1; /* Aseguramos que la caja de búsqueda sea sólida */
-        }
-
-        .search-box:focus {
-            outline: none;
-            box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.3);
-        }
-
-        .search-button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background-color: #4285F4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            opacity: 1; /* Botón de búsqueda sólido */
-        }
-
-        .search-button:hover {
-            background-color: #357AE8;
-        }
-
-        .logo {
-            font-size: 48px;
-            font-weight: bold;
-            color: #4285F4;
-            opacity: 1; /* Logo sólido */
-        }
-
-        .logo span {
-            color: #EA4335;
-        }
-
-    </style>
+    /* Ajustes para el botón */
+    .button-shadow {
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+  </style>
 </head>
 <body>
-
-    <div class="search-container">
-        <!-- Logo similar a Google -->
-        <div class="logo">
-            P<span>r</span>i<span>e</span>to
-        </div>
-
-        <!-- Caja de búsqueda sólida -->
-        <input type="text" class="search-box" placeholder="Buscar en Google" />
-
-        <!-- Botón de búsqueda sólido -->
-        <div>
-            <button class="search-button">Buscar con Google</button>
-        </div>
-    </div>
-
+  <div class="relative max-w-3xl px-4 mx-auto mt-10 sm:px-6">
+    <form action="/" method="get">
+      <!-- Inputs ocultos si los necesitas -->
+      <div class="relative w-full max-w-xl mx-auto rounded-full h-18 lg:max-w-none">
+        <input
+          type="text"
+          name="query"
+          id="query"
+          placeholder="e.g. Blog"
+          class="rounded-full w-full h-18 bg-transparent py-0 pl-8 pr-32 outline-none border-2 border-gray-100 shadow-md focus:ring-indigo-200 focus:border-indigo-200"
+        >
+        <button
+          type="submit"
+          class="absolute inline-flex items-center h-12 px-4 py-2 text-sm text-white transition duration-300 ease-in-out rounded-full right-3 top-3 bg-indigo-600 sm:px-6 sm:text-base sm:font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 button-shadow"
+        >
+          <svg
+            class="w-6 h-6 text-white"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <span class="ml-2">Search</span> <!-- Texto "Search" -->
+        </button>
+      </div>
+    </form>
+  </div>
 </body>
 </html>
