@@ -80,6 +80,14 @@ X_FRAME_OPTIONS = 'ALLOWALL'
 
 DATABASES = {
     'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'cardioprieto',
+        'USER': 'root',
+        'PASSWORD': 'Corbis5',
+        'HOST': '127.0.0.1',
+        'PORT': '3307',
+    },
+    'sandbox': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
