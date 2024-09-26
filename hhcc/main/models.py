@@ -75,19 +75,17 @@ class Paciente(models.Model):
 
 
 class HistoriaClinica(models.Model):
+
+    # Fecha de alta de la historia clínica
+    fechaAlta = models.DateField(default=timezone.now)
+ 
     # Clave foránea a Paciente
     paciente = models.ForeignKey(
         "Paciente", on_delete=models.RESTRICT, related_name="historias_clinicas"
     )
 
-    # Fecha de alta de la historia clínica
-    fechaAlta = models.DateField(default=timezone.now)
-
-    # Campo de baja lógica
-    deBaja = models.BooleanField(default=False)  # 0 = Activo, 1 = Dado de baja
-
     class Meta:
-        db_table = "historiaclinica"  # Nombre de la tabla en MySQL
+        db_table = "historias_clinicas"  # Nombre de la tabla en MySQL
         indexes = [
             models.Index(
                 fields=["fechaAlta"], name="historia_fechaAlta_idx"

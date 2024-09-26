@@ -1,37 +1,5 @@
-DROP TABLE IF EXISTS `pacientes`;
-
-CREATE TABLE `pacientes` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `idTipoDoc` int(10) unsigned NOT NULL,
-  `numDoc` varchar(50) NOT NULL,  -- Se cambia a VARCHAR para hacer búsquedas parciales
-  `nombre` varchar(50) CHARACTER SET latin1 COLLATE latin1_spanish_ci NOT NULL,
-  `apellido` varchar(50) CHARACTER SET latin1 COLLATE latin1_spanish_ci NOT NULL,
-  `fechaNac` date NOT NULL,
-  `sexo` char(1) CHARACTER SET latin1 COLLATE latin1_spanish_ci NOT NULL,
-  `mail` varchar(50) CHARACTER SET latin1 COLLATE latin1_spanish_ci DEFAULT NULL,
-  `direccion` varchar(100) CHARACTER SET latin1 COLLATE latin1_spanish_ci DEFAULT NULL,
-  `localidad` varchar(60) CHARACTER SET latin1 COLLATE latin1_spanish_ci DEFAULT NULL,
-  `obraSocial` varchar(50) CHARACTER SET latin1 COLLATE latin1_spanish_ci NOT NULL,
-  `plan` varchar(50) CHARACTER SET latin1 COLLATE latin1_spanish_ci DEFAULT NULL,
-  `afiliado` varchar(50) CHARACTER SET latin1 COLLATE latin1_spanish_ci NOT NULL,
-  `telefono` varchar(50) CHARACTER SET latin1 COLLATE latin1_spanish_ci NOT NULL,
-  `celular` varchar(50) CHARACTER SET latin1 COLLATE latin1_spanish_ci NOT NULL,
-  `profesion` varchar(50) CHARACTER SET latin1 COLLATE latin1_spanish_ci NOT NULL,
-  `referente` varchar(50) CHARACTER SET latin1 COLLATE latin1_spanish_ci DEFAULT NULL,
-  `fechaAlta` date NOT NULL,
-  `deBaja` tinyint(1) unsigned NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `idTipoDoc_numDoc_idx` (`idTipoDoc`, `numDoc`),  -- Índice único para validar documento
-  FULLTEXT KEY `nombre_apellido_idx` (`nombre`, `apellido`),  -- FULLTEXT para búsquedas de texto en nombre y apellido
-  KEY `fechaAlta_idx` (`fechaAlta`)  -- Índice para búsquedas por fecha de alta
-) ENGINE=InnoDB AUTO_INCREMENT=11565 DEFAULT CHARSET=latin1;
-
---
--- Dumping data for table `pacientes`
---
-
 LOCK TABLES `pacientes` WRITE;
-/*!40000 ALTER TABLE `pacientes` DISABLE KEYS */;
+ALTER TABLE `pacientes` DISABLE KEYS;
 INSERT INTO `pacientes` VALUES
 (1,1,32675895,'Manuel Antonio','Prieto','1980-05-01','H','manuel@cardioprieto.com','Las Heras 282','Monte Grande','Osde','210','61627391501','42904606','1530081796','Medico','Dr.Prieto Omar','2014-11-03',0),
 (2,1,27318731,'Nancy','Kruk','1979-04-25','M','nancymk25@hotmail.com','Alvear 1612','Monte Grande','IOMA',' ',' 2273187314/00','42906721','1162743966','DOCENTE','DR.PRIETO','2014-11-03',0),
