@@ -2,10 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from .models import Paciente, TipoDocumento, Identificacion
 from .forms import PacienteForm
-
-
-def show_image(request):
-    return render(request, "show_image.html")
+from django.shortcuts import get_object_or_404
 
 
 def index(request):
@@ -51,7 +48,7 @@ def buscar_criteria(request):
     return render(request, "buscador.html", {"query": query, "resultados": []})
 
 
-def cargar_paciente(request):
+""" def cargar_paciente(request):
     if request.method == "POST":
         form = PacienteForm(request.POST)
         if form.is_valid():
@@ -59,7 +56,36 @@ def cargar_paciente(request):
             return redirect("index")
     else:
         form = PacienteForm()
-    return render(request, "cargar_paciente.html", {"form": form})
+    return render(request, "cargar_paciente.html", {"form": form}) """
+
+
+def guardar_paciente(request, paciente_id=None):
+    if paciente_id:
+        # Si hay un ID de paciente, entonces estamos editando
+        paciente = get_object_or_404(Paciente, id=paciente_id)
+    else:
+        # Si no hay ID, estamos creando un nuevo paciente
+        paciente = None
+
+    if request.method == "POST":
+        form = PacienteForm(request.POST, instance=paciente)
+        if form.is_valid():
+            form.save()
+            return redirect("index")
+    else:
+        form = PacienteForm(instance=paciente)
+
+    return render(
+        request, "guardar_paciente.html", {"form": form, "paciente": paciente}
+    )
+
+
+def borrar_paciente(request, paciente_id):
+    paciente = get_object_or_404(Paciente, id=paciente_id)
+    if request.method == "POST":
+        paciente.delete()
+        return redirect("index")
+    return render(request, "borrar_paciente.html", {"paciente": paciente})
 
 
 from django.core.paginator import Paginator
@@ -76,6 +102,6 @@ class PacienteListView(ListView):
 
 class PacienteListViewTw(ListView):
     model = Paciente
-    template_name = "pacientes_list_tw.html"
+    template_name = "pacientes_list_tw2.html"
     context_object_name = "pacientes"
     paginate_by = 20  # Número de pacientes por páginas
