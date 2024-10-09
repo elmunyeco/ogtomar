@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Ecodoppler</title>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        select { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container" x-data="cardioDashboard()" x-init="init()">
+        <h2>Dashboard de Ecodoppler</h2>
+        <select x-model="selectedMetric" @change="updateChart()">
+            <template x-for="(metric, key) in metrics" :key="key">
+                <option :value="key" x-text="metric.name"></option>
+            </template>
+        </select>
+        <canvas id="cardioChart"></canvas>
+        <div class="mt-4">
+            <p><strong>Métrica actual:</strong> <span x-text="metrics[selectedMetric].name"></span></p>
+        </div>
+    </div>
+
+    <script>
+    function cardioDashboard() {
+        return {
+            selectedMetric: 'ef',
+            data: [],
+            chart: null,
+            metrics: {
+                ef: { name: 'Fracción de Eyección', minNormal: 50, maxNormal: 70 },
+                vs: { name: 'Volumen Sistólico', minNormal: 60, maxNormal: 100 },
+                vd: { name: 'Volumen Diastólico', minNormal: 65, maxNormal: 240 }
+            },
+            init() {
+                this.generateData(10);
+                this.$nextTick(() => {
+                    this.createChart();
+                });
+            },
+            generateData(numYears) {
+                const currentYear = new Date().getFullYear();
+                this.data = Array.from({ length: numYears }, (_, i) => ({
+                    year: currentYear - numYears + i + 1,
+                    ef: Math.round(40 + Math.random() * 40),
+                    vs: Math.round(50 + Math.random() * 60),
+                    vd: Math.round(60 + Math.random() * 200)
+                }));
+            },
+            createChart() {
+                const ctx = document.getElementById('cardioChart').getContext('2d');
+                
+                const gradientLinePlugin = {
+                    id: 'gradientLine',
+                    beforeDatasetsDraw: (chart, args, options) => {
+                        const { ctx, chartArea: {top, bottom, left, right}, scales: {x, y} } = chart;
+                        const dataset = chart.data.datasets[0];
+                        const metric = this.metrics[this.selectedMetric];
+                        
+                        ctx.save();
+                        ctx.beginPath();
+                        for (let i = 0; i < dataset.data.length - 1; i++) {
+                            const x1 = x.getPixelForValue(i);
+                            const y1 = y.getPixelForValue(dataset.data[i]);
+                            const x2 = x.getPixelForValue(i + 1);
+                            const y2 = y.getPixelForValue(dataset.data[i + 1]);
+                            
+                            const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
+                            gradient.addColorStop(0, this.getPointColor(dataset.data[i], metric));
+                            gradient.addColorStop(1, this.getPointColor(dataset.data[i + 1], metric));
+                            
+                            ctx.strokeStyle = gradient;
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.moveTo(x1, y1);
+                            ctx.lineTo(x2, y2);
+                            ctx.stroke();
+                        }
+                        ctx.restore();
+                    }
+                };
+
+                this.chart = new Chart(ctx, this.getChartConfig(gradientLinePlugin));
+            },
+            getChartConfig(gradientLinePlugin) {
+                const metric = this.metrics[this.selectedMetric];
+                return {
+                    type: 'line',
+                    data: {
+                        labels: this.data.map(d => d.year),
+                        datasets: [{
+                            label: metric.name,
+                            data: this.data.map(d => d[this.selectedMetric]),
+                            borderWidth: 2,
+                            pointBackgroundColor: this.data.map(d => this.getPointColor(d[this.selectedMetric], metric)),
+                            tension: 0,
+                            borderColor: 'rgba(0,0,0,0)'  // Hacemos la línea original transparente
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: { display: false },
+                            y: { display: false }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        elements: {
+                            point: { radius: 5 }
+                        }
+                    },
+                    plugins: [gradientLinePlugin]
+                };
+            },
+            getPointColor(value, metric) {
+                if (value < metric.minNormal) {
+                    const ratio = (value - metric.minNormal) / metric.minNormal;
+                    return `rgb(255, ${Math.round(255 * (1 + ratio))}, 0)`;
+                }
+                if (value > metric.maxNormal) {
+                    const ratio = (value - metric.maxNormal) / metric.maxNormal;
+                    return `rgb(0, ${Math.round(255 * (1 - ratio))}, 255)`;
+                }
+                const ratio = (value - metric.minNormal) / (metric.maxNormal - metric.minNormal);
+                return `rgb(0, 255, ${Math.round(255 * (1 - ratio))})`;
+            },
+            updateChart() {
+                const metric = this.metrics[this.selectedMetric];
+                this.chart.data.datasets[0].data = this.data.map(d => d[this.selectedMetric]);
+                this.chart.data.datasets[0].label = metric.name;
+                this.chart.data.datasets[0].pointBackgroundColor = this.data.map(d => 
+                    this.getPointColor(d[this.selectedMetric], metric)
+                );
+                this.chart.update();
+            }
+        }
+    }
+    </script>
+</body>
+</html>
