@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Ecodoppler</title>
+    <title>FEY Infoviz</title>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -14,16 +14,13 @@
 </head>
 <body>
     <div class="container" x-data="cardioDashboard()" x-init="init()">
-        <h2>Dashboard de Ecodoppler</h2>
+        <h2>FEY</h2>
         <select x-model="selectedMetric" @change="updateChart()">
             <template x-for="(metric, key) in metrics" :key="key">
                 <option :value="key" x-text="metric.name"></option>
             </template>
         </select>
         <canvas id="cardioChart"></canvas>
-        <div class="mt-4">
-            <p><strong>Métrica actual:</strong> <span x-text="metrics[selectedMetric].name"></span></p>
-        </div>
     </div>
 
     <script>
@@ -48,8 +45,6 @@
                 this.data = Array.from({ length: numYears }, (_, i) => ({
                     year: currentYear - numYears + i + 1,
                     ef: Math.round(40 + Math.random() * 40),
-                    vs: Math.round(50 + Math.random() * 60),
-                    vd: Math.round(60 + Math.random() * 200)
                 }));
             },
             createChart() {
