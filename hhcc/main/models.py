@@ -26,7 +26,8 @@ class Paciente(models.Model):
         ("m", "Mujer"),
     ]
 
-    idTipoDoc = models.PositiveIntegerField()  # Equivalente a int(10) unsigned en MySQL
+    idTipoDoc = models.ForeignKey('TipoDocumento', on_delete=models.CASCADE)  # Relación con TipoDocumento
+    #idTipoDoc = models.PositiveIntegerField()  # Equivalente a int(10) unsigned en MySQL
     numDoc = models.CharField(
         max_length=50
     )  # Cambiado a VARCHAR para búsquedas parciales
@@ -59,7 +60,7 @@ class Paciente(models.Model):
 
     class Meta:
         db_table = "pacientes"  # Nombre de la tabla en MySQL
-        unique_together = ("idTipoDoc", "numDoc")  # Índice único para validar documento
+        unique_together = ("idTipoDoc_id", "numDoc")  # Índice único para validar documento
         indexes = [
             models.Index(fields=["nombre"], name="nombre_idx"),  # Índice en nombre
             models.Index(
