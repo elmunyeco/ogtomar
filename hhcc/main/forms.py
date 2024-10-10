@@ -1,5 +1,5 @@
 from django import forms
-from .models import Paciente, Identificacion, TipoDocumento
+from .models import Paciente, TipoDocumento
 
 class PacienteForm(forms.ModelForm):
     class Meta:

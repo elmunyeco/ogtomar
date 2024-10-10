@@ -1,44 +1,38 @@
 from django.db import models
+from django.utils import timezone
 
-
+# Modelo TipoDocumento
 class TipoDocumento(models.Model):
     nombre = models.CharField(max_length=50)
     descripcion = models.CharField(max_length=255)
 
+    class Meta:
+        db_table = "tipos_documentos"
+        indexes = [
+            models.Index(fields=["nombre"], name="nombre_tipodocumento_idx"),
+        ]
+        
     def __str__(self):
         return self.nombre
 
 
-class Identificacion(models.Model):
-    numero = models.CharField(max_length=20)
-    tipo_documento = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return f"{self.tipo_documento.nombre}: {self.numero}"
-
-
-from django.utils import timezone
-
-
+# Modelo Paciente
 class Paciente(models.Model):
     SEXO_CHOICES = [
         ("h", "Hombre"),
         ("m", "Mujer"),
     ]
 
-    idTipoDoc = models.ForeignKey('TipoDocumento', on_delete=models.CASCADE)  # Relación con TipoDocumento
-    #idTipoDoc = models.PositiveIntegerField()  # Equivalente a int(10) unsigned en MySQL
-    numDoc = models.CharField(
-        max_length=50
-    )  # Cambiado a VARCHAR para búsquedas parciales
-    nombre = models.CharField(max_length=50)  # Nombre con búsqueda en índice full-text
-    apellido = models.CharField(
-        max_length=50
-    )  # Apellido con búsqueda en índice full-text
+    idTipoDoc = models.ForeignKey(
+        TipoDocumento, on_delete=models.CASCADE
+    )  # Relación con TipoDocumento
+    numDoc = models.CharField(max_length=50)  # Número de documento
+    nombre = models.CharField(max_length=50)  # Nombre del paciente
+    apellido = models.CharField(max_length=50)  # Apellido del paciente
     fechaNac = models.DateField()  # Fecha de nacimiento
     sexo = models.CharField(
         max_length=1, choices=[("M", "Masculino"), ("F", "Femenino"), ("O", "Otro")]
-    )  # Char(1)
+    )  # Sexo
     mail = models.EmailField(max_length=50, null=True, blank=True)  # Email opcional
     direccion = models.CharField(
         max_length=100, null=True, blank=True
@@ -59,17 +53,21 @@ class Paciente(models.Model):
     deBaja = models.BooleanField(default=False)  # Dado de baja (lógica)
 
     class Meta:
-        db_table = "pacientes"  # Nombre de la tabla en MySQL
-        unique_together = ("idTipoDoc_id", "numDoc")  # Índice único para validar documento
+        db_table = "pacientes"
+        unique_together = (
+            "idTipoDoc",
+            "numDoc",
+        )  # Combinación única de tipo de documento y número
         indexes = [
-            models.Index(fields=["nombre"], name="nombre_idx"),  # Índice en nombre
-            models.Index(
-                fields=["apellido"], name="apellido_idx"
-            ),  # Índice en apellido
-            models.Index(
-                fields=["fechaAlta"], name="paciente_fechaAlta_idx"
-            ),  # Índice en fecha de alta
+            models.Index(fields=["nombre"], name="nombre_paciente_idx"),
+            models.Index(fields=["apellido"], name="apellido_paciente_idx"),
+            models.Index(fields=["fechaAlta"], name="paciente_fechaAlta_idx"),
         ]
+
+    # Método personalizado para obtener la identificación
+    @property
+    def identificacion(self):
+        return f"{self.idTipoDoc.nombre} {self.numDoc}"
 
     def __str__(self):
         return f"{self.nombre} {self.apellido}"
@@ -79,7 +77,7 @@ class HistoriaClinica(models.Model):
 
     # Fecha de alta de la historia clínica
     fechaAlta = models.DateField(default=timezone.now)
- 
+
     # Clave foránea a Paciente
     paciente = models.ForeignKey(
         "Paciente", on_delete=models.RESTRICT, related_name="historias_clinicas"
