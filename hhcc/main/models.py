@@ -23,7 +23,7 @@ class Paciente(models.Model):
         ("m", "Mujer"),
     ]
 
-    idTipoDoc = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE)  # Clave foránea hacia TipoDocumento
+    idTipoDoc = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE, default=1)  # Clave foránea hacia TipoDocumento
     numDoc = models.CharField(max_length=50)  # Número de documento
     nombre = models.CharField(max_length=50)  # Nombre del paciente
     apellido = models.CharField(max_length=50)  # Apellido del paciente

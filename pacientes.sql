@@ -1,6 +1,6 @@
 LOCK TABLES `pacientes` WRITE;
 ALTER TABLE `pacientes` DISABLE KEYS;
-INSERT INTO `pacientes` VALUES
+INSERT INTO `pacientes` (id, idTipoDoc_temp, numDoc, nombre, apellido, fechaNac, sexo, mail, direccion, localidad, obraSocial, plan, afiliado, telefono, celular, profesion, referente, fechaAlta, deBaja) VALUES 
 (1,1,32675895,'Manuel Antonio','Prieto','1980-05-01','H','manuel@cardioprieto.com','Las Heras 282','Monte Grande','Osde','210','61627391501','42904606','1530081796','Medico','Dr.Prieto Omar','2014-11-03',0),
 (2,1,27318731,'Nancy','Kruk','1979-04-25','M','nancymk25@hotmail.com','Alvear 1612','Monte Grande','IOMA',' ',' 2273187314/00','42906721','1162743966','DOCENTE','DR.PRIETO','2014-11-03',0),
 (3,1,4294967295,'CRISTINA','BLANCO','0000-00-00','M','','XXXXXXXXXXXXXXXXXX','CANING','OMINT-IOMA','F','1111111111111111','1111111111111111','1111111111111111','DOCENTE','DRA DREYER','2014-11-03',0),
@@ -7268,7 +7268,7 @@ INSERT INTO `pacientes` VALUES
 (7265,1,24773884,'Patricia Lorena ','Gimenez','1975-09-20','','','LOS PINOS 954','EL JAGUEL ','','','','1123094401','','','','2019-07-22',0),
 (7266,1,24461660,'Joana Gabriela','De Simone','1982-04-06','M','','ANTONIO CRESPO 336','MONTE GRANDE','','','','1564113848','','','','2019-07-22',0),
 (7267,1,13765823,'Jorge','Pando','1960-05-29','','','GUEMES 149','MONTE GRANDE','OSDE','210','61743086001','43678907','02221156239080','','','2019-07-22',0);
-INSERT INTO `pacientes` VALUES
+INSERT INTO `pacientes` (id, idTipoDoc_temp, numDoc, nombre, apellido, fechaNac, sexo, mail, direccion, localidad, obraSocial, plan, afiliado, telefono, celular, profesion, referente, fechaAlta, deBaja) VALUES
 (7268,1,93182681,'Manuel ','Goncalves Da Cruz ','1943-09-28','','','COLON 548','MONTE GRANDE','IOMA','A931826813/00','','42960015','1160149670','','','2019-07-22',0),
 (7269,1,28337960,'Lidia Mariana ','Chamorro','1980-11-08','','','EL DESLIDE BARRIO PRINCIPADO','SAN VICENTE','SWISS MEDICAL ','MS 80','8000063391443010052','1537552038','','','','2019-07-22',0),
 (7270,1,40304611,'Nadia Denise ','Figueroa','1997-03-19','','','LAS CALANDRIAS 569','EL JAGUEL','','','','1135251735','','','','2019-07-22',0),
