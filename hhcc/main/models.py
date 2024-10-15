@@ -49,6 +49,8 @@ class Paciente(models.Model):
     )  # Referente opcional
     fechaAlta = models.DateField(default=timezone.now)  # Fecha de alta
     deBaja = models.BooleanField(default=False)  # Dado de baja (lógica)
+    idTipoDoc_temp = models.IntegerField(null=True, blank=True)  # Campo temporal para migrar
+
 
     class Meta:
         db_table = "pacientes"
