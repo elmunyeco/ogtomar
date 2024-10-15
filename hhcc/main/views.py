@@ -97,11 +97,11 @@ class PacienteListView(ListView):
     model = Paciente
     template_name = "pacientes_list.html"
     context_object_name = "pacientes"
-    paginate_by = 20  # Número de pacientes por páginas
+    paginate_by = 15  # Número de pacientes por páginas
 
 
 class PacienteListViewTw(ListView):
     model = Paciente
     template_name = "pacientes_list_tw2.html"
     context_object_name = "pacientes"
-    paginate_by = 20  # Número de pacientes por páginas
+    paginate_by = 16  # Número de pacientes por páginas
