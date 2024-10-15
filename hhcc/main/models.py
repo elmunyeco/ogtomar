@@ -27,7 +27,7 @@ class Paciente(models.Model):
     numDoc = models.CharField(max_length=50)  # Número de documento
     nombre = models.CharField(max_length=50)  # Nombre del paciente
     apellido = models.CharField(max_length=50)  # Apellido del paciente
-    fechaNac = models.DateField()  # Fecha de nacimiento
+    fechaNac = models.DateField(null=True, blank=True)  # Fecha de nacimiento
     sexo = models.CharField(
         max_length=1, choices=[("M", "Masculino"), ("F", "Femenino"), ("O", "Otro")]
     )  # Sexo
