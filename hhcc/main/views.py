@@ -20,6 +20,10 @@ def landing_page_dropdown(request):
 def buscador(request):
     return render(request, "buscador.html")
 
+def listar_buscar_pacientes(request):
+    pacientes = Paciente.objects.all()
+    return render(request, "listar_buscar_pacientes.html", {"pacientes": pacientes})    
+
 
 def buscar_criteria(request):
     query = request.GET.get("query", "")  # Obtiene el término de búsqueda
