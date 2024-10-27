@@ -29,7 +29,7 @@
                     {% for paciente in pacientes %}
                     <tr>
                         <td class="px-4 py-2">
-                           {{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}
+                            {{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}
                             <!-- Identificación compuesta -->
                         </td>
                         <!--                     <td class="px-4 py-2">{{ paciente.numDoc }}</td> -->
@@ -54,35 +54,38 @@
                 <ul class="inline-flex space-x-2">
                     {% if page_obj.has_previous %}
                     <li><a href="?page=1" class="px-3 py-1 bg-gray-200 text-gray-700 rounded">&laquo;</a></li>
-                    <li><a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1 bg-gray-200 text-gray-700 rounded">&lt;</a></li>
+                    <li><a href="?page={{ page_obj.previous_page_number }}"
+                            class="px-3 py-1 bg-gray-200 text-gray-700 rounded">&lt;</a></li>
                     {% endif %}
-        
+
                     {% for num in page_obj.paginator.page_range %}
-                    {% if page_obj.number <= 3 %}
-                        {% if num <= 5 %}
-                            <li class="{% if page_obj.number == num %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} px-3 py-1 rounded">
-                                <a href="?page={{ num }}">{{ num }}</a>
-                            </li>
+                    {% if page_obj.number <= 3 %} {% if num <=5 %} <li
+                        class="{% if page_obj.number == num %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} px-3 py-1 rounded">
+                        <a href="?page={{ num }}">{{ num }}</a>
+                        </li>
                         {% endif %}
-                    {% elif page_obj.number > 3 and page_obj.number < page_obj.paginator.num_pages|add:'-2' %}
-                        {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
-                            <li class="{% if page_obj.number == num %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} px-3 py-1 rounded">
+                        {% elif page_obj.number > 3 and page_obj.number < page_obj.paginator.num_pages|add:'-2' %} {% if
+                            num>= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %} <li
+                                class="{% if page_obj.number == num %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} px-3 py-1 rounded">
                                 <a href="?page={{ num }}">{{ num }}</a>
-                            </li>
-                        {% endif %}
-                    {% else %}
-                        {% if num > page_obj.paginator.num_pages|add:'-5' %}
-                            <li class="{% if page_obj.number == num %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} px-3 py-1 rounded">
-                                <a href="?page={{ num }}">{{ num }}</a>
-                            </li>
-                        {% endif %}
-                    {% endif %}
-                    {% endfor %}
-        
-                    {% if page_obj.has_next %}
-                    <li><a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1 bg-gray-200 text-gray-700 rounded">&gt;</a></li>
-                    <li><a href="?page={{ page_obj.paginator.num_pages }}" class="px-3 py-1 bg-gray-200 text-gray-700 rounded">&raquo;</a></li>
-                    {% endif %}
+                                </li>
+                                {% endif %}
+                                {% else %}
+                                {% if num > page_obj.paginator.num_pages|add:'-5' %}
+                                <li
+                                    class="{% if page_obj.number == num %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700{% endif %} px-3 py-1 rounded">
+                                    <a href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                                {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                <li><a href="?page={{ page_obj.next_page_number }}"
+                                        class="px-3 py-1 bg-gray-200 text-gray-700 rounded">&gt;</a></li>
+                                <li><a href="?page={{ page_obj.paginator.num_pages }}"
+                                        class="px-3 py-1 bg-gray-200 text-gray-700 rounded">&raquo;</a></li>
+                                {% endif %}
                 </ul>
             </nav>
         </div>
