@@ -57,7 +57,7 @@ def listar_buscar_pacientes(request):
     pacientes = pacientes.order_by('id')  # Ordenar por ID para evitar inconsistencias en la paginación
     
     # Paginador para dividir los pacientes en grupos de 14
-    paginator = Paginator(pacientes, 14)  # 14 pacientes por página
+    paginator = Paginator(pacientes, 12)  # 14 pacientes por página
 
     # Obtener el número de página desde la solicitud GET (si no existe, se usa la página 1 por defecto)
     page_number = request.GET.get('page', 1)
