@@ -85,7 +85,7 @@
                 <select name="tipo-busqueda" id="tipo-busqueda"
                     class="absolute right-40 h-10 px-4 py-2 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
 
-                    <option value="DNI" {% if tipo_busqueda == 'DNI' %}selected{% endif %}>DNI</option>
+                    <option value="Documento" {% if tipo_busqueda == 'Documento' %}selected{% endif %}>Documento</option>
                     <option value="Nombre" {% if tipo_busqueda == 'Nombre' %}selected{% endif %}>Nombre</option>
                     <option value="Apellido" {% if tipo_busqueda == 'Apellido' %}selected{% endif %}>Apellido</option>
                 </select>
@@ -118,7 +118,7 @@
                 <tbody>
                     {% for paciente in page_obj %}
                     <tr>
-                        <td class="px-4 py-2 border border-gray-300">{{ paciente.identificacion.numero }}</td>
+                        <td class="px-4 py-2 border border-gray-300">{{ paciente.idTipoDoc.nombre}} {{paciente.numDoc}}</td>
                         <td class="px-4 py-2 border border-gray-300">{{ paciente.nombre }}</td>
                         <td class="px-4 py-2 border border-gray-300">{{ paciente.apellido }}</td>
 
