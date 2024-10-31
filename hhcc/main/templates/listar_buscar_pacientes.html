@@ -82,9 +82,8 @@
                 <input type="text" name="query" id="query" placeholder="Buscar..." value="{{ query }}"
                     class="rounded-full w-full h-18 bg-white py-0 pl-8 pr-32 outline-none border-2 border-gray-100 shadow-md focus:ring-indigo-200 focus:border-indigo-200" />
                 <!-- Select para elegir tipo de búsqueda -->
-                <select name="tipo-busqueda" id="tipo-busqueda"
+                <select name="tipo" id="tipo"
                     class="absolute right-40 h-10 px-4 py-2 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-
                     <option value="Documento" {% if tipo_busqueda == 'Documento' %}selected{% endif %}>Documento</option>
                     <option value="Nombre" {% if tipo_busqueda == 'Nombre' %}selected{% endif %}>Nombre</option>
                     <option value="Apellido" {% if tipo_busqueda == 'Apellido' %}selected{% endif %}>Apellido</option>
@@ -139,9 +138,9 @@
                 <ul class="inline-flex space-x-2">
                     <!-- Botones de retroceso -->
                     {% if page_obj.has_previous %}
-                    <li><a href="?page=1&query={{ query }}"
+                    <li><a href="?page=1&query={{ query }}&tipo={{ tipo }}"
                             class="px-3 py-1 bg-gray-200 text-gray-700 rounded">&laquo;</a></li>
-                    <li><a href="?page={{ page_obj.previous_page_number }}&query={{ query }}"
+                    <li><a href="?page={{ page_obj.previous_page_number }}&query={{ query }}&tipo={{ tipo }}
                             class="px-3 py-1 bg-gray-200 text-gray-700 rounded">&lt;</a></li>
                     {% endif %}
 
@@ -149,7 +148,7 @@
                     {% for num in page_obj.paginator.page_range %}
                     {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %} <li
                         class="{% if page_obj.number == num %}active{% endif %}">
-                        <a href="?page={{ num }}&query={{ query }}"
+                        <a href="?page={{ num }}&query={{ query }}&tipo={{ tipo }}"
                             class="px-3 py-1 bg-gray-200 text-gray-700 rounded">{{ num }}</a>
                         </li>
                         {% endif %}
@@ -157,9 +156,9 @@
 
                         <!-- Botones de avance -->
                         {% if page_obj.has_next %}
-                        <li><a href="?page={{ page_obj.next_page_number }}&query={{ query }}"
+                        <li><a href="?page={{ page_obj.next_page_number }}&query={{ query }}&tipo={{ tipo }}"
                                 class="px-3 py-1 bg-gray-200 text-gray-700 rounded">&gt;</a></li>
-                        <li><a href="?page={{ page_obj.paginator.num_pages }}&query={{ query }}"
+                        <li><a href="?page={{ page_obj.paginator.num_pages }}&query={{ query }}&tipo={{ tipo }}"
                                 class="px-3 py-1 bg-gray-200 text-gray-700 rounded">&raquo;</a></li>
                         {% endif %}
                 </ul>

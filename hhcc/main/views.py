@@ -8,14 +8,11 @@ from django.shortcuts import get_object_or_404
 def index(request):
     return render(request, "index.html")
 
-
 def landing_page(request):
     return render(request, "landing_page.html")
 
-
 def landing_page_dropdown(request):
     return render(request, "landing_page_dropdown.html")
-
 
 def buscador(request):
     return render(request, "buscador.html")
@@ -41,17 +38,19 @@ from .models import Paciente
 def listar_buscar_pacientes(request):
     # Obtener el término de búsqueda y el tipo de búsqueda (DNI, Nombre o Apellido)
     query = request.GET.get("query", "")  # Si no hay búsqueda, el query será vacío
-    tipo_busqueda = request.GET.get(
+    tipo = request.GET.get(
         "tipo", "Documento"
-    )  # Por defecto, la búsqueda será por DNI
+    )  # Por defecto, la búsqueda será por numDoc
+    # Imprimo tipo de busqueda
+    print(tipo)
 
     # Filtrar los pacientes en función de la búsqueda
     if query:
-        if tipo_busqueda == "Documento":
+        if tipo == "Documento":
             pacientes = Paciente.objects.filter(numDoc__icontains=query)
-        elif tipo_busqueda == "Nombre":
+        elif tipo == "Nombre":
             pacientes = Paciente.objects.filter(nombre__icontains=query)
-        elif tipo_busqueda == "Apellido":
+        elif tipo == "Apellido":
             pacientes = Paciente.objects.filter(apellido__icontains=query)
         else:
             # Si no hay criterio, mostrar todos los pacientes
@@ -75,11 +74,14 @@ def listar_buscar_pacientes(request):
     # Obtener la página solicitada
     page_obj = paginator.get_page(page_number)
 
+    #
+    print(pacientes.query)
+    
     # Renderizar la plantilla correcta: 'listar_buscar_pacientes.html'
     return render(
         request,
         "listar_buscar_pacientes.html",
-        {"page_obj": page_obj, "query": query, "tipo_busqueda": tipo_busqueda},
+        {"page_obj": page_obj, "query": query, "tipo": tipo},
     )
 
 def buscar_criteria(request):
@@ -147,22 +149,3 @@ def borrar_paciente(request, paciente_id):
         paciente.delete()
         return redirect("index")
     return render(request, "borrar_paciente.html", {"paciente": paciente})
-
-
-from django.core.paginator import Paginator
-from django.shortcuts import render
-from django.views.generic import ListView
-
-
-class PacienteListView(ListView):
-    model = Paciente
-    template_name = "pacientes_list.html"
-    context_object_name = "pacientes"
-    paginate_by = 15  # Número de pacientes por páginas
-
-
-class PacienteListViewTw(ListView):
-    model = Paciente
-    template_name = "pacientes_list_tw2.html"
-    context_object_name = "pacientes"
-    paginate_by = 16  # Número de pacientes por páginas
