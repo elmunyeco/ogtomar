@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
-from .models import Paciente, TipoDocumento
+from .models import Paciente, HistoriaClinica, TipoDocumento
 from .forms import PacienteForm
 from django.shortcuts import get_object_or_404
 
@@ -84,7 +84,7 @@ def listar_buscar_pacientes(request):
         {"page_obj": page_obj, "query": query, "tipo": tipo},
     )
 
-def listar_buscar_historia(request):
+def listar_buscar_historias(request):
     # Obtener el término de búsqueda y el tipo de búsqueda
     query = request.GET.get("query", "")
     tipo = request.GET.get("tipo", "ID")  # Por defecto, la búsqueda será por ID de historia
@@ -116,7 +116,7 @@ def listar_buscar_historia(request):
             historias = historias.filter(paciente__apellido__icontains=query)
 
     # Ordenar las historias por fecha de alta (más reciente primero) y luego por ID
-    historias = historias.order_by('-fechaAlta', 'id')
+    historias = historias.order_by('id')
 
     # Paginación
     paginator = Paginator(historias, 12)  # 12 historias por página
