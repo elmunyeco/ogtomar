@@ -84,6 +84,58 @@ def listar_buscar_pacientes(request):
         {"page_obj": page_obj, "query": query, "tipo": tipo},
     )
 
+def listar_buscar_historia(request):
+    # Obtener el término de búsqueda y el tipo de búsqueda
+    query = request.GET.get("query", "")
+    tipo = request.GET.get("tipo", "ID")  # Por defecto, la búsqueda será por ID de historia
+
+    # Inicializar el queryset
+    historias = HistoriaClinica.objects.all()
+
+    if query:
+        if tipo == "ID":
+            # Búsqueda por ID de historia clínica
+            try:
+                # Convertir a entero si es posible
+                id_busqueda = int(query)
+                historias = historias.filter(id=id_busqueda)
+            except ValueError:
+                # Si no es un número válido, retornar conjunto vacío
+                historias = HistoriaClinica.objects.none()
+
+        elif tipo == "Documento":
+            # Búsqueda por documento del paciente
+            historias = historias.filter(paciente__numDoc__icontains=query)
+
+        elif tipo == "Nombre":
+            # Búsqueda por nombre del paciente
+            historias = historias.filter(paciente__nombre__icontains=query)
+
+        elif tipo == "Apellido":
+            # Búsqueda por apellido del paciente
+            historias = historias.filter(paciente__apellido__icontains=query)
+
+    # Ordenar las historias por fecha de alta (más reciente primero) y luego por ID
+    historias = historias.order_by('-fechaAlta', 'id')
+
+    # Paginación
+    paginator = Paginator(historias, 12)  # 12 historias por página
+    page_number = request.GET.get("page", 1)
+    page_obj = paginator.get_page(page_number)
+
+    # Para debugging
+    print(historias.query)
+
+    return render(
+        request,
+        "listar_buscar_historias.html",
+        {
+            "page_obj": page_obj,
+            "query": query,
+            "tipo": tipo
+        }
+    )
+
 def buscar_criteria(request):
     query = request.GET.get("query", "")  # Obtiene el término de búsqueda
     resultados = []
