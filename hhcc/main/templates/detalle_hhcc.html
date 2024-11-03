@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        .shadow-custom {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .input-custom:focus {
+            box-shadow: 0 0 0 2px rgba(154, 64, 53, 0.2);
+        }
+        
+        .checkbox-custom {
+            border-radius: 6px;
+        }
+        
+        .transition-custom {
+            transition: all 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-6">
+        <!-- Grid principal -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Panel Datos -->
+            <div class="bg-white rounded-full shadow-custom p-6 hover:shadow-lg transition-custom">
+                <div class="grid grid-cols-2 gap-y-4">
+                    <div class="text-gray-600 px-4">DNI 2034840</div>
+                    <div class="text-gray-600 px-4">María Esther Benedetti</div>
+                    <div class="text-gray-600 px-4">PAMI</div>
+                    <div class="text-gray-600 px-4">09/12/1935</div>
+                    <div class="text-gray-600 px-4">Tel: 1163547195</div>
+                </div>
+            </div>
+
+            <!-- Panel Diagnósticos -->
+            <div class="bg-white rounded-full shadow-custom p-6 hover:shadow-lg transition-custom" x-data="{ diagnosticos: [] }">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="hta">
+                        <span class="ml-2 text-gray-700">HTA</span>
+                    </label>
+                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="dbt1">
+                        <span class="ml-2 text-gray-700">DBT 1</span>
+                    </label>
+                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="dbt2">
+                        <span class="ml-2 text-gray-700">DBT 2</span>
+                    </label>
+                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="coronario">
+                        <span class="ml-2 text-gray-700">Coronario</span>
+                    </label>
+                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="arritmia">
+                        <span class="ml-2 text-gray-700">Arritmia</span>
+                    </label>
+                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="valvular">
+                        <span class="ml-2 text-gray-700">Valvular</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Panel Acciones -->
+            <div class="bg-white rounded-full shadow-custom p-6 hover:shadow-lg transition-custom flex flex-col sm:flex-row gap-4">
+                <button 
+                    class="flex-1 px-6 py-3 bg-[#9a4035] text-white rounded-full hover:bg-[#7a332b] transition-custom shadow-custom"
+                    @click="$dispatch('open-medicacion')">
+                    Medicación
+                </button>
+                <button 
+                    class="flex-1 px-6 py-3 bg-[#9a4035] text-white rounded-full hover:bg-[#7a332b] transition-custom shadow-custom"
+                    @click="$dispatch('open-practicas')">
+                    Prácticas
+                </button>
+            </div>
+
+            <!-- Panel Signos Vitales -->
+            <div class="bg-white rounded-full shadow-custom p-6 hover:shadow-lg transition-custom">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex items-center space-x-2">
+                        <input type="text" class="w-20 px-4 py-2 border rounded-full focus:outline-none focus:border-[#9a4035] input-custom" placeholder="PAS">
+                        <span class="text-gray-600">/</span>
+                        <input type="text" class="w-20 px-4 py-2 border rounded-full focus:outline-none focus:border-[#9a4035] input-custom" placeholder="PAD">
+                    </div>
+                    <input type="text" class="px-4 py-2 border rounded-full focus:outline-none focus:border-[#9a4035] input-custom" placeholder="Peso">
+                    <input type="text" class="px-4 py-2 border rounded-full focus:outline-none focus:border-[#9a4035] input-custom" placeholder="Glucemia">
+                    <input type="text" class="px-4 py-2 border rounded-full focus:outline-none focus:border-[#9a4035] input-custom" placeholder="Colesterol">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('paciente', {
+                guardarCambios() {
+                    console.log('Guardando cambios...');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
