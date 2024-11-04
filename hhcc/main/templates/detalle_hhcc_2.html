@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        .shadow-subtle {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .input-focus:focus {
+            box-shadow: 0 0 0 2px rgba(154, 64, 53, 0.1);
+        }
+        
+        .transition-smooth {
+            transition: all 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-6 max-w-5xl">
+        <!-- Datos Personales - Panel principal superior -->
+        <div class="bg-white rounded-lg shadow-subtle p-6 mb-6 hover:shadow-md transition-smooth">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="flex flex-col">
+                    <span class="text-sm text-gray-500">Paciente</span>
+                    <span class="text-gray-800 font-medium">María Esther Benedetti</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-sm text-gray-500">DNI</span>
+                    <span class="text-gray-800">2034840</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-sm text-gray-500">Nacimiento</span>
+                    <span class="text-gray-800">09/12/1935</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-sm text-gray-500">Contacto</span>
+                    <span class="text-gray-800">1163547195</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid para paneles secundarios -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Signos Vitales - Panel izquierdo -->
+            <div class="bg-white rounded-lg shadow-subtle p-6 hover:shadow-md transition-smooth">
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2">
+                        <input type="text" class="w-16 px-3 py-2 border rounded-lg focus:outline-none focus:border-[#9a4035] input-focus" placeholder="PAS">
+                        <span class="text-gray-400">/</span>
+                        <input type="text" class="w-16 px-3 py-2 border rounded-lg focus:outline-none focus:border-[#9a4035] input-focus" placeholder="PAD">
+                    </div>
+                    <input type="text" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-[#9a4035] input-focus" placeholder="Peso">
+                    <input type="text" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-[#9a4035] input-focus" placeholder="Glucemia">
+                    <input type="text" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-[#9a4035] input-focus" placeholder="Colesterol">
+                </div>
+            </div>
+
+            <!-- Diagnósticos - Panel central -->
+            <div class="bg-white rounded-lg shadow-subtle p-6 hover:shadow-md transition-smooth" x-data="{ diagnosticos: [] }">
+                <div class="grid grid-cols-1 gap-2">
+                    <label class="flex items-center p-2 hover:bg-gray-50 rounded-lg transition-smooth">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded" x-model="diagnosticos" value="hta">
+                        <span class="ml-2 text-gray-700">HTA</span>
+                    </label>
+                    <label class="flex items-center p-2 hover:bg-gray-50 rounded-lg transition-smooth">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded" x-model="diagnosticos" value="dbt1">
+                        <span class="ml-2 text-gray-700">DBT 1</span>
+                    </label>
+                    <label class="flex items-center p-2 hover:bg-gray-50 rounded-lg transition-smooth">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded" x-model="diagnosticos" value="coronario">
+                        <span class="ml-2 text-gray-700">Coronario</span>
+                    </label>
+                    <label class="flex items-center p-2 hover:bg-gray-50 rounded-lg transition-smooth">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded" x-model="diagnosticos" value="arritmia">
+                        <span class="ml-2 text-gray-700">Arritmia</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Acciones - Panel derecho -->
+            <div class="bg-white rounded-lg shadow-subtle p-6 hover:shadow-md transition-smooth flex flex-col gap-4">
+                <button 
+                    class="w-full px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-smooth"
+                    @click="$dispatch('open-medicacion')">
+                    Medicación
+                </button>
+                <button 
+                    class="w-full px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-smooth"
+                    @click="$dispatch('open-practicas')">
+                    Prácticas
+                </button>
+                <button 
+                    class="w-full px-4 py-2 border border-[#9a4035] text-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-smooth"
+                    @click="$dispatch('guardar-cambios')">
+                    Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('paciente', {
+                guardarCambios() {
+                    console.log('Guardando cambios...');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
