@@ -1,0 +1,111 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Órdenes Médicas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div x-data="{
+        diagnostico: '',
+        otrosEstudios: '',
+        showError: false,
+        selectedStudies: {
+            laboratorio: new Set(),
+            cardiovascular: new Set(),
+            clinicos: new Set()
+        },
+        
+        toggleEstudio(grupo, id) {
+            if (this.selectedStudies[grupo].has(id)) {
+                this.selectedStudies[grupo].delete(id);
+            } else {
+                this.selectedStudies[grupo].add(id);
+            }
+        },
+        
+        generatePDFs() {
+            let hasSelectedStudies = false;
+            
+            // Verificar si hay estudios seleccionados
+            for (let grupo in this.selectedStudies) {
+                if (this.selectedStudies[grupo].size > 0) {
+                    hasSelectedStudies = true;
+                    // Aquí simularemos la apertura de un PDF por grupo
+                    let url = `/solicitudes/descargarPDF/${grupo}/${Array.from(this.selectedStudies[grupo]).join(',')}`;
+                    if (this.diagnostico) url += `/${encodeURIComponent(this.diagnostico)}`;
+                    window.open(url, '_blank');
+                }
+            }
+            
+            // Verificar otros estudios
+            if (this.otrosEstudios.trim()) {
+                hasSelectedStudies = true;
+                let url = `/solicitudes/descargarPDF/otros/${encodeURIComponent(this.otrosEstudios)}`;
+                if (this.diagnostico) url += `/${encodeURIComponent(this.diagnostico)}`;
+                window.open(url, '_blank');
+            }
+            
+            if (!hasSelectedStudies) {
+                this.showError = true;
+            }
+        }
+    }" class="container mx-auto p-6 max-w-6xl">
+        <!-- Encabezado y contenido previo igual -->
+        
+        <!-- Estudios de Laboratorio -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex items-center space-x-2 mb-4">
+                <i class="fas fa-flask text-[#9a4035]"></i>
+                <h2 class="text-lg font-medium">Estudios de Laboratorio</h2>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <label class="flex items-center space-x-2 text-sm">
+                    <input type="checkbox" 
+                           @click="toggleEstudio('laboratorio', 's001')"
+                           class="rounded border-gray-300 text-[#9a4035] focus:ring-[#9a4035]">
+                    <span>Hemograma</span>
+                </label>
+                <!-- Más estudios... -->
+            </div>
+        </div>
+
+        <!-- Estudios Cardiovasculares -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex items-center space-x-2 mb-4">
+                <i class="fas fa-heartbeat text-[#9a4035]"></i>
+                <h2 class="text-lg font-medium">Estudios Cardiovasculares</h2>
+            </div>
+            <div class="space-y-3">
+                <label class="flex items-center space-x-2 text-sm">
+                    <input type="checkbox" 
+                           @click="toggleEstudio('cardiovascular', 's101')"
+                           class="rounded border-gray-300 text-[#9a4035] focus:ring-[#9a4035]">
+                    <span>Holter de 48 hs 3 Canales</span>
+                </label>
+                <!-- Más estudios... -->
+            </div>
+        </div>
+
+        <!-- Resto del contenido igual -->
+
+        <!-- Barra de acciones flotante inferior -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
+            <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
+                <button 
+                    class="px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors"
+                    onclick="window.history.back()">
+                    Cancelar
+                </button>
+                <button 
+                    @click="generatePDFs()"
+                    class="px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-colors">
+                    Imprimir Órdenes
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

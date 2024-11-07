@@ -99,6 +99,20 @@ class HistoriaClinica(models.Model):
             return f"Historia Clínica #{self.id} del paciente {self.paciente.nombre} {self.paciente.apellido}"
 
 
+class Enfermedad(models.Model):
+    id = models.AutoField(primary_key=True)
+    nombre = models.CharField(max_length=50, blank=False, null=False)
+    orden = models.PositiveIntegerField(db_index=True, blank=False, null=False)
+
+    class Meta:
+        db_table = 'enfermedades'
+        verbose_name = 'Enfermedad'
+        verbose_name_plural = 'Enfermedades'
+        ordering = ['orden']
+
+    def __str__(self):
+        return self.nombre
+    
 """ class Visita(models.Model):
     historia_clinica = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE)
     fecha = models.DateField()
