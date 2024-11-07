@@ -1,111 +1,264 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historia Clínica</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
     <style>
-        .shadow-custom {
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        .diagnosticos-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem 1rem;
+            align-items: center;
         }
-        
-        .input-custom:focus {
-            box-shadow: 0 0 0 2px rgba(154, 64, 53, 0.2);
+
+        .diagnostico-item {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            padding: 0.25rem;
         }
-        
-        .checkbox-custom {
-            border-radius: 6px;
+
+        .search-container {
+            position: relative;
+            margin-bottom: 1rem;
         }
-        
-        .transition-custom {
-            transition: all 0.2s ease-in-out;
+
+        .search-container input {
+            padding-right: 2.5rem;
+        }
+
+        .search-container button {
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
         }
     </style>
+
 </head>
+
 <body class="bg-gray-100">
-    <div class="container mx-auto p-6">
-        <!-- Grid principal -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Panel Datos -->
-            <div class="bg-white rounded-full shadow-custom p-6 hover:shadow-lg transition-custom">
-                <div class="grid grid-cols-2 gap-y-4">
-                    <div class="text-gray-600 px-4">DNI 2034840</div>
-                    <div class="text-gray-600 px-4">María Esther Benedetti</div>
-                    <div class="text-gray-600 px-4">PAMI</div>
-                    <div class="text-gray-600 px-4">09/12/1935</div>
-                    <div class="text-gray-600 px-4">Tel: 1163547195</div>
+    <main class="container mx-auto p-6 max-w-6xl">
+        <!-- Encabezado con datos y acciones rápidas -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center space-x-4">
+                    <span class="text-xl font-medium text-gray-900">María Esther Benedetti</span>
+                    <span class="text-gray-500">DNI 2034840</span>
+                </div>
+                <!-- Acciones rápidas como iconos -->
+                <div class="flex items-center space-x-6">
+                    <button class="text-[#9a4035] hover:text-[#7a332b] transition-colors flex flex-col items-center">
+                        <i class="fas fa-pills text-xl mb-1"></i>
+                        <span class="text-xs">Medicación</span>
+                    </button>
+                    <button class="text-[#9a4035] hover:text-[#7a332b] transition-colors flex flex-col items-center">
+                        <i class="fas fa-file-medical text-xl mb-1"></i>
+                        <span class="text-xs">Prácticas</span>
+                    </button>
+                    <button class="text-[#9a4035] hover:text-[#7a332b] transition-colors flex flex-col items-center">
+                        <i class="fas fa-print text-xl mb-1"></i>
+                        <span class="text-xs">Imprimir</span>
+                    </button>
                 </div>
             </div>
-
-            <!-- Panel Diagnósticos -->
-            <div class="bg-white rounded-full shadow-custom p-6 hover:shadow-lg transition-custom" x-data="{ diagnosticos: [] }">
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
-                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="hta">
-                        <span class="ml-2 text-gray-700">HTA</span>
-                    </label>
-                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
-                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="dbt1">
-                        <span class="ml-2 text-gray-700">DBT 1</span>
-                    </label>
-                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
-                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="dbt2">
-                        <span class="ml-2 text-gray-700">DBT 2</span>
-                    </label>
-                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
-                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="coronario">
-                        <span class="ml-2 text-gray-700">Coronario</span>
-                    </label>
-                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
-                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="arritmia">
-                        <span class="ml-2 text-gray-700">Arritmia</span>
-                    </label>
-                    <label class="inline-flex items-center px-3 py-2 hover:bg-gray-50 rounded-full transition-custom">
-                        <input type="checkbox" class="form-checkbox text-[#9a4035] rounded-md checkbox-custom" x-model="diagnosticos" value="valvular">
-                        <span class="ml-2 text-gray-700">Valvular</span>
-                    </label>
+            <div class="grid grid-cols-3 gap-6 text-sm">
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Nacimiento</span>
+                    <span>09/12/1935 (88 años)</span>
                 </div>
-            </div>
-
-            <!-- Panel Acciones -->
-            <div class="bg-white rounded-full shadow-custom p-6 hover:shadow-lg transition-custom flex flex-col sm:flex-row gap-4">
-                <button 
-                    class="flex-1 px-6 py-3 bg-[#9a4035] text-white rounded-full hover:bg-[#7a332b] transition-custom shadow-custom"
-                    @click="$dispatch('open-medicacion')">
-                    Medicación
-                </button>
-                <button 
-                    class="flex-1 px-6 py-3 bg-[#9a4035] text-white rounded-full hover:bg-[#7a332b] transition-custom shadow-custom"
-                    @click="$dispatch('open-practicas')">
-                    Prácticas
-                </button>
-            </div>
-
-            <!-- Panel Signos Vitales -->
-            <div class="bg-white rounded-full shadow-custom p-6 hover:shadow-lg transition-custom">
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="flex items-center space-x-2">
-                        <input type="text" class="w-20 px-4 py-2 border rounded-full focus:outline-none focus:border-[#9a4035] input-custom" placeholder="PAS">
-                        <span class="text-gray-600">/</span>
-                        <input type="text" class="w-20 px-4 py-2 border rounded-full focus:outline-none focus:border-[#9a4035] input-custom" placeholder="PAD">
-                    </div>
-                    <input type="text" class="px-4 py-2 border rounded-full focus:outline-none focus:border-[#9a4035] input-custom" placeholder="Peso">
-                    <input type="text" class="px-4 py-2 border rounded-full focus:outline-none focus:border-[#9a4035] input-custom" placeholder="Glucemia">
-                    <input type="text" class="px-4 py-2 border rounded-full focus:outline-none focus:border-[#9a4035] input-custom" placeholder="Colesterol">
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Teléfono</span>
+                    <span>1163547195</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Última visita</span>
+                    <span>22/10/2024</span>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.store('paciente', {
-                guardarCambios() {
-                    console.log('Guardando cambios...');
-                }
-            });
-        });
-    </script>
+        <div class="grid grid-cols-2 gap-6">
+            <!-- Panel izquierdo: Signos vitales y evolución -->
+            <div class="space-y-6">
+                <!-- Signos vitales como tarjetas -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-500">Presión arterial</span>
+                            <i class="fas fa-heart text-[#9a4035]"></i>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" placeholder="PAS" class="w-16 p-2 border rounded text-center">
+                            <span class="text-gray-400">/</span>
+                            <input type="text" placeholder="PAD" class="w-16 p-2 border rounded text-center">
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-500">Peso</span>
+                            <i class="fas fa-weight text-[#9a4035]"></i>
+                        </div>
+                        <input type="text" class="w-full p-2 border rounded text-center">
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-500">Glucemia</span>
+                            <i class="fas fa-tint text-[#9a4035]"></i>
+                        </div>
+                        <input type="text" class="w-full p-2 border rounded text-center">
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-500">Colesterol</span>
+                            <i class="fas fa-chart-line text-[#9a4035]"></i>
+                        </div>
+                        <input type="text" class="w-full p-2 border rounded text-center">
+                    </div>
+                </div>
+
+                <!-- Evolución o notas como timeline -->
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="font-medium">Visitas</span>
+                        <button class="text-[#9a4035] hover:text-[#7a332b]">
+                            <i class="fas fa-plus-circle"></i>
+                        </button>
+                    </div>
+                    <textarea placeholder="Agregar nota de evolución..."
+                        class="w-full p-3 border rounded-lg resize-none focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
+                        rows="4">
+                    </textarea>
+                </div>
+            </div>
+
+            <!-- Panel derecho: Diagnósticos -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+
+                <div class="diagnosticos-grid">
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Hipertensión Arterial</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Diabetes tipo 1</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Coronariopatía</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Diabetes tipo 2</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Arritmia</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Valvulopatía</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Dislipemia</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Insuficiencia renal</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Obesidad</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Sobrepeso</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Sedentarismo</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Enf. Vasc. Perif.</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">CRM</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Tabaquismo</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Angioplastia</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">ACV</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Antecedente familiar</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">AIT</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Alcoholismo</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Deportista</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Enf. Congénita</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Caso de presentaci</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Mascapasos</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Stress</span>
+                    </label>
+                    <label class="diagnostico-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
+                        <span class="text-sm">Insuf. Cardíaca</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de acciones flotante inferior -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
+            <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
+                <button
+                    class="px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors">
+                    Cancelar
+                </button>
+                <button class="px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-colors">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+    </main>
 </body>
+
 </html>
