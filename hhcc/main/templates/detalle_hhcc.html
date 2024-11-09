@@ -8,7 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
     <style>
         .diagnosticos-grid {
             display: grid;
@@ -23,46 +22,28 @@
             white-space: nowrap;
             padding: 0.25rem;
         }
-
-        .search-container {
-            position: relative;
-            margin-bottom: 1rem;
-        }
-
-        .search-container input {
-            padding-right: 2.5rem;
-        }
-
-        .search-container button {
-            position: absolute;
-            right: 0.5rem;
-            top: 50%;
-            transform: translateY(-50%);
-        }
     </style>
-
 </head>
 
 <body class="bg-gray-100">
     <main class="container mx-auto p-6 max-w-6xl">
-        <!-- Encabezado con datos y acciones rápidas -->
+        <!-- Encabezado mejorado -->
         <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center space-x-4">
                     <span class="text-xl font-medium text-gray-900">María Esther Benedetti</span>
                     <span class="text-gray-500">DNI 2034840</span>
                 </div>
-                <!-- Acciones rápidas como iconos -->
                 <div class="flex items-center space-x-6">
-                    <button class="text-[#9a4035] hover:text-[#7a332b] transition-colors flex flex-col items-center">
+                    <button class="flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
                         <i class="fas fa-pills text-xl mb-1"></i>
                         <span class="text-xs">Medicación</span>
                     </button>
-                    <button class="text-[#9a4035] hover:text-[#7a332b] transition-colors flex flex-col items-center">
+                    <button class="flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
                         <i class="fas fa-file-medical text-xl mb-1"></i>
                         <span class="text-xs">Prácticas</span>
                     </button>
-                    <button class="text-[#9a4035] hover:text-[#7a332b] transition-colors flex flex-col items-center">
+                    <button class="flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
                         <i class="fas fa-print text-xl mb-1"></i>
                         <span class="text-xs">Imprimir</span>
                     </button>
@@ -84,45 +65,58 @@
             </div>
         </div>
 
+        <!-- Contenido Principal -->
         <div class="grid grid-cols-2 gap-6">
-            <!-- Panel izquierdo: Signos vitales y evolución -->
+            <!-- Columna Izquierda -->
             <div class="space-y-6">
-                <!-- Signos vitales como tarjetas -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-white rounded-lg shadow-sm p-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-gray-500">Presión arterial</span>
-                            <i class="fas fa-heart text-[#9a4035]"></i>
+
+                <!-- Panel Único de Signos Vitales -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-4">Signos Vitales</h3>
+                    <div class="grid grid-cols-2 gap-6">
+                        <!-- Presión Arterial -->
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-heart text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Presión arterial</div>
+                                <div class="flex items-center space-x-2">
+                                    <input type="text" placeholder="PAS"
+                                        class="w-16 p-1.5 border rounded text-center text-sm">
+                                    <span class="text-gray-400">/</span>
+                                    <input type="text" placeholder="PAD"
+                                        class="w-16 p-1.5 border rounded text-center text-sm">
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex items-center space-x-2">
-                            <input type="text" placeholder="PAS" class="w-16 p-2 border rounded text-center">
-                            <span class="text-gray-400">/</span>
-                            <input type="text" placeholder="PAD" class="w-16 p-2 border rounded text-center">
+
+                        <!-- Peso -->
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-weight text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Peso</div>
+                                <input type="text" class="w-full p-1.5 border rounded text-center text-sm">
+                            </div>
                         </div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow-sm p-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-gray-500">Peso</span>
-                            <i class="fas fa-weight text-[#9a4035]"></i>
+
+                        <!-- Glucemia -->
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-tint text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Glucemia</div>
+                                <input type="text" class="w-full p-1.5 border rounded text-center text-sm">
+                            </div>
                         </div>
-                        <input type="text" class="w-full p-2 border rounded text-center">
-                    </div>
-                    <div class="bg-white rounded-lg shadow-sm p-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-gray-500">Glucemia</span>
-                            <i class="fas fa-tint text-[#9a4035]"></i>
+
+                        <!-- Colesterol -->
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-chart-line text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Colesterol</div>
+                                <input type="text" class="w-full p-1.5 border rounded text-center text-sm">
+                            </div>
                         </div>
-                        <input type="text" class="w-full p-2 border rounded text-center">
-                    </div>
-                    <div class="bg-white rounded-lg shadow-sm p-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-sm text-gray-500">Colesterol</span>
-                            <i class="fas fa-chart-line text-[#9a4035]"></i>
-                        </div>
-                        <input type="text" class="w-full p-2 border rounded text-center">
                     </div>
                 </div>
-
                 <!-- Evolución o notas como timeline -->
                 <div class="bg-white rounded-lg shadow-sm p-4">
                     <div class="flex justify-between items-center mb-4">
@@ -138,107 +132,109 @@
                 </div>
             </div>
 
-            <!-- Panel derecho: Diagnósticos -->
+            <!-- Columna Derecha - Diagnósticos -->
             <div class="bg-white rounded-lg shadow-sm p-6">
-
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-medium text-gray-700">Diagnósticos</h3>
+                </div>
                 <div class="diagnosticos-grid">
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Hipertensión Arterial</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Diabetes tipo 1</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Coronariopatía</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Diabetes tipo 2</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Arritmia</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Valvulopatía</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Dislipemia</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Insuficiencia renal</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Obesidad</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Sobrepeso</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Sedentarismo</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Enf. Vasc. Perif.</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">CRM</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Tabaquismo</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Angioplastia</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">ACV</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Antecedente familiar</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">AIT</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Alcoholismo</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Deportista</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Enf. Congénita</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Caso de presentaci</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Mascapasos</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Stress</span>
                     </label>
-                    <label class="diagnostico-item">
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md">
                         <input type="checkbox" class="form-checkbox text-[#9a4035] mr-2">
                         <span class="text-sm">Insuf. Cardíaca</span>
                     </label>
@@ -246,7 +242,7 @@
             </div>
         </div>
 
-        <!-- Barra de acciones flotante inferior -->
+        <!-- Barra inferior flotante con botones -->
         <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
             <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
                 <button
