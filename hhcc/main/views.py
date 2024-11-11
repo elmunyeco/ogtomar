@@ -201,3 +201,137 @@ def borrar_paciente(request, paciente_id):
         paciente.delete()
         return redirect("index")
     return render(request, "borrar_paciente.html", {"paciente": paciente})
+
+
+
+```python
+from django.http import FileResponse
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from io import BytesIO
+
+def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=None):
+    """
+    tipo puede ser: 'lab', 'cardio', 'clinicos', 'otros'
+    estudios: para estudios codificados viene como 's001|s002|etc'
+             para otros estudios viene como texto libre
+    """
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=50,
+        leftMargin=50,
+        topMargin=50,
+        bottomMargin=50
+    )
+    
+    elements = []
+    styles = getSampleStyleSheet()
+    paciente = Paciente.objects.get(id=paciente_id)
+
+    # Definir estilo para estudios
+    estudio_style = ParagraphStyle(
+        'EstudioStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,  # Espaciado entre líneas
+        leftIndent=20
+    )
+
+    # Primera página siempre lleva encabezado
+    agregar_encabezado(elements, paciente, diagnostico, tipo, styles)
+    
+    if tipo == 'otros':
+        # Procesar otros estudios (texto libre)
+        estudios_list = estudios.split('\n')
+        elementos_por_pagina = 30  # Ajustar según necesidad
+        
+        for i, estudio in enumerate(estudios_list):
+            if i > 0 and i % elementos_por_pagina == 0:
+                elements.append(PageBreak())
+                agregar_encabezado(elements, paciente, diagnostico, tipo, styles)
+            
+            elements.append(Paragraph(f"• {estudio.strip()}", estudio_style))
+            elements.append(Spacer(1, 6))
+    else:
+        # Procesar estudios codificados
+        estudios_list = estudios.split('|')
+        elementos_por_pagina = 30  # Ajustar según necesidad
+        
+        for i, codigo in enumerate(estudios_list):
+            if i > 0 and i % elementos_por_pagina == 0:
+                elements.append(PageBreak())
+                agregar_encabezado(elements, paciente, diagnostico, tipo, styles)
+            
+            nombre_estudio = get_nombre_estudio(codigo, tipo)
+            elements.append(Paragraph(f"• {nombre_estudio}", estudio_style))
+            elements.append(Spacer(1, 6))
+
+    # Generar PDF
+    doc.build(elements)
+    buffer.seek(0)
+    
+    filename = f'orden_{tipo}_{paciente.apellido}.pdf'
+    return FileResponse(buffer, as_attachment=True, filename=filename)
+
+def agregar_encabezado(elements, paciente, diagnostico, tipo, styles):
+    """Agrega el encabezado estándar a la página"""
+    header_style = ParagraphStyle(
+        'CustomHeader',
+        parent=styles['Heading1'],
+        fontSize=12,
+        spaceAfter=20,
+        alignment=1  # Centrado
+    )
+    
+    # Logo
+    logo = Image('path/to/logo.png', width=200, height=100)
+    elements.append(logo)
+    elements.append(Spacer(1, 12))
+    
+    # Título según tipo de estudio
+    titulos = {
+        'lab': 'ESTUDIOS DE LABORATORIO',
+        'cardio': 'ESTUDIOS CARDIOVASCULARES',
+        'clinicos': 'ESTUDIOS CLÍNICOS',
+        'otros': 'OTROS ESTUDIOS'
+    }
+    
+    elements.append(Paragraph(titulos.get(tipo, ''), header_style))
+    elements.append(Spacer(1, 12))
+    
+    # Datos del paciente
+    header_text = f"""
+    <para alignment="center">
+        Paciente: {paciente.nombre} {paciente.apellido}<br/>
+        DNI: {paciente.dni}<br/>
+        Obra Social: {paciente.obra_social}<br/>
+        N° Afiliado: {paciente.nro_afiliado}<br/>
+        Diagnóstico: {diagnostico}
+    </para>
+    """
+    elements.append(Paragraph(header_text, header_style))
+    elements.append(Spacer(1, 20))
+
+def get_nombre_estudio(codigo, tipo):
+    """Obtiene el nombre del estudio según su código y tipo"""
+    estudios = {
+        'lab': {
+            's001': 'Hemograma',
+            's002': 'Coagulograma',
+            # ... etc
+        },
+        'cardio': {
+            's101': 'Holter de 48 hs 3 Canales',
+            # ... etc
+        },
+        'clinicos': {
+            's201': 'Espirometría',
+            # ... etc
+        }
+    }
+    return estudios.get(tipo, {}).get(codigo, 'Estudio no encontrado')
+```

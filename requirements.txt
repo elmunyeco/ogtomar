@@ -1,5 +1,6 @@
 asgiref==3.8.1
 asttokens==2.4.1
+chardet==5.2.0
 decorator==5.1.1
 Django==5.1.1
 django-extensions==3.2.3
@@ -10,10 +11,12 @@ matplotlib-inline==0.1.7
 mysqlclient==2.2.4
 parso==0.8.4
 pexpect==4.9.0
+pillow==11.0.0
 prompt_toolkit==3.0.47
 ptyprocess==0.7.0
 pure_eval==0.2.3
 Pygments==2.18.0
+reportlab==4.2.5
 six==1.16.0
 sqlparse==0.5.1
 stack-data==0.6.3
