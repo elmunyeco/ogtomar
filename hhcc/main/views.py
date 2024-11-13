@@ -8,11 +8,14 @@ from django.shortcuts import get_object_or_404
 def index(request):
     return render(request, "index.html")
 
+
 def landing_page(request):
     return render(request, "landing_page.html")
 
+
 def landing_page_dropdown(request):
     return render(request, "landing_page_dropdown.html")
+
 
 def buscador(request):
     return render(request, "buscador.html")
@@ -76,7 +79,7 @@ def listar_buscar_pacientes(request):
 
     #
     print(pacientes.query)
-    
+
     # Renderizar la plantilla correcta: 'listar_buscar_pacientes.html'
     return render(
         request,
@@ -84,10 +87,13 @@ def listar_buscar_pacientes(request):
         {"page_obj": page_obj, "query": query, "tipo": tipo},
     )
 
+
 def listar_buscar_historias(request):
     # Obtener el término de búsqueda y el tipo de búsqueda
     query = request.GET.get("query", "")
-    tipo = request.GET.get("tipo", "ID")  # Por defecto, la búsqueda será por ID de historia
+    tipo = request.GET.get(
+        "tipo", "ID"
+    )  # Por defecto, la búsqueda será por ID de historia
 
     # Inicializar el queryset
     historias = HistoriaClinica.objects.all()
@@ -116,7 +122,7 @@ def listar_buscar_historias(request):
             historias = historias.filter(paciente__apellido__icontains=query)
 
     # Ordenar las historias por fecha de alta (más reciente primero) y luego por ID
-    historias = historias.order_by('id')
+    historias = historias.order_by("id")
 
     # Paginación
     paginator = Paginator(historias, 12)  # 12 historias por página
@@ -129,12 +135,9 @@ def listar_buscar_historias(request):
     return render(
         request,
         "listar_buscar_historias.html",
-        {
-            "page_obj": page_obj,
-            "query": query,
-            "tipo": tipo
-        }
+        {"page_obj": page_obj, "query": query, "tipo": tipo},
     )
+
 
 def buscar_criteria(request):
     query = request.GET.get("query", "")  # Obtiene el término de búsqueda
@@ -203,135 +206,241 @@ def borrar_paciente(request, paciente_id):
     return render(request, "borrar_paciente.html", {"paciente": paciente})
 
 
+def dope(request, paciente_id):
+    paciente = get_object_or_404(Paciente, id=paciente_id)
+    return render(request, "dope.html", {"paciente": paciente})
 
-```python
-from django.http import FileResponse
-from reportlab.lib import colors
+
+def ordenes_medicas(request, paciente_id):
+    paciente = get_object_or_404(Paciente, id=paciente_id)
+    return render(request, "ordenes_medicas.html", {"paciente": paciente})
+
+
 from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
+from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Image,
+    Table,
+    TableStyle,
+)
 from io import BytesIO
+from django.http import FileResponse
+from .models import Paciente
+
+
+def encabezado(canvas, doc, paciente, diagnostico):
+    # Crear una tabla para el logo y los datos del paciente
+    logo = "/home/eze/ogtomar/hhcc/main/static/main/images/logosolo.png"
+    logo_image = Image(logo, width=100, height=100)
+
+    # Datos del paciente en párrafos
+    styles = getSampleStyleSheet()
+    datos_paciente = [
+        f"Paciente: {paciente.nombre} {paciente.apellido}",
+        f"Documento: {paciente.numDoc}",
+        f"Obra Social: {paciente.obraSocial}",
+        f"N° Afiliado: {paciente.afiliado}",
+        f"Diagnóstico: {diagnostico}",
+    ]
+    datos_paragraphs = [Paragraph(dato, styles["Normal"]) for dato in datos_paciente]
+
+    # Crear la tabla con el logo y los datos del paciente
+    encabezado_table = Table([[logo_image, datos_paragraphs]], colWidths=[120, 400])
+    encabezado_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),  # Alinear en la parte superior
+                ("LEFTPADDING", (1, 0), (1, 0), 10),
+                ("TOPPADDING", (0, 0), (1, 0), 20),  # Espaciado superior
+            ]
+        )
+    )
+
+    # Dibujar la tabla en el canvas
+    encabezado_table.wrapOn(canvas, doc.width, doc.topMargin)
+    encabezado_table.drawOn(canvas, 72, 700)  # Ajustar posición inicial si es necesario
+
 
 def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=None):
-    """
-    tipo puede ser: 'lab', 'cardio', 'clinicos', 'otros'
-    estudios: para estudios codificados viene como 's001|s002|etc'
-             para otros estudios viene como texto libre
-    """
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=50,
-        leftMargin=50,
-        topMargin=50,
-        bottomMargin=50
+        rightMargin=56.7,  # 2cm en puntos
+        leftMargin=56.7,  # 2cm en puntos
+        topMargin=56.7,  # 2cm en puntos
+        bottomMargin=56.7,  # 2cm en puntos
     )
-    
+
     elements = []
     styles = getSampleStyleSheet()
+
+    # Agregar espacio debajo del encabezado para evitar sobreposición
+    elements.append(
+        Spacer(1, 20)
+    )  # Ajusta el valor según la cantidad de espacio que quieras
+
+    # Datos del paciente
     paciente = Paciente.objects.get(id=paciente_id)
 
-    # Definir estilo para estudios
+    # Estudios
     estudio_style = ParagraphStyle(
-        'EstudioStyle',
-        parent=styles['Normal'],
-        fontSize=10,
-        leading=14,  # Espaciado entre líneas
-        leftIndent=20
+        "EstudioStyle", parent=styles["Normal"], fontSize=10, leading=14, leftIndent=20
     )
+    for codigo in estudios.split("|"):
+        nombre_estudio = get_nombre_estudio(codigo, tipo)
+        elements.append(Paragraph(f"• {nombre_estudio}", estudio_style))
+        elements.append(Spacer(1, 6))
 
-    # Primera página siempre lleva encabezado
-    agregar_encabezado(elements, paciente, diagnostico, tipo, styles)
-    
-    if tipo == 'otros':
-        # Procesar otros estudios (texto libre)
-        estudios_list = estudios.split('\n')
-        elementos_por_pagina = 30  # Ajustar según necesidad
-        
-        for i, estudio in enumerate(estudios_list):
-            if i > 0 and i % elementos_por_pagina == 0:
-                elements.append(PageBreak())
-                agregar_encabezado(elements, paciente, diagnostico, tipo, styles)
-            
-            elements.append(Paragraph(f"• {estudio.strip()}", estudio_style))
-            elements.append(Spacer(1, 6))
+    """ if tipo == "otros":
+        elements.append(Paragraph(f"• {estudios}", estudio_style))
+        elements.append(Spacer(1, 6))
     else:
-        # Procesar estudios codificados
-        estudios_list = estudios.split('|')
-        elementos_por_pagina = 30  # Ajustar según necesidad
-        
-        for i, codigo in enumerate(estudios_list):
-            if i > 0 and i % elementos_por_pagina == 0:
-                elements.append(PageBreak())
-                agregar_encabezado(elements, paciente, diagnostico, tipo, styles)
-            
+        for codigo in estudios.split("|"):
             nombre_estudio = get_nombre_estudio(codigo, tipo)
             elements.append(Paragraph(f"• {nombre_estudio}", estudio_style))
-            elements.append(Spacer(1, 6))
+            elements.append(Spacer(1, 6)) """
 
-    # Generar PDF
-    doc.build(elements)
-    buffer.seek(0)
-    
-    filename = f'orden_{tipo}_{paciente.apellido}.pdf'
-    return FileResponse(buffer, as_attachment=True, filename=filename)
-
-def agregar_encabezado(elements, paciente, diagnostico, tipo, styles):
-    """Agrega el encabezado estándar a la página"""
-    header_style = ParagraphStyle(
-        'CustomHeader',
-        parent=styles['Heading1'],
-        fontSize=12,
-        spaceAfter=20,
-        alignment=1  # Centrado
+    # Construcción del PDF con encabezado en cada página
+    doc.build(
+        elements,
+        onFirstPage=lambda canvas, doc: encabezado(canvas, doc, paciente, diagnostico),
+        onLaterPages=lambda canvas, doc: encabezado(canvas, doc, paciente, diagnostico),
     )
-    
-    # Logo
-    logo = Image('path/to/logo.png', width=200, height=100)
-    elements.append(logo)
-    elements.append(Spacer(1, 12))
-    
-    # Título según tipo de estudio
-    titulos = {
-        'lab': 'ESTUDIOS DE LABORATORIO',
-        'cardio': 'ESTUDIOS CARDIOVASCULARES',
-        'clinicos': 'ESTUDIOS CLÍNICOS',
-        'otros': 'OTROS ESTUDIOS'
-    }
-    
-    elements.append(Paragraph(titulos.get(tipo, ''), header_style))
-    elements.append(Spacer(1, 12))
-    
-    # Datos del paciente
-    header_text = f"""
-    <para alignment="center">
-        Paciente: {paciente.nombre} {paciente.apellido}<br/>
-        DNI: {paciente.dni}<br/>
-        Obra Social: {paciente.obra_social}<br/>
-        N° Afiliado: {paciente.nro_afiliado}<br/>
-        Diagnóstico: {diagnostico}
-    </para>
-    """
-    elements.append(Paragraph(header_text, header_style))
-    elements.append(Spacer(1, 20))
+
+    buffer.seek(0)
+    filename = f"orden_{tipo}_{paciente.apellido}.pdf"
+    return FileResponse(buffer, as_attachment=False, filename=filename)
+
 
 def get_nombre_estudio(codigo, tipo):
     """Obtiene el nombre del estudio según su código y tipo"""
     estudios = {
-        'lab': {
-            's001': 'Hemograma',
-            's002': 'Coagulograma',
-            # ... etc
+        "lab": {
+            "s001": "Hemograma",
+            "s002": "Coagulograma",
+            "s003": "KPTT",
+            "s004": "Quick",
+            "s005": "Recuento de Plaquetas",
+            "s006": "Grupo y Factor",
+            "s007": "Urea",
+            "s008": "Creatinina",
+            "s009": "Ácido Úrico",
+            "s010": "Ionograma",
+            "s011": "Magnesemia",
+            "s012": "Calcemia",
+            "s013": "Glucemia",
+            "s014": "Insulinemia",
+            "s015": "Homa",
+            "s016": "Hemoglobina Glicosilada",
+            "s017": "Fructosamina",
+            "s018": "CTOG",
+            "s019": "Hepatograma",
+            "s020": "HDL, LDL, TG",
+            "s021": "Lipidograma",
+            "s022": "LPA",
+            "s023": "APO A",
+            "s024": "APO B",
+            "s025": "Vitamina D",
+            "s026": "Serologia Chagas",
+            "s027": "VIH Elisa",
+            "s028": "CPK",
+            "s029": "CPK MB",
+            "s030": "LDH",
+            "s031": "Troponina",
+            "s032": "Mioglobina",
+            "s033": "BNP",
+            "s034": "Pro BNP",
+            "s035": "Dimero D",
+            "s036": "PCR US",
+            "s037": "Homocisteina",
+            "s038": "Latex AR",
+            "s039": "AC Anti Jo",
+            "s040": "AC Anti Ro",
+            "s041": "FAN",
+            "s042": "ASTO",
+            "s043": "TSH, T3, T4, T4L",
+            "s044": "ATPO",
+            "s045": "AC ATG",
+            "s046": "AC AFM",
+            "s047": "TRAB",
+            "s048": "Proteinograma Electroforetico",
+            "s049": "Proteinograma por Inmunofijacion",
+            "s050": "Catecolaminas en plasma",
+            "s051": "Aldosterona",
+            "s052": "Renina plasmática",
+            "s053": "Cortisol en Ayunas",
+            "s054": "ACTH",
+            "s055": "PRL",
+            "s056": "PTH",
+            "s057": "Ac. Folico",
+            "s058": "Eritropoyetina plasmática",
+            "s059": "PSA total y libre",
+            "s060": "Testosterona en plasma",
+            "s061": "LH-FSH",
+            "s062": "AAG",
+            "s063": "AAE",
+            "s064": "IG A",
+            "s065": "IG E",
+            "s066": "Factor Lupico",
+            "s067": "Microalbuminuria de 24 hs",
+            "s068": "Clearance de Creatinina",
+            "s069": "Orina completa",
+            "s070": "Urocultivo",
+            "s071": "Antibiograma",
+            "s072": "Recuento de Colonias",
+            "s073": "Tipificacion de gérmenes",
         },
-        'cardio': {
-            's101': 'Holter de 48 hs 3 Canales',
-            # ... etc
+        "cardio": {
+            "s101": "Estudio de perfusión miocárdica en reposo y ejercicio gatillado (Gated Spect)",
+            "s102": "Estudio de perfusión miocárdica en reposo y ejercicio (Spect)",
+            "s103": "Estudio de perfusión miocárdica con dipiridamol (Spect)",
+            "s104": "Holter de 48 hs 3 Canales",
+            "s105": "Monitoreo Ambulatorio de la presión arterial",
+            "s106": "Cinecoronariografia y eventual angioplastia",
+            "s107": "Angiotomografia de alta resolución de arterias coronarias con contraste (Score de Calcio)",
+            "s108": "Resonancia magnética cardiaca con evaluación de realce tardío (con cte)",
+            "s109": "Angioresonancia de vasos del cuello y Cerebro (con contraste)",
+            "s110": "Angiotomografia de Vasos del cuello y cerebro con reconstrucción 3d (con contraste)",
+            "s111": "Tomografia computada de abdomen de alta resolución evaluación de glandula suprarrenal",
+            "s112": "Doppler color de ambas arterias renales",
+            "s113": "Ecostress con ejercicio físico con treadmill",
+            "s114": "Ecocardiograma doppler color con evaluación de Strain",
+            "s115": "Doppler color de vasos del cuello con evaluación de QIMT",
+            "s116": "Doppler color arterial de miembros inferiores",
+            "s117": "Doppler color venoso de miembros inferiores",
+            "s118": "Doppler color de aorta torácica y abdominal",
+            "s119": "Evaluacion por servicio de electrofisiología",
         },
-        'clinicos': {
-            's201': 'Espirometría',
-            # ... etc
-        }
+        "clinicos": {
+            "s201": "Espirometría",
+            "s202": "Polisomnografia",
+            "s203": "Electroencefalograma",
+            "s204": "Mapeo Cerebral",
+            "s205": "Videoendoscopia digestiva alta con sedación",
+            "s206": "Videoendoscopia digestiva baja con sedación",
+            "s207": "Tomografia computada de cerebro sin contraste",
+            "s208": "Tomografia computada de cerebro con contraste",
+            "s209": "Resonancia magnética de cerebro con difusión (con contraste)",
+            "s210": "Tomografia computada de Torax (sin contraste)",
+            "s211": "Tomografia computada de Torax (con contraste)",
+            "s212": "Tomografia computada de Abdomen (sin contraste)",
+            "s213": "Tomografia computada de Abdomen (con contraste)",
+            "s214": "Rx. Torax (frente)",
+            "s220": "Rx. Columna Cervical (F,P,O)",
+            "s221": "Espinograma (F,P)",
+            "s222": "Densitometria Osea corporal total",
+            "s223": "PET TC Corporal total",
+            "s224": "Volumenes Pulmonares y DLCO",
+            "s225": "Test de marcha de 6 minutos",
+            "s226": "Ecografia y doppler color tiroideo",
+            "s227": "Centellograma tiroideo",
+            "s228": "Ecografia Abdominal",
+            "s229": "Ecografia Vesico prostatica",
+        },
     }
-    return estudios.get(tipo, {}).get(codigo, 'Estudio no encontrado')
-```
+    return estudios.get(tipo, {}).get(codigo, "Estudio no encontrado")
