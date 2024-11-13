@@ -217,7 +217,6 @@ def ordenes_medicas(request, paciente_id):
 
 
 from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -227,74 +226,120 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+from reportlab.lib.colors import Color, HexColor
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.pdfgen import canvas as pdf_canvas
+from io import BytesIO
+from django.http import FileResponse
+from datetime import datetime
+
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Image,
+    Table,
+    TableStyle,
+)
+from reportlab.lib.colors import HexColor
+from datetime import datetime
 from io import BytesIO
 from django.http import FileResponse
 from .models import Paciente
 
 
-def encabezado(canvas, doc, paciente, diagnostico):
-    # Crear una tabla para el logo y los datos del paciente
+def dibujar_encabezado(canvas, doc, paciente, diagnostico):
+    # Definir color y estilo de letra
+    color_logo = HexColor("#9a4035")
+    styles = getSampleStyleSheet()
+    
+    # Crear logo e información de contacto como una tabla para organizar
     logo = "/home/eze/ogtomar/hhcc/main/static/main/images/logosolo.png"
     logo_image = Image(logo, width=100, height=100)
 
-    # Datos del paciente en párrafos
-    styles = getSampleStyleSheet()
-    datos_paciente = [
-        f"Paciente: {paciente.nombre} {paciente.apellido}",
-        f"Documento: {paciente.numDoc}",
-        f"Obra Social: {paciente.obraSocial}",
-        f"N° Afiliado: {paciente.afiliado}",
-        f"Diagnóstico: {diagnostico}",
-    ]
-    datos_paragraphs = [Paragraph(dato, styles["Normal"]) for dato in datos_paciente]
+    # Información de contacto
+    contacto_text = """<para align="left">
+    11 3309-7865<br/>
+    Las Heras 459<br/>
+    Monte Grande<br/>
+    <a href="http://www.cardioprieto.com">www.cardioprieto.com</a>
+    </para>"""
+    contacto_paragraph = Paragraph(contacto_text, styles["Normal"])
 
-    # Crear la tabla con el logo y los datos del paciente
-    encabezado_table = Table([[logo_image, datos_paragraphs]], colWidths=[120, 400])
-    encabezado_table.setStyle(
-        TableStyle(
-            [
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),  # Alinear en la parte superior
-                ("LEFTPADDING", (1, 0), (1, 0), 10),
-                ("TOPPADDING", (0, 0), (1, 0), 20),  # Espaciado superior
-            ]
-        )
-    )
+    # Nombre del doctor y especialidad a la derecha
+    doctor_text = f"""<para align="right">
+    <font name="Helvetica-Bold" size="14" color="{color_logo}">Dr. Omar Prieto</font><br/>
+    <font name="Helvetica" size="12" color="{color_logo}">Cardiología Integral</font>
+    </para>"""
+    doctor_paragraph = Paragraph(doctor_text, styles["Normal"])
 
-    # Dibujar la tabla en el canvas
+    # Crear tabla de encabezado con el logo, contacto, y nombre del doctor
+    encabezado_table = Table([[logo_image, contacto_paragraph, doctor_paragraph]], colWidths=[100, 150, 250])
+    encabezado_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (1, 0), (-1, -1), "LEFT"),
+        ("LEFTPADDING", (1, 0), (1, 0), 10),
+        ("RIGHTPADDING", (2, 0), (2, 0), 10),
+    ]))
     encabezado_table.wrapOn(canvas, doc.width, doc.topMargin)
-    encabezado_table.drawOn(canvas, 72, 700)  # Ajustar posición inicial si es necesario
+    encabezado_table.drawOn(canvas, 72, 730)  # Ajuste para la parte superior de la página
 
+    # Línea divisoria debajo del encabezado
+    canvas.setStrokeColor(color_logo)
+    canvas.setLineWidth(1)
+    canvas.line(72, 710, doc.width + 72, 710)
+
+    # Agregar los datos del paciente debajo de la línea divisoria
+    canvas.setFont("Helvetica", 10)
+    canvas.setFillColor("black")
+    y_position = 690
+    fecha_solicitud = datetime.now().strftime('%d/%m/%Y')
+    datos_paciente = [
+        f"Nombre y apellido: {paciente.nombre} {paciente.apellido}",
+        f"DNI: {paciente.numDoc}",
+        f"Obra social: {paciente.obraSocial}",
+        f"Afiliado: {paciente.afiliado}",
+        f"Fecha de solicitud: {fecha_solicitud}",
+        f"Diagnóstico: {diagnostico or '-'}"
+    ]
+    for dato in datos_paciente:
+        canvas.drawString(72, y_position, dato)
+        y_position -= 12
+
+    # Espacio adicional después de los datos del paciente
+    y_position -= 20
 
 def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=None):
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=56.7,  # 2cm en puntos
-        leftMargin=56.7,  # 2cm en puntos
-        topMargin=56.7,  # 2cm en puntos
-        bottomMargin=56.7,  # 2cm en puntos
+        rightMargin=56.7,
+        leftMargin=56.7,
+        topMargin=56.7,
+        bottomMargin=56.7,
     )
 
-    elements = []
-    styles = getSampleStyleSheet()
-
-    # Agregar espacio debajo del encabezado para evitar sobreposición
-    elements.append(
-        Spacer(1, 20)
-    )  # Ajusta el valor según la cantidad de espacio que quieras
-
-    # Datos del paciente
+    # Obtener el paciente
     paciente = Paciente.objects.get(id=paciente_id)
 
+    # Crear el contenido del PDF
+    elements = []
+
+    # Agregar un espaciador para empezar los estudios bien debajo del encabezado y datos del paciente
+    elements.append(Spacer(1, 200))
+    
+    
     # Estudios
-    estudio_style = ParagraphStyle(
-        "EstudioStyle", parent=styles["Normal"], fontSize=10, leading=14, leftIndent=20
-    )
+    styles = getSampleStyleSheet()
+    estudio_style = ParagraphStyle("EstudioStyle", parent=styles["Normal"], fontSize=10, leading=14, leftIndent=20)
     for codigo in estudios.split("|"):
         nombre_estudio = get_nombre_estudio(codigo, tipo)
         elements.append(Paragraph(f"• {nombre_estudio}", estudio_style))
-        elements.append(Spacer(1, 6))
+        elements.append(Spacer(1, 6))  # Espaciado entre cada estudio
 
     """ if tipo == "otros":
         elements.append(Paragraph(f"• {estudios}", estudio_style))
@@ -305,13 +350,11 @@ def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=No
             elements.append(Paragraph(f"• {nombre_estudio}", estudio_style))
             elements.append(Spacer(1, 6)) """
 
-    # Construcción del PDF con encabezado en cada página
-    doc.build(
-        elements,
-        onFirstPage=lambda canvas, doc: encabezado(canvas, doc, paciente, diagnostico),
-        onLaterPages=lambda canvas, doc: encabezado(canvas, doc, paciente, diagnostico),
-    )
-
+     # Construcción del PDF con encabezado en cada página
+    doc.build(elements, 
+              onFirstPage=lambda canvas, doc: dibujar_encabezado(canvas, doc, paciente, diagnostico),
+              onLaterPages=lambda canvas, doc: dibujar_encabezado(canvas, doc, paciente, diagnostico))
+    
     buffer.seek(0)
     filename = f"orden_{tipo}_{paciente.apellido}.pdf"
     return FileResponse(buffer, as_attachment=False, filename=filename)
