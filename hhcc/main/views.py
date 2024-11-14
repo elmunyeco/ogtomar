@@ -251,7 +251,7 @@ from django.http import FileResponse
 from .models import Paciente
 
 
-def dibujar_encabezado(canvas, doc, paciente, diagnostico):
+def dibujar_encabezado(canvas, doc, paciente, diagnostico, incluir_espaciado=False):
     # Definir color y estilo de letra
     color_logo = HexColor("#9a4035")
     styles = getSampleStyleSheet()
@@ -259,6 +259,7 @@ def dibujar_encabezado(canvas, doc, paciente, diagnostico):
     # Crear logo e información de contacto como una tabla para organizar
     logo = "/home/eze/ogtomar/hhcc/main/static/main/images/logosolo.png"
     logo_image = Image(logo, width=100, height=100)
+    logo_image.drawOn(canvas, 72, 750)
 
     # Información de contacto
     contacto_text = """<para align="left">
@@ -312,6 +313,11 @@ def dibujar_encabezado(canvas, doc, paciente, diagnostico):
     # Espacio adicional después de los datos del paciente
     y_position -= 20
 
+    # Espaciador extra en cada página después del encabezado
+    if incluir_espaciado:
+        y_position -= 50  # Espacio adicional después del encabezado para las páginas sucesivas
+    
+
 def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=None):
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -330,7 +336,7 @@ def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=No
     elements = []
 
     # Agregar un espaciador para empezar los estudios bien debajo del encabezado y datos del paciente
-    elements.append(Spacer(1, 200))
+    elements.append(Spacer(1, 100))
     
     
     # Estudios
@@ -352,8 +358,8 @@ def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=No
 
      # Construcción del PDF con encabezado en cada página
     doc.build(elements, 
-              onFirstPage=lambda canvas, doc: dibujar_encabezado(canvas, doc, paciente, diagnostico),
-              onLaterPages=lambda canvas, doc: dibujar_encabezado(canvas, doc, paciente, diagnostico))
+              onFirstPage=lambda canvas, doc: dibujar_encabezado(canvas, doc, paciente, diagnostico, incluir_espaciado=False),
+              onLaterPages=lambda canvas, doc: dibujar_encabezado(canvas, doc, paciente, diagnostico, incluir_espaciado=True))
     
     buffer.seek(0)
     filename = f"orden_{tipo}_{paciente.apellido}.pdf"
