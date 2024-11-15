@@ -226,24 +226,6 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
-from reportlab.lib.colors import Color, HexColor
-from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.pdfgen import canvas as pdf_canvas
-from io import BytesIO
-from django.http import FileResponse
-from datetime import datetime
-
-
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph,
-    Spacer,
-    Image,
-    Table,
-    TableStyle,
-)
 from reportlab.lib.colors import HexColor
 from datetime import datetime
 from io import BytesIO
@@ -255,11 +237,10 @@ def dibujar_encabezado(canvas, doc, paciente, diagnostico, incluir_espaciado=Fal
     # Definir color y estilo de letra
     color_logo = HexColor("#9a4035")
     styles = getSampleStyleSheet()
-    
+
     # Crear logo e información de contacto como una tabla para organizar
     logo = "/home/eze/ogtomar/hhcc/main/static/main/images/logosolo.png"
     logo_image = Image(logo, width=100, height=100)
-    logo_image.drawOn(canvas, 72, 750)
 
     # Información de contacto
     contacto_text = """<para align="left">
@@ -278,15 +259,23 @@ def dibujar_encabezado(canvas, doc, paciente, diagnostico, incluir_espaciado=Fal
     doctor_paragraph = Paragraph(doctor_text, styles["Normal"])
 
     # Crear tabla de encabezado con el logo, contacto, y nombre del doctor
-    encabezado_table = Table([[logo_image, contacto_paragraph, doctor_paragraph]], colWidths=[100, 150, 250])
-    encabezado_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("ALIGN", (1, 0), (-1, -1), "LEFT"),
-        ("LEFTPADDING", (1, 0), (1, 0), 10),
-        ("RIGHTPADDING", (2, 0), (2, 0), 10),
-    ]))
+    encabezado_table = Table(
+        [[logo_image, contacto_paragraph, doctor_paragraph]], colWidths=[100, 150, 250]
+    )
+    encabezado_table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("ALIGN", (1, 0), (-1, -1), "LEFT"),
+                ("LEFTPADDING", (1, 0), (1, 0), 10),
+                ("RIGHTPADDING", (2, 0), (2, 0), 10),
+            ]
+        )
+    )
     encabezado_table.wrapOn(canvas, doc.width, doc.topMargin)
-    encabezado_table.drawOn(canvas, 72, 730)  # Ajuste para la parte superior de la página
+    encabezado_table.drawOn(
+        canvas, 72, 730
+    )  # Ajuste para la parte superior de la página
 
     # Línea divisoria debajo del encabezado
     canvas.setStrokeColor(color_logo)
@@ -297,26 +286,19 @@ def dibujar_encabezado(canvas, doc, paciente, diagnostico, incluir_espaciado=Fal
     canvas.setFont("Helvetica", 10)
     canvas.setFillColor("black")
     y_position = 690
-    fecha_solicitud = datetime.now().strftime('%d/%m/%Y')
+    fecha_solicitud = datetime.now().strftime("%d/%m/%Y")
     datos_paciente = [
         f"Nombre y apellido: {paciente.nombre} {paciente.apellido}",
         f"DNI: {paciente.numDoc}",
-        f"Obra social: {paciente.obraSocial}",
-        f"Afiliado: {paciente.afiliado}",
+        f"Obra social: {paciente.obraSocial or '-'}",
+        f"Afiliado: {paciente.afiliado or '-' }",
         f"Fecha de solicitud: {fecha_solicitud}",
-        f"Diagnóstico: {diagnostico or '-'}"
+        f"Diagnóstico: {diagnostico or '-'}",
     ]
     for dato in datos_paciente:
         canvas.drawString(72, y_position, dato)
         y_position -= 12
 
-    # Espacio adicional después de los datos del paciente
-    y_position -= 20
-
-    # Espaciador extra en cada página después del encabezado
-    if incluir_espaciado:
-        y_position -= 50  # Espacio adicional después del encabezado para las páginas sucesivas
-    
 
 def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=None):
     buffer = BytesIO()
@@ -335,13 +317,14 @@ def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=No
     # Crear el contenido del PDF
     elements = []
 
-    # Agregar un espaciador para empezar los estudios bien debajo del encabezado y datos del paciente
-    elements.append(Spacer(1, 100))
-    
-    
+    # Agregar un espaciador debajo del encabezado y datos del paciente para separar de los estudios
+    elements.append(Spacer(1, 140))
+
     # Estudios
     styles = getSampleStyleSheet()
-    estudio_style = ParagraphStyle("EstudioStyle", parent=styles["Normal"], fontSize=10, leading=14, leftIndent=20)
+    estudio_style = ParagraphStyle(
+        "EstudioStyle", parent=styles["Normal"], fontSize=10, leading=14, leftIndent=20
+    )
     for codigo in estudios.split("|"):
         nombre_estudio = get_nombre_estudio(codigo, tipo)
         elements.append(Paragraph(f"• {nombre_estudio}", estudio_style))
@@ -356,11 +339,18 @@ def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=No
             elements.append(Paragraph(f"• {nombre_estudio}", estudio_style))
             elements.append(Spacer(1, 6)) """
 
-     # Construcción del PDF con encabezado en cada página
-    doc.build(elements, 
-              onFirstPage=lambda canvas, doc: dibujar_encabezado(canvas, doc, paciente, diagnostico, incluir_espaciado=False),
-              onLaterPages=lambda canvas, doc: dibujar_encabezado(canvas, doc, paciente, diagnostico, incluir_espaciado=True))
-    
+    # Construcción del PDF con encabezado en cada página
+    doc.build(
+        elements,
+        onFirstPage=lambda canvas, doc: dibujar_encabezado(
+            canvas, doc, paciente, diagnostico
+        ),
+        onLaterPages=lambda canvas, doc: (
+            dibujar_encabezado(canvas, doc, paciente, diagnostico),
+            Spacer(1, 100),
+        ),
+    )
+
     buffer.seek(0)
     filename = f"orden_{tipo}_{paciente.apellido}.pdf"
     return FileResponse(buffer, as_attachment=False, filename=filename)
