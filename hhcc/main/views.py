@@ -206,14 +206,12 @@ def borrar_paciente(request, paciente_id):
     return render(request, "borrar_paciente.html", {"paciente": paciente})
 
 
-def dope(request, paciente_id):
-    paciente = get_object_or_404(Paciente, id=paciente_id)
-    return render(request, "dope.html", {"paciente": paciente})
-
-
 def ordenes_medicas(request, paciente_id):
     paciente = get_object_or_404(Paciente, id=paciente_id)
-    return render(request, "ordenes_medicas.html", {"paciente": paciente})
+    context = {
+        "paciente": paciente,
+    }
+    return render(request, "ordenes_medicas.html", context)
 
 
 from reportlab.lib.pagesizes import A4
@@ -236,34 +234,34 @@ from .models import Paciente
 def dibujar_encabezado(canvas, doc, paciente, diagnostico):
     color_principal = HexColor("#9a4035")
     styles = getSampleStyleSheet()
-    
+
     # Estilo para el nombre del doctor (reduciendo el leading)
     nombre_doctor_style = ParagraphStyle(
-        'NombreDoctor',
-        parent=styles['Normal'],
+        "NombreDoctor",
+        parent=styles["Normal"],
         fontSize=16,
         textColor=color_principal,
-        fontName='Helvetica-Bold',
+        fontName="Helvetica-Bold",
         leading=16,  # Reducido para acercar más los elementos
         alignment=1,
     )
-    
+
     # Estilo para la especialidad (reduciendo el espacio antes del párrafo)
     especialidad_style = ParagraphStyle(
-        'Especialidad',
-        parent=styles['Normal'],
+        "Especialidad",
+        parent=styles["Normal"],
         fontSize=12,
         textColor=color_principal,
-        fontName='Helvetica',
+        fontName="Helvetica",
         leading=14,
         alignment=1,
         spaceBefore=0,  # Eliminamos el espacio antes del párrafo
     )
-    
+
     # Estilo para la información de contacto (centrado)
     contacto_style = ParagraphStyle(
-        'Contacto',
-        parent=styles['Normal'],
+        "Contacto",
+        parent=styles["Normal"],
         fontSize=9,
         leading=11,
         alignment=1,  # 1 = centered
@@ -271,12 +269,12 @@ def dibujar_encabezado(canvas, doc, paciente, diagnostico):
 
     # Crear logo
     logo = "/home/eze/ogtomar/hhcc/main/static/main/images/logosolo.png"
-    logo_image = Image(logo, width=20*mm, height=20*mm)
-    
+    logo_image = Image(logo, width=20 * mm, height=20 * mm)
+
     # Información del doctor
     nombre_doctor = Paragraph("Dr. Omar Prieto", nombre_doctor_style)
     especialidad = Paragraph("Cardiología Integral", especialidad_style)
-    
+
     # Información de contacto (centrada)
     contacto_text = """
     Las Heras 459<br/>
@@ -285,53 +283,64 @@ def dibujar_encabezado(canvas, doc, paciente, diagnostico):
     www.cardioprieto.com
     """
     contacto = Paragraph(contacto_text, contacto_style)
-    
+
     # Tabla del encabezado
-    encabezado_table = Table([
-    [logo_image,
-     Table([[nombre_doctor], [especialidad]],
-           colWidths=[120*mm],
-           rowHeights=[8*mm, 6*mm]),
-     contacto]
-    ], colWidths=[25*mm, 110*mm, 45*mm])
-    
-    encabezado_table.setStyle(TableStyle([
-        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-        ('ALIGN', (1, 0), (1, 0), 'CENTER'),
-        ('ALIGN', (2, 0), (2, 0), 'CENTER'),  # Cambiado a CENTER
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 1*mm),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 1*mm),
-    ]))
-    
+    encabezado_table = Table(
+        [
+            [
+                logo_image,
+                Table(
+                    [[nombre_doctor], [especialidad]],
+                    colWidths=[120 * mm],
+                    rowHeights=[8 * mm, 6 * mm],
+                ),
+                contacto,
+            ]
+        ],
+        colWidths=[25 * mm, 110 * mm, 45 * mm],
+    )
+
+    encabezado_table.setStyle(
+        TableStyle(
+            [
+                ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                ("ALIGN", (1, 0), (1, 0), "CENTER"),
+                ("ALIGN", (2, 0), (2, 0), "CENTER"),  # Cambiado a CENTER
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 1 * mm),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1 * mm),
+            ]
+        )
+    )
+
     # Posicionar encabezado
     encabezado_table.wrapOn(canvas, doc.width, doc.topMargin)
     encabezado_table.drawOn(canvas, doc.leftMargin, 750)
-    
+
     # Línea divisoria
     canvas.setStrokeColor(color_principal)
     canvas.setLineWidth(0.5)
     canvas.line(doc.leftMargin, 745, doc.width + doc.leftMargin, 745)
-    
+
     # Datos del paciente centrados
     canvas.setFont("Helvetica", 9)
     canvas.setFillColor("black")
-    
+
     y_position = 725
     fecha_solicitud = datetime.now().strftime("%d/%m/%Y")
-    
+
     datos_paciente = [
         f"Nombre y apellido: {paciente.nombre} {paciente.apellido}",
         f"{paciente.idTipoDoc.nombre}: {paciente.numDoc}",
         f"Obra social: {paciente.obraSocial or '-'}",
         f"Afiliado: {paciente.afiliado or '-'}",
         f"Fecha de solicitud: {fecha_solicitud}",
-        f"Diagnóstico: {diagnostico or '-'}"
+        f"Diagnóstico: {diagnostico or '-'}",
     ]
-    
+
     # Calcular el centro de la página
     page_center = doc.leftMargin + (doc.width / 2)
-    
+
     for dato in datos_paciente:
         # Calcular el ancho del texto para centrarlo
         text_width = canvas.stringWidth(dato, "Helvetica", 9)
@@ -343,24 +352,24 @@ def dibujar_encabezado(canvas, doc, paciente, diagnostico):
 def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=None):
     buffer = BytesIO()
     paciente = Paciente.objects.get(id=paciente_id)
-    
+
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=20*mm,
-        leftMargin=20*mm,
-        topMargin=70*mm,
-        bottomMargin=20*mm,
+        rightMargin=20 * mm,
+        leftMargin=20 * mm,
+        topMargin=70 * mm,
+        bottomMargin=20 * mm,
     )
 
     elements = []
     styles = getSampleStyleSheet()
-    
+
     estudio_style = ParagraphStyle(
-        "EstudioStyle", 
-        parent=styles["Normal"], 
-        fontSize=10, 
-        leading=14, 
+        "EstudioStyle",
+        parent=styles["Normal"],
+        fontSize=10,
+        leading=14,
         leftIndent=20,
         spaceBefore=4,
         spaceAfter=4,
@@ -371,7 +380,7 @@ def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=No
     for codigo in estudios.split("|"):
         nombre_estudio = get_nombre_estudio(codigo, tipo)
         elements.append(Paragraph(f"• {nombre_estudio}", estudio_style))
-   
+
     """ if tipo == "otros":
         elements.append(Paragraph(f"• {estudios}", estudio_style))
         elements.append(Spacer(1, 6))
@@ -381,11 +390,15 @@ def descargarPDFSolicitudes(request, paciente_id, diagnostico, estudios, tipo=No
             elements.append(Paragraph(f"• {nombre_estudio}", estudio_style))
             elements.append(Spacer(1, 6)) """
 
-  # Construir el PDF
+    # Construir el PDF
     doc.build(
         elements,
-        onFirstPage=lambda canvas, doc: dibujar_encabezado(canvas, doc, paciente, diagnostico),
-        onLaterPages=lambda canvas, doc: dibujar_encabezado(canvas, doc, paciente, diagnostico)
+        onFirstPage=lambda canvas, doc: dibujar_encabezado(
+            canvas, doc, paciente, diagnostico
+        ),
+        onLaterPages=lambda canvas, doc: dibujar_encabezado(
+            canvas, doc, paciente, diagnostico
+        ),
     )
 
     buffer.seek(0)

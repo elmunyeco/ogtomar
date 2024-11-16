@@ -38,6 +38,7 @@
 
 <body class="bg-gray-100">
     <div x-data="{
+        pacienteId: {{ paciente.id }},
         showError: false,
         diagnostico: '',
         otrosEstudios: '',
@@ -78,7 +79,7 @@
             
             for (let grupo in grupos) {
                 if (grupos[grupo].length > 0) {
-                    let url = `/descargarPDFSolicitudes/7544/${diagnosticoParam}/${grupos[grupo].join('|')}/${grupo}/`;
+                    let url = `/descargarPDFSolicitudes/${this.pacienteId}/${diagnosticoParam}/${grupos[grupo].join('|')}/${grupo}/`;
                     let windowName = `pdf_${grupo}_${Date.now()}`;  // Nombre único para cada ventana
                     window.open(url, windowName, 'height=800,width=600');
                 }
@@ -113,19 +114,20 @@
         <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center space-x-4">
-                    <span class="text-xl font-medium text-gray-900">Pirulin Pirulero</span>
-                    <span class="text-gray-500">DNI 12</span>
+                    <span class="text-xl font-medium text-gray-900">{{ paciente.nombre }} {{ paciente.apellido }}</span>
+                    <span class="text-gray-500">{{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}</span>
                 </div>
-                <span class="text-gray-500">Fecha: 07/11/2024</span>
+                <span class="text-gray-500">Fecha: {% now "d/m/Y" %}</span>
             </div>
+
             <div class="grid grid-cols-2 gap-6 text-sm">
                 <div class="flex flex-col">
                     <span class="text-gray-500">Obra Social</span>
-                    <span>Uruguayan Medical</span>
+                    <span>{{ paciente.obraSocial }}</span>
                 </div>
                 <div class="flex flex-col">
                     <span class="text-gray-500">Número de Afiliado</span>
-                    <span>000100010101</span>
+                    <span>{{ paciente.afiliado }}</span>
                 </div>
             </div>
             <div class="mt-6">
@@ -587,7 +589,8 @@
                 </label>
                 <label class="lab-item">
                     <input type="checkbox" x-model="seleccionados.s209" class="form-checkbox text-[#9a4035]">
-                    <span class="text-sm text-gray-700">Resonancia magnética de cerebro con difusión (con contraste)</span>
+                    <span class="text-sm text-gray-700">Resonancia magnética de cerebro con difusión (con
+                        contraste)</span>
                 </label>
                 <label class="lab-item">
                     <input type="checkbox" x-model="seleccionados.s210" class="form-checkbox text-[#9a4035]">
@@ -662,7 +665,7 @@
                 class="w-full p-3 border rounded-lg resize-none focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
                 rows="3" placeholder="Ingrese otros estudios adicionales..."></textarea>
         </div>
-
+        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
         <!-- Barra de acciones -->
         <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
             <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
