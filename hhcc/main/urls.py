@@ -16,4 +16,9 @@ urlpatterns = [
         views.descargarPDFSolicitudes,
         name="descargar_pdf_solicitudes",
     ),
+
+    path('ordenes_pedicas/<int:paciente_id>/', views.ordenes_pedicas, name='ordenes_pedicas'),
+    path('generar_pdf_orden/<int:paciente_id>/<str:diagnostico>/<str:estudios>/<str:tipo>/', 
+         views.generar_pdf_orden, 
+         name='generar_pdf_orden'),
 ]

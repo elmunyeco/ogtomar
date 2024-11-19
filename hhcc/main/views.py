@@ -533,3 +533,43 @@ def get_nombre_estudio(codigo, tipo):
         },
     }
     return estudios.get(tipo, {}).get(codigo, "Estudio no encontrado")
+
+
+def ordenes_pedicas(request, paciente_id):
+    paciente = get_object_or_404(Paciente, id=paciente_id)
+    context = {
+        "paciente": paciente,
+    }
+    return render(request, "ordenes_pedicas.html", context)
+
+from django.template.loader import render_to_string
+from django.http import FileResponse
+from weasyprint import HTML
+from io import BytesIO
+from datetime import datetime
+from .models import Paciente
+from django.conf import settings
+
+def generar_pdf_orden(request, paciente_id, diagnostico, estudios, tipo=None):
+    paciente = Paciente.objects.get(id=paciente_id)
+    fecha_solicitud = datetime.now().strftime("%d/%m/%Y")
+    
+    # Obtener la ruta absoluta del directorio static
+    static_root = settings.STATICFILES_DIRS[0] if hasattr(settings, 'STATICFILES_DIRS') else settings.STATIC_ROOT
+    
+    context = {
+        'paciente': paciente,
+        'diagnostico': diagnostico,
+        'fecha_solicitud': datetime.now().strftime("%d/%m/%Y"),
+        'estudios': estudios.split('|'),
+        'STATIC_ROOT': static_root  # Pasar la ruta estática al template
+    }
+    
+    html_string = render_to_string('O_M.html', context)
+    
+    # Configurar WeasyPrint para que encuentre los archivos estáticos
+    buffer = BytesIO()
+    HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf(buffer)
+    buffer.seek(0)
+    
+    return FileResponse(buffer, as_attachment=False, filename=f'orden_{tipo}_{paciente.apellido}.pdf')
