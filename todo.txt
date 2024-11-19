@@ -1,0 +1,30 @@
+@page {
+    margin: 2cm;
+    @top-center {
+        content: element(pageHeader);
+    }
+}
+
+.header {
+    display: grid;
+    grid-template-columns: 80px 1fr 150px;
+    align-items: center;
+    margin-bottom: 20px;
+    position: running(pageHeader);
+}
+
+
+def generar_pdf_orden(request, paciente_id, diagnostico, estudios, tipo=None):
+    # ... tu código existente ...
+    
+    html_string = render_to_string('O_M.html', context)
+    
+    buffer = BytesIO()
+    HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf(
+        buffer,
+        stylesheets=[],  # Aquí puedes agregar CSS adicional si lo necesitas
+        presentational_hints=True
+    )
+    buffer.seek(0)
+    
+    return FileResponse(buffer, as_attachment=False, filename=f'orden_{tipo}_{paciente.apellido}.pdf')
