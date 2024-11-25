@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 
+
 # Modelo TipoDocumento
 class TipoDocumento(models.Model):
     nombre = models.CharField(max_length=50)
@@ -11,10 +12,9 @@ class TipoDocumento(models.Model):
         indexes = [
             models.Index(fields=["nombre"], name="nombre_tipodocumento_idx"),
         ]
-        
+
     def __str__(self):
         return self.nombre
-
 
 # Modelo Paciente
 class Paciente(models.Model):
@@ -23,7 +23,9 @@ class Paciente(models.Model):
         ("m", "Mujer"),
     ]
 
-    idTipoDoc = models.ForeignKey(TipoDocumento, on_delete=models.CASCADE, default=1)  # Clave foránea hacia TipoDocumento
+    idTipoDoc = models.ForeignKey(
+        TipoDocumento, on_delete=models.CASCADE, default=1
+    )  # Clave foránea hacia TipoDocumento
     numDoc = models.CharField(max_length=50)  # Número de documento
     nombre = models.CharField(max_length=50)  # Nombre del paciente
     apellido = models.CharField(max_length=50)  # Apellido del paciente
@@ -49,8 +51,9 @@ class Paciente(models.Model):
     )  # Referente opcional
     fechaAlta = models.DateField(default=timezone.now)  # Fecha de alta
     deBaja = models.BooleanField(default=False)  # Dado de baja (lógica)
-    idTipoDoc_temp = models.IntegerField(null=True, blank=True)  # Campo temporal para migrar
-
+    idTipoDoc_temp = models.IntegerField(
+        null=True, blank=True
+    )  # Campo temporal para migrar
 
     class Meta:
         db_table = "pacientes"
@@ -99,60 +102,50 @@ class HistoriaClinica(models.Model):
             return f"Historia Clínica #{self.id} del paciente {self.paciente.nombre} {self.paciente.apellido}"
 
 
-class Enfermedad(models.Model):
+class CondicionMedica(models.Model):
     id = models.AutoField(primary_key=True)
     nombre = models.CharField(max_length=50, blank=False, null=False)
     orden = models.PositiveIntegerField(db_index=True, blank=False, null=False)
 
     class Meta:
-        db_table = 'enfermedades'
-        verbose_name = 'Enfermedad'
-        verbose_name_plural = 'Enfermedades'
-        ordering = ['orden']
+        db_table = "econdiciones_medicas"
+        verbose_name = "Condicion"
+        verbose_name_plural = "CondicionesMedicas"
+        ordering = ["orden"]
 
     def __str__(self):
         return self.nombre
     
+class CondicionMedicaPaciente(models.Model):
+    historia = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE)
+    condicion = models.ForeignKey(CondicionMedica, on_delete=models.CASCADE)
+    fecha = models.DateTimeField(default=timezone.now)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'condiciones_medicas_pacientes'
+        verbose_name = "Antecedente"
+        verbose_name_plural = "Antecedentes"
+
+
 """ class Visita(models.Model):
     historia_clinica = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE)
     fecha = models.DateField()
     # otros campos relacionados a la visita
-
+"""
 
 class SignosVitales(models.Model):
-    visita = models.ForeignKey(Visita, on_delete=models.CASCADE)
-    peso = models.FloatField(null=True, blank=True)  # en kilogramos
-    glucemia = models.FloatField(null=True, blank=True)  # en mg/dL
-    colesterol = models.FloatField(null=True, blank=True)  # en mg/dL
-    presion_sistolica = models.IntegerField(null=True, blank=True)  # en mmHg
-    presion_diastolica = models.IntegerField(null=True, blank=True)  # en mmHg
+    historia = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE)
+    fecha = models.DateTimeField(default=timezone.now)
+    presion_sistolica = models.IntegerField(null=True, blank=True)
+    presion_diastolica = models.IntegerField(null=True, blank=True)
+    peso = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    glucemia = models.IntegerField(null=True, blank=True)
+    colesterol = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = "signos_vitales"
+        ordering = ["-fecha"]
 
     def __str__(self):
         return f"Signos Vitales de la visita {self.visita.id} para HC {self.visita.historia_clinica.id}"
-
-
-class CondicionMedica(models.Model):
-    TIPO_CHOICES = [
-        ("enfermedad", "Enfermedad"),
-        ("intervencion", "Intervención"),
-        ("otro", "Otro"),
-    ]
-
-    orden = models.IntegerField(default=0)  # Campo para definir el orden de aparición
-
-    nombre = models.CharField(max_length=100)
-    descripcion = models.CharField(max_length=255, blank=True, null=True)
-    tipo = models.CharField(max_length=50, choices=TIPO_CHOICES, default="otro")
-
-    def __str__(self):
-        return f"{self.nombre} ({self.tipo})"
-
-
-class Antecedente(models.Model):
-    condicion_medica = models.ForeignKey(CondicionMedica, on_delete=models.CASCADE)
-    historia_clinica = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE)
-    fecha = models.DateField(default=timezone.now)
-
-    def __str__(self):
-        return f"{self.condicion.nombre} del tipo {self.condicion.tipo} en {self.historia_clinica.paciente.nombre} {self.historia_clinica.paciente.apellido}"
- """
