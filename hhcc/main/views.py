@@ -205,6 +205,24 @@ def borrar_paciente(request, paciente_id):
         return redirect("index")
     return render(request, "borrar_paciente.html", {"paciente": paciente})
 
+def detalle_historia(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, id=historia_id)
+    paciente = historia.paciente
+    
+    # Añade logs para debug
+    print(f"Historia ID: {historia_id}")
+    print(f"Historia encontrada: {historia}")
+    print(f"Paciente: {paciente}")
+    
+    context = {
+        'historia': historia,
+        'paciente': paciente,
+    }
+    
+    # Imprime el contexto completo
+    print(f"Contexto: {context}")
+    
+    return render(request, "detalle_historia.html", context)
 
 def ordenes_medicas(request, paciente_id):
     paciente = get_object_or_404(Paciente, id=paciente_id)

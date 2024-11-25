@@ -15,6 +15,7 @@ urlpatterns = [
         views.ordenes_medicas,
         name="ordenes_medicas",
     ),
+    path("detalle_historia/<int:historia_id>", views.detalle_historia, name="detalle_historia"),
     path(
         "descargarPDFSolicitudes/<int:paciente_id>/<str:diagnostico>/<str:estudios>/<str:tipo>/",
         views.descargarPDFSolicitudes,
