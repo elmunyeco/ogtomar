@@ -51,9 +51,11 @@ class Paciente(models.Model):
     )  # Referente opcional
     fechaAlta = models.DateField(default=timezone.now)  # Fecha de alta
     deBaja = models.BooleanField(default=False)  # Dado de baja (lógica)
+    """ 
     idTipoDoc_temp = models.IntegerField(
         null=True, blank=True
-    )  # Campo temporal para migrar
+    )  # Campo temporal para migrar 
+    """
 
     class Meta:
         db_table = "pacientes"
@@ -103,31 +105,27 @@ class HistoriaClinica(models.Model):
 
 
 class CondicionMedica(models.Model):
-    id = models.AutoField(primary_key=True)
-    nombre = models.CharField(max_length=50, blank=False, null=False)
-    orden = models.PositiveIntegerField(db_index=True, blank=False, null=False)
-
+    nombre = models.CharField(max_length=100)
+    orden = models.IntegerField(default=0)
+    
     class Meta:
-        db_table = "econdiciones_medicas"
-        verbose_name = "Condicion"
-        verbose_name_plural = "CondicionesMedicas"
-        ordering = ["orden"]
+        db_table = 'condiciones_medicas'
+        ordering = ['orden']
 
     def __str__(self):
         return self.nombre
+
+class CondicionMedicaHistoria(models.Model):
+    historia = models.ForeignKey('HistoriaClinica', on_delete=models.CASCADE)
+    condicion = models.ForeignKey('CondicionMedica', on_delete=models.CASCADE)
     
-class CondicionMedicaPaciente(models.Model):
-    historia = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE)
-    condicion = models.ForeignKey(CondicionMedica, on_delete=models.CASCADE)
-    fecha = models.DateTimeField(default=timezone.now)
-    activo = models.BooleanField(default=True)
-
     class Meta:
-        db_table = 'condiciones_medicas_pacientes'
-        verbose_name = "Antecedente"
-        verbose_name_plural = "Antecedentes"
+        db_table = 'condiciones_medicas_historias'
+        unique_together = ['historia', 'condicion']
 
-
+    def __str__(self):
+        return f"{self.condicion.nombre} - {self.historia.paciente}"
+            
 """ class Visita(models.Model):
     historia_clinica = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE)
     fecha = models.DateField()
@@ -135,7 +133,7 @@ class CondicionMedicaPaciente(models.Model):
 """
 
 class SignosVitales(models.Model):
-    historia = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE)
+    historia = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE) 
     fecha = models.DateTimeField(default=timezone.now)
     presion_sistolica = models.IntegerField(null=True, blank=True)
     presion_diastolica = models.IntegerField(null=True, blank=True)

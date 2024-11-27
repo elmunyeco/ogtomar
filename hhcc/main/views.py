@@ -591,3 +591,71 @@ def generar_pdf_orden(request, paciente_id, diagnostico, estudios, tipo=None):
     buffer.seek(0)
     
     return FileResponse(buffer, as_attachment=False, filename=f'orden_{tipo}_{paciente.apellido}.pdf')
+
+
+from .models import SignosVitales, CondicionMedica, CondicionMedicaHistoria
+from django.views.decorators.http import require_POST  # Agregar esta importación
+
+
+def detalle_historia(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, id=historia_id)
+    paciente = historia.paciente
+    
+    # Obtener últimos signos vitales
+    signos_vitales = SignosVitales.objects.filter(historia=historia).order_by('-fecha').first()
+    
+    # Obtener condiciones del paciente
+    condiciones_paciente = CondicionMedicaHistoria.objects.filter(
+        historia=historia
+    ).select_related('condicion')
+    
+    # Obtener todas las condiciones posibles
+    todas_condiciones = CondicionMedica.objects.all()
+    
+    # Obtener IDs de las condiciones actuales para marcar los checkboxes
+    condiciones_activas = condiciones_paciente.values_list('condicion_id', flat=True)
+    
+    context = {
+        'historia': historia,
+        'paciente': paciente,
+        'signos_vitales': signos_vitales,
+        'todas_condiciones': todas_condiciones,
+        'condiciones_activas': condiciones_activas,
+    }
+    
+    return render(request, "detalle_historia_t.html", context)
+
+@require_POST
+def actualizar_condiciones(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, id=historia_id)
+    
+    # Obtener las condiciones seleccionadas del form
+    condiciones_seleccionadas = request.POST.getlist('condiciones')
+    
+    # Borrar condiciones existentes
+    CondicionMedicaHistoria.objects.filter(historia=historia).delete()
+    
+    # Crear nuevas condiciones
+    for condicion_id in condiciones_seleccionadas:
+        CondicionMedicaHistoria.objects.create(
+            historia=historia,
+            condicion_id=condicion_id
+        )
+    
+    return redirect('detalle_historia', historia_id=historia_id)
+
+@require_POST
+def guardar_signos_vitales(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, id=historia_id)
+    
+    SignosVitales.objects.create(
+        historia=historia,
+        presion_sistolica=request.POST.get('presion_sistolica'),
+        presion_diastolica=request.POST.get('presion_diastolica'),
+        peso=request.POST.get('peso'),
+        glucemia=request.POST.get('glucemia'),
+        colesterol=request.POST.get('colesterol')
+    )
+
+    return redirect('detalle_historia', historia_id=historia_id)
+    

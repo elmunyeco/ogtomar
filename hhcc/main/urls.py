@@ -15,7 +15,21 @@ urlpatterns = [
         views.ordenes_medicas,
         name="ordenes_medicas",
     ),
-    path("detalle_historia/<int:historia_id>", views.detalle_historia, name="detalle_historia"),
+    path(
+        "detalle_historia/<int:historia_id>/",
+        views.detalle_historia,
+        name="detalle_historia",
+    ),
+    path(
+        "actualizar_condiciones/<int:historia_id>/",
+        views.actualizar_condiciones,
+        name="actualizar_condiciones",
+    ),
+    path(
+        "guardar_signos_vitales/<int:historia_id>/",
+        views.guardar_signos_vitales,
+        name="guardar_signos_vitales",
+    ),
     path(
         "descargarPDFSolicitudes/<int:paciente_id>/<str:diagnostico>/<str:estudios>/<str:tipo>/",
         views.descargarPDFSolicitudes,
