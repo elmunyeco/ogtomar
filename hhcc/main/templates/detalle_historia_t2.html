@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historia Clínica - {{ paciente.nombre }} {{ paciente.apellido }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .diagnosticos-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem 1rem;
+            align-items: center;
+        }
+        .form-checkbox {
+            appearance: none;
+            border: 1.5px solid #9a4035;
+            border-radius: 0.25rem;
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+            position: relative;
+            cursor: pointer;
+        }
+        .form-checkbox:checked {
+            background-color: #9a4035;
+        }
+        .form-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 0.75rem;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #9a4035;
+            box-shadow: 0 0 0 1px #9a4035;
+        }
+    </style>
+</head>
+<body class="bg-gray-100" x-data="historiaClinica()">
+    <main class="container mx-auto p-6 max-w-6xl">
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center space-x-4">
+                    <span class="text-xl font-medium text-gray-900">{{ paciente.nombre }} {{ paciente.apellido }}</span>
+                    <span class="text-gray-500">{{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}</span>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <button @click="window.location.href='{% url 'ordenes_medicas' paciente.id %}'"
+                            class="text-xs text-[#9a4035]">
+                        <i class="fas fa-pills text-xl mb-1"></i><br>
+                        Medicación
+                    </button>
+                    <button @click="window.print()" class="text-xs text-[#9a4035]">
+                        <i class="fas fa-print text-xl mb-1"></i><br>
+                        Imprimir
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-6 text-sm">
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Nacimiento</span>
+                    {{ paciente.fechaNac|date:"d/m/Y" }} ({{ paciente.edad }} años)
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Teléfono</span>
+                    {{ paciente.telefono }}
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Última visita</span>
+                    {{ historia.fechaAlta|date:"d/m/Y" }}
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-6">
+            <div class="space-y-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-4">Signos Vitales</h3>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="flex items-center space-x-3">
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Presión arterial</div>
+                                <div class="flex items-center space-x-2">
+                                    <input type="text" 
+                                           x-model="state.signosVitales.presionSistolica" 
+                                           @input="state.modified = true"
+                                           class="w-16 border rounded text-center" 
+                                           placeholder="PAS">
+                                    <span class="text-gray-400">/</span>
+                                    <input type="text" 
+                                           x-model="state.signosVitales.presionDiastolica" 
+                                           @input="state.modified = true"
+                                           class="w-16 border rounded text-center" 
+                                           placeholder="PAD">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Peso</div>
+                                <input type="text" 
+                                       x-model="state.signosVitales.peso" 
+                                       @input="state.modified = true"
+                                       class="w-full border rounded text-center" 
+                                       placeholder="kg">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Glucemia</div>
+                                <input type="text" 
+                                       x-model="state.signosVitales.glucemia" 
+                                       @input="state.modified = true"
+                                       class="w-full border rounded text-center" 
+                                       placeholder="mg/dl">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Colesterol</div>
+                                <input type="text" 
+                                       x-model="state.signosVitales.colesterol" 
+                                       @input="state.modified = true"
+                                       class="w-full border rounded text-center" 
+                                       placeholder="mg/dl">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <textarea x-model="state.notaEvolucion"
+                            @input="state.modified = true"
+                            class="w-full p-3 border rounded-lg resize-none"
+                            placeholder="Agregar nota de evolución..."
+                            rows="4"></textarea>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-sm font-medium text-gray-700 mb-4">Condiciones Médicas</h3>
+                <div class="diagnosticos-grid">
+                    <template x-for="condicion in state.condiciones" :key="condicion.id">
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" 
+                                   x-model="condicion.active"
+                                   @change="state.modified = true"
+                                   class="form-checkbox">
+                            <span x-text="condicion.nombre" class="text-sm"></span>
+                        </label>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
+        <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
+            <button x-show="state.modified" 
+                    @click="handleSave"
+                    class="px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b]">
+                Guardar cambios
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function historiaClinica() {
+            return {
+                state: {
+                    modified: false,
+                    signosVitales: {
+                        presionSistolica: '{{ signos_vitales.presion_sistolica|default:"" }}',
+                        presionDiastolica: '{{ signos_vitales.presion_diastolica|default:"" }}',
+                        peso: '{{ signos_vitales.peso|default:"" }}',
+                        glucemia: '{{ signos_vitales.glucemia|default:"" }}',
+                        colesterol: '{{ signos_vitales.colesterol|default:"" }}'
+                    },
+                    notaEvolucion: '',
+                    condiciones: {{ todas_condiciones|safe }}.map(c => ({
+                        ...c,
+                        active: {{ condiciones_activas|safe }}.includes(c.id)
+                    }))
+                },
+                async handleSave() {
+                    try {
+                        const response = await fetch('{% url "actualizar_historia" historia.id %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify(this.state)
+                        });
+                        
+                        if (response.ok) {
+                            this.state.modified = false;
+                        } else {
+                            alert('Error al guardar los cambios');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('Error de red al intentar guardar');
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

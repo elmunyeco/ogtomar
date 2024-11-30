@@ -623,7 +623,7 @@ def detalle_historia(request, historia_id):
         'condiciones_activas': condiciones_activas,
     }
     
-    return render(request, "detalle_historia_t.html", context)
+    return render(request, "detalle_historia_t2.html", context)
 
 @require_POST
 def actualizar_condiciones(request, historia_id):
@@ -658,4 +658,21 @@ def guardar_signos_vitales(request, historia_id):
     )
 
     return redirect('detalle_historia', historia_id=historia_id)
+
+from django.views.decorators.http import require_POST
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt  # Solo para testing
+
+@csrf_exempt  # Remover en producción
+@require_POST
+def actualizar_historia(request, historia_id):
+    import json
+    data = json.loads(request.body)
     
+    # Log data para debug
+    print("Historia ID:", historia_id)
+    print("Signos Vitales:", json.dumps(data['signosVitales'], indent=2))
+    print("Nota Evolución:", data['notaEvolucion'])
+    print("Condiciones activas:", [c['id'] for c in data['condiciones'] if c['active']])
+    
+    return JsonResponse({'status': 'ok'})

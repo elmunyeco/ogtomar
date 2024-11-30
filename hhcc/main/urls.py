@@ -31,6 +31,11 @@ urlpatterns = [
         name="guardar_signos_vitales",
     ),
     path(
+        "historia/<int:historia_id>/actualizar/",
+        views.actualizar_historia,
+        name="actualizar_historia",
+    ),
+    path(
         "descargarPDFSolicitudes/<int:paciente_id>/<str:diagnostico>/<str:estudios>/<str:tipo>/",
         views.descargarPDFSolicitudes,
         name="descargar_pdf_solicitudes",
