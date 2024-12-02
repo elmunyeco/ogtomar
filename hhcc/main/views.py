@@ -623,7 +623,7 @@ def detalle_historia(request, historia_id):
         'condiciones_activas': condiciones_activas,
     }
     
-    return render(request, "detalle_historia_t2.html", context)
+    return render(request, "historia-clinica-combined.html", context)
 
 @require_POST
 def actualizar_condiciones(request, historia_id):
@@ -642,7 +642,7 @@ def actualizar_condiciones(request, historia_id):
             condicion_id=condicion_id
         )
     
-    return redirect('detalle_historia', historia_id=historia_id)
+    return redirect('detalle_bueno.html', historia_id=historia_id)
 
 @require_POST
 def guardar_signos_vitales(request, historia_id):

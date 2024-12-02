@@ -96,27 +96,15 @@
     </style>
 </head>
 
-<body class="bg-gray-100" x-data="{ 
-    showSaveConfirmation: false,
-    unsavedChanges: false,
-    signos: {
-        presion_sistolica: '{{ signos_vitales.presion_sistolica|default:"" }}',
-        presion_diastolica: '{{ signos_vitales.presion_diastolica|default:"" }}',
-        peso: '{{ signos_vitales.peso|default:"" }}',
-        glucemia: '{{ signos_vitales.glucemia|default:"" }}',
-        colesterol: '{{ signos_vitales.colesterol|default:"" }}'
-    }
-}">
+<body class="bg-gray-100">
     {% if debug %}
     <div style="display: none;">
-        Debug info:
-        Historia: {{ historia }}
-        Paciente: {{ paciente }}
+        Debug info: Historia: {{ historia }} Paciente: {{ paciente }}
     </div>
     {% endif %}
 
-    <main class="container mx-auto p-6 max-w-6xl">
-        <!-- Patient Header -->
+    <div class="container mx-auto p-6 max-w-6xl" role="main" x-data="historiaClinica()">
+        <!-- Header Section -->
         <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center space-x-4">
@@ -146,42 +134,44 @@
             <div class="grid grid-cols-3 gap-6 text-sm">
                 <div class="flex flex-col">
                     <span class="text-gray-500">Nacimiento</span>
-                    <span>{{ paciente.fechaNac|date:"d/m/Y" }} ({{ paciente.fechaNac|timesince|truncatewords:1 }}
-                        años)</span>
+                    {{ paciente.fechaNac|date:"d/m/Y" }} ({{ paciente.fechaNac|timesince|truncatewords:1 }} años)
                 </div>
                 <div class="flex flex-col">
                     <span class="text-gray-500">Teléfono</span>
-                    <span>{{ paciente.telefono }}</span>
+                    {{ paciente.telefono }}
                 </div>
                 <div class="flex flex-col">
                     <span class="text-gray-500">Última visita</span>
-                    <span>{{ historia.fechaAlta|date:"d/m/Y" }}</span>
+                    {{ historia.fechaAlta|date:"d/m/Y" }}
                 </div>
             </div>
         </div>
 
-        <!-- Main Content -->
+        <!-- Main Content Grid -->
         <div class="grid grid-cols-2 gap-6">
             <!-- Left Column -->
             <div class="space-y-6">
                 <!-- Signos Vitales -->
                 <div class="bg-white rounded-lg shadow-sm p-6">
                     <h3 class="text-sm font-medium text-gray-700 mb-4">Signos Vitales</h3>
-                    <form method="POST" action="{% url 'guardar_signos_vitales' historia.id %}"
-                        class="grid grid-cols-2 gap-6" @submit="unsavedChanges = false">
-                        {% csrf_token %}
+                    {% csrf_token %}
+                    <div class="grid grid-cols-2 gap-6">
                         <div class="flex items-center space-x-3">
                             <i class="fas fa-heart text-[#9a4035] w-5"></i>
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Presión arterial</div>
                                 <div class="flex items-center space-x-2">
-                                    <input type="text" name="presion_sistolica" x-model="signos.presion_sistolica"
-                                        @input="unsavedChanges = true" placeholder="PAS"
-                                        class="w-16 p-1.5 border rounded text-center text-sm">
+                                    <input type="text" 
+                                           x-model="signos.presionSistolica"
+                                           @input="handleSignosChange"
+                                           placeholder="PAS"
+                                           class="w-16 p-1.5 border rounded text-center text-sm">
                                     <span class="text-gray-400">/</span>
-                                    <input type="text" name="presion_diastolica" x-model="signos.presion_diastolica"
-                                        @input="unsavedChanges = true" placeholder="PAD"
-                                        class="w-16 p-1.5 border rounded text-center text-sm">
+                                    <input type="text"
+                                           x-model="signos.presionDiastolica"
+                                           @input="handleSignosChange"
+                                           placeholder="PAD"
+                                           class="w-16 p-1.5 border rounded text-center text-sm">
                                 </div>
                             </div>
                         </div>
@@ -190,8 +180,10 @@
                             <i class="fas fa-weight text-[#9a4035] w-5"></i>
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Peso</div>
-                                <input type="text" name="peso" x-model="signos.peso" @input="unsavedChanges = true"
-                                    class="w-full p-1.5 border rounded text-center text-sm">
+                                <input type="text"
+                                       x-model="signos.peso"
+                                       @input="handleSignosChange"
+                                       class="w-full p-1.5 border rounded text-center text-sm">
                             </div>
                         </div>
 
@@ -199,9 +191,10 @@
                             <i class="fas fa-tint text-[#9a4035] w-5"></i>
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Glucemia</div>
-                                <input type="text" name="glucemia" x-model="signos.glucemia"
-                                    @input="unsavedChanges = true"
-                                    class="w-full p-1.5 border rounded text-center text-sm">
+                                <input type="text"
+                                       x-model="signos.glucemia"
+                                       @input="handleSignosChange"
+                                       class="w-full p-1.5 border rounded text-center text-sm">
                             </div>
                         </div>
 
@@ -209,17 +202,13 @@
                             <i class="fas fa-chart-line text-[#9a4035] w-5"></i>
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Colesterol</div>
-                                <input type="text" name="colesterol" x-model="signos.colesterol"
-                                    @input="unsavedChanges = true"
-                                    class="w-full p-1.5 border rounded text-center text-sm">
+                                <input type="text"
+                                       x-model="signos.colesterol"
+                                       @input="handleSignosChange"
+                                       class="w-full p-1.5 border rounded text-center text-sm">
                             </div>
                         </div>
-
-                        <button type="submit"
-                            class="col-span-2 bg-[#9a4035] text-white px-4 py-2 rounded-lg hover:bg-[#7a332b] transition-colors btn-hover-effect">
-                            Guardar Signos Vitales
-                        </button>
-                    </form>
+                    </div>
                 </div>
 
 
@@ -231,9 +220,11 @@
                             <i class="fas fa-plus-circle"></i>
                         </button>
                     </div>
-                    <textarea placeholder="Agregar nota de evolución..." @input="unsavedChanges = true"
-                        class="w-full p-3 border rounded-lg resize-none focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
-                        rows="4"></textarea>
+                    <textarea placeholder="Nota de evolución..."
+                            x-model="notas"
+                            @input="handleSignosChange"
+                            class="w-full p-3 border rounded-lg resize-none focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
+                            rows="4"></textarea>
                 </div>
             </div>
 
@@ -246,101 +237,57 @@
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-sm font-medium text-gray-700">Condiciones Médicas</h3>
                 </div>
-                <form method="POST" action="{% url 'actualizar_condiciones' historia.id %}" class="diagnosticos-grid"
-                    @submit="unsavedChanges = false">
-                    {% csrf_token %}
+
+                {% csrf_token %}
+                <div class="space-y-2">
                     {% for condicion in todas_condiciones %}
-                    <label class="diagnostico-item hover:bg-gray-50 rounded-md cursor-pointer">
-                        <input type="checkbox" 
-                               name="condiciones" 
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox"
                                value="{{ condicion.id }}"
-                               @change="unsavedChanges = true" 
-                               {% if condicion.id in condiciones_activas %}checked{% endif %}
-                               class="form-checkbox">
+                               x-model="condicionesSeleccionadas"
+                               @change="handleCondicionesChange"
+                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                         <span class="text-sm">{{ condicion.nombre }}</span>
                     </label>
                     {% endfor %}
-
-                    <button type="submit"
-                        class="col-span-3 mt-4 bg-[#9a4035] text-white px-4 py-2 rounded-lg hover:bg-[#7a332b] transition-colors btn-hover-effect">
-                        Actualizar Condiciones
-                    </button>
-                </form>
+                </div>
             </div>
         </div>
 
-        <!-- Bottom Action Bar -->
+        <!-- Footer con botones -->
         <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
             <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
-                <button
-                    @click="if(!unsavedChanges || confirm('¿Descartar cambios?')) window.location.href='{% url 'listar_buscar_historias' %}'"
-                    class="btn-hover-effect px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors">
+                <button @click="cancelarGuardar" 
+                        class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
                     Cancelar
                 </button>
-                <button x-show="unsavedChanges" @click="showSaveConfirmation = true"
-                    class="btn-hover-effect px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-colors">
+                <button @click="guardarCambios" 
+                        :disabled="!unsavedChanges"
+                        class="px-4 py-2 text-sm bg-[#9a4035] text-white rounded hover:bg-[#7a332b] transition-colors btn-hover-effect disabled:bg-gray-400 disabled:cursor-not-allowed">
                     Guardar cambios
                 </button>
             </div>
         </div>
-    </main>
 
-    <!-- Save Confirmation Modal -->
-    <div x-show="showSaveConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-        style="display: none;">
-        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <h3 class="text-lg font-medium mb-4">Confirmar Guardar</h3>
-            <p class="text-gray-600 mb-6">¿Está seguro que desea guardar los cambios?</p>
-            <div class="flex justify-end space-x-4">
-                <button @click="showSaveConfirmation = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">
-                    Cancelar
-                </button>
-                <button @click="document.querySelector('form').submit(); showSaveConfirmation = false"
-                    class="px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b]">
-                    Confirmar
-                </button>
+        <!-- Modal de confirmación -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+             x-show="showSaveConfirmation"
+             x-cloak>
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                <h3 class="text-lg font-medium mb-4">Confirmar Guardar</h3>
+                <p class="text-gray-600 mb-4">¿Está seguro que desea guardar los cambios?</p>
+                <div class="flex justify-end space-x-4">
+                    <button @click="cancelarGuardar"
+                            class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+                        Cancelar
+                    </button>
+                    <button @click="confirmarGuardar"
+                            class="px-4 py-2 text-sm bg-[#9a4035] text-white rounded hover:bg-[#7a332b] transition-colors">
+                        Confirmar
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-
-    <script>
-        // Prevent accidental navigation when there are unsaved changes
-        window.addEventListener('beforeunload', (e) => {
-            if (unsavedChanges) {
-                e.preventDefault();
-                e.returnValue = '';
-            }
-        });
-
-        // Form validation
-        document.addEventListener('DOMContentLoaded', function () {
-            const validateNumericInput = (input) => {
-                input.addEventListener('input', function () {
-                    this.value = this.value.replace(/[^0-9.]/g, '');
-                });
-            };
-
-            // Apply validation to numeric fields
-            const numericInputs = document.querySelectorAll('input[name="presion_sistolica"], input[name="presion_diastolica"], input[name="peso"], input[name="glucemia"], input[name="colesterol"]');
-            numericInputs.forEach(validateNumericInput);
-        });
-
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', function (e) {
-            // Ctrl/Cmd + S to save
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                e.preventDefault();
-                if (unsavedChanges) {
-                    showSaveConfirmation = true;
-                }
-            }
-            // Esc to close modal
-            if (e.key === 'Escape' && showSaveConfirmation) {
-                e.preventDefault();
-                showSaveConfirmation = false;
-            }
-        });
-    </script>
 </body>
-
 </html>
