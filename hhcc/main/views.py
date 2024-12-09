@@ -286,7 +286,7 @@ def dibujar_encabezado(canvas, doc, paciente, diagnostico):
     )
 
     # Crear logo
-    logo = "/home/eze/ogtomar/hhcc/main/static/main/images/logosolo.png"
+    logo = "/home/eze/omar/hhcc/main/static/main/images/logosolo.png"
     logo_image = Image(logo, width=20 * mm, height=20 * mm)
 
     # Información del doctor
@@ -623,7 +623,7 @@ def detalle_historia(request, historia_id):
         'condiciones_activas': condiciones_activas,
     }
     
-    return render(request, "historia-clinica-combined.html", context)
+    return render(request, "detalle_historia_t.html", context)
 
 @require_POST
 def actualizar_condiciones(request, historia_id):
@@ -642,7 +642,7 @@ def actualizar_condiciones(request, historia_id):
             condicion_id=condicion_id
         )
     
-    return redirect('detalle_bueno.html', historia_id=historia_id)
+    return redirect('detalle_historia', historia_id=historia_id)
 
 @require_POST
 def guardar_signos_vitales(request, historia_id):
