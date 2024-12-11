@@ -96,25 +96,36 @@
     </style>
 </head>
 
-<body class="bg-gray-100" x-data="{ 
+<body class="bg-gray-100" x-data="{
+    estado: {
+        signos_vitales: {
+            presion_sistolica: '{{ signos_vitales.presion_sistolica|default:"" }}',
+            presion_diastolica: '{{ signos_vitales.presion_diastolica|default:"" }}',
+            peso: '{{ signos_vitales.peso|default:"" }}',
+            glucemia: '{{ signos_vitales.glucemia|default:"" }}',
+            colesterol: '{{ signos_vitales.colesterol|default:"" }}'
+        },
+        condiciones: new Set({{ condiciones_activas|safe }}),
+        comentarios: '',
+        cambios_pendientes: false
+    },
     showSaveConfirmation: false,
-    unsavedChanges: false,
     errorMessage: '',
-    signos: {
-        presion_sistolica: '{{ signos_vitales.presion_sistolica|default:"" }}',
-        presion_diastolica: '{{ signos_vitales.presion_diastolica|default:"" }}',
-        peso: '{{ signos_vitales.peso|default:"" }}',
-        glucemia: '{{ signos_vitales.glucemia|default:"" }}',
-        colesterol: '{{ signos_vitales.colesterol|default:"" }}'
+    debug() {
+        console.log('Estado actual:', JSON.parse(JSON.stringify(this.estado)));
+    },
+    toggleCondicion(id) {
+        if (this.estado.condiciones.has(id)) {
+            this.estado.condiciones.delete(id);
+        } else {
+            this.estado.condiciones.add(id);
+        }
+        this.estado.cambios_pendientes = true;
+        this.debug();
     }
 }">
-    {% if debug %}
-    <div style="display: none;">
-        Debug info:
-        Historia: {{ historia }}
-        Paciente: {{ paciente }}
-    </div>
-    {% endif %}
+
+
 
     <main class="container mx-auto p-6 max-w-6xl">
         <!-- Patient Header -->
@@ -168,51 +179,23 @@
                 <!-- Signos Vitales -->
                 <div class="bg-white rounded-lg shadow-sm p-6">
                     <h3 class="text-sm font-medium text-gray-700 mb-4">Signos Vitales</h3>
-                    <!-- form method="POST" action="{% url 'guardar_signos_vitales' historia.id %}"
-                        class="grid grid-cols-2 gap-6" @submit="unsavedChanges = false" -->
-
-
-                        <form @submit.prevent="
-                            fetch('{% url 'guardar_signos_vitales' historia.id %}', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                                },
-                                body: JSON.stringify(signos)
-                            })
-                            .then(response => {
-                                if (!response.ok) {
-                                    return response.text().then(text => {
-                                        throw new Error(text);
-                                    });
-                                }
-                                return response.json();
-                            })
-                            .then(data => {
-                                if (data.error) {
-                                    errorMessage = data.error;
-                                } else {
-                                    unsavedChanges = false;
-                                }
-                            })
-                            .catch(error => {
-                                errorMessage = error.message || 'Error al guardar los signos vitales';
-                            })" 
-                        class="grid grid-cols-2 gap-6">
-
+                    <div class="grid grid-cols-2 gap-6">
                         {% csrf_token %}
                         <div class="flex items-center space-x-3">
                             <i class="fas fa-heart text-[#9a4035] w-5"></i>
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Presión arterial</div>
                                 <div class="flex items-center space-x-2">
-                                    <input type="text" name="presion_sistolica" x-model="signos.presion_sistolica"
-                                        @input="unsavedChanges = true" placeholder="PAS"
+                                    <input type="text" 
+                                        x-model="estado.signos_vitales.presion_sistolica"
+                                        @input="estado.cambios_pendientes = true; debug()"
+                                        placeholder="PAS"
                                         class="w-16 p-1.5 border rounded text-center text-sm">
                                     <span class="text-gray-400">/</span>
-                                    <input type="text" name="presion_diastolica" x-model="signos.presion_diastolica"
-                                        @input="unsavedChanges = true" placeholder="PAD"
+                                    <input type="text"
+                                        x-model="estado.signos_vitales.presion_diastolica"
+                                        @input="estado.cambios_pendientes = true; debug()"
+                                        placeholder="PAD"
                                         class="w-16 p-1.5 border rounded text-center text-sm">
                                 </div>
                             </div>
@@ -222,7 +205,9 @@
                             <i class="fas fa-weight text-[#9a4035] w-5"></i>
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Peso</div>
-                                <input type="text" name="peso" x-model="signos.peso" @input="unsavedChanges = true"
+                                <input type="text"
+                                    x-model="estado.signos_vitales.peso"
+                                    @input="estado.cambios_pendientes = true; debug()"
                                     class="w-full p-1.5 border rounded text-center text-sm">
                             </div>
                         </div>
@@ -231,8 +216,9 @@
                             <i class="fas fa-tint text-[#9a4035] w-5"></i>
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Glucemia</div>
-                                <input type="text" name="glucemia" x-model="signos.glucemia"
-                                    @input="unsavedChanges = true"
+                                <input type="text"
+                                    x-model="estado.signos_vitales.glucemia"
+                                    @input="estado.cambios_pendientes = true; debug()"
                                     class="w-full p-1.5 border rounded text-center text-sm">
                             </div>
                         </div>
@@ -241,95 +227,46 @@
                             <i class="fas fa-chart-line text-[#9a4035] w-5"></i>
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Colesterol</div>
-                                <input type="text" name="colesterol" x-model="signos.colesterol"
-                                    @input="unsavedChanges = true"
+                                <input type="text"
+                                    x-model="estado.signos_vitales.colesterol"
+                                    @input="estado.cambios_pendientes = true; debug()"
                                     class="w-full p-1.5 border rounded text-center text-sm">
                             </div>
                         </div>
-
-                        <button type="submit"
-                            class="col-span-2 bg-[#9a4035] w-1/2 mx-auto block text-white px-4 py-2 rounded-md hover:bg-[#7a332b] transition-colors btn-hover-effect">
-                            Guardar Signos Vitales
-                        </button>
-                    </form>
+                    </div>
                 </div>
 
-
-                <!-- Visitas Section -->
+                <!-- Comentarios -->
                 <div class="bg-white rounded-lg shadow-sm p-4">
                     <div class="flex justify-between items-center mb-4">
                         <span class="font-medium">Comentarios</span>
-                        <button class="text-[#9a4035] hover:text-[#7a332b] btn-hover-effect">
-                            <i class="fas fa-plus-circle"></i>
-                        </button>
                     </div>
-                    <textarea placeholder="Evolucion... (nr = shift + enter)" @input="unsavedChanges = true"
+                    <textarea 
+                        x-model="estado.comentarios"
+                        @input="estado.cambios_pendientes = true; debug()"
+                        placeholder="Evolucion... (nr = shift + enter)"
                         class="w-full p-3 border rounded-lg resize-none focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
                         rows="4"></textarea>
                 </div>
             </div>
 
-
-
-
-
             <!-- Condiciones Médicas -->
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-sm font-medium text-gray-700">Condiciones Médicas</h3>
-                    </div>
-                    <!-- form @submit.prevent="
-                    fetch(`{% url 'actualizar_condiciones' historia.id %}`, {  // Uso backticks para asegurar la URL correcta
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                        },
-                        body: JSON.stringify({
-                            condiciones: Array.from(document.querySelectorAll('input[name=condiciones]:checked')).map(cb => cb.value)
-                        })
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            return response.text().then(text => {
-                                throw new Error(text);
-                            });
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        if (data.error) {
-                            errorMessage = data.error;
-                        } else {
-                            unsavedChanges = false;
-                            // Quizás aquí deberíamos actualizar la UI para reflejar el éxito
-                            console.log('Condiciones actualizadas exitosamente');
-                        }
-                    })
-                    .catch(error => {
-                        errorMessage = error.message || 'Error al actualizar las condiciones';
-                        console.error('Error:', error);
-                    })" 
-                    class="diagnosticos-grid"
-                    action="{% url 'actualizar_condiciones' historia.id %}" -->
-                
-                    <form method="POST" action="{% url 'actualizar_condiciones' historia.id %}" class="diagnosticos-grid"
-                    @submit="unsavedChanges = false">
+                </div>
+                <div class="diagnosticos-grid">
                     {% csrf_token %}
                     {% for condicion in todas_condiciones %}
                     <label class="diagnostico-item hover:bg-gray-50 rounded-md cursor-pointer">
-                        <input type="checkbox" name="condiciones" value="{{ condicion.id }}"
-                            @change="unsavedChanges = true" {% if condicion.id in condiciones_activas %}checked{% endif %} 
+                        <input type="checkbox" 
+                            :checked="estado.condiciones.has({{ condicion.id }})"
+                            @change="toggleCondicion({{ condicion.id }})"
                             class="form-checkbox">
                         <span class="text-sm">{{ condicion.nombre }}</span>
                     </label>
                     {% endfor %}
-
-                    <button type="submit"
-                        class="col-span-3 mt-4 bg-[#9a4035] w-1/2 mx-auto block text-white px-4 py-2 rounded-lg hover:bg-[#7a332b] transition-colors btn-hover-effect">
-                        Actualizar Condiciones
-                    </button>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -350,13 +287,13 @@
         <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
             <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
                 <button
-                    @click="if(!unsavedChanges || confirm('¿Descartar cambios?')) window.location.href='{% url 'listar_buscar_historias' %}'"
+                    @click="if(!estado.cambios_pendientes || confirm('¿Descartar cambios?')) window.location.href='{% url 'listar_buscar_historias' %}'"
                     class="btn-hover-effect px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors">
                     Cancelar
                 </button>
-                <button @click="showSaveConfirmation = true"
-                    x-show="unsavedChanges"
-                    x-cloak
+                <button 
+                    @click="showSaveConfirmation = true"
+                    x-show="estado.cambios_pendientes"
                     class="btn-hover-effect px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-colors">
                     Guardar cambios
                 </button>
@@ -365,8 +302,7 @@
     </main>
 
     <!-- Save Confirmation Modal -->
-    <div x-show="showSaveConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-        style="display: none;">
+    <div x-show="showSaveConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
             <h3 class="text-lg font-medium mb-4">Confirmar Guardar</h3>
             <p class="text-gray-600 mb-6">¿Está seguro que desea guardar los cambios?</p>
@@ -374,7 +310,7 @@
                 <button @click="showSaveConfirmation = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">
                     Cancelar
                 </button>
-                <button @click="document.querySelector('form').submit(); showSaveConfirmation = false"
+                <button @click="showSaveConfirmation = false"
                     class="px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b]">
                     Confirmar
                 </button>
@@ -383,15 +319,7 @@
     </div>
 
     <script>
-        // Prevent accidental navigation when there are unsaved changes
-        window.addEventListener('beforeunload', (e) => {
-            if (unsavedChanges) {
-                e.preventDefault();
-                e.returnValue = '';
-            }
-        });
-
-        // Form validation
+        // Validación de inputs numéricos
         document.addEventListener('DOMContentLoaded', function () {
             const validateNumericInput = (input) => {
                 input.addEventListener('input', function () {
@@ -399,27 +327,17 @@
                 });
             };
 
-            // Apply validation to numeric fields
-            const numericInputs = document.querySelectorAll('input[name="presion_sistolica"], input[name="presion_diastolica"], input[name="peso"], input[name="glucemia"], input[name="colesterol"]');
+            const numericInputs = document.querySelectorAll('input[type="text"]');
             numericInputs.forEach(validateNumericInput);
         });
 
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', function (e) {
-            // Ctrl/Cmd + S to save
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        // Prevenir navegación accidental
+        window.addEventListener('beforeunload', (e) => {
+            if (document.querySelector('[x-data]').__x.$data.estado.cambios_pendientes) {
                 e.preventDefault();
-                if (unsavedChanges) {
-                    showSaveConfirmation = true;
-                }
-            }
-            // Esc to close modal
-            if (e.key === 'Escape' && showSaveConfirmation) {
-                e.preventDefault();
-                showSaveConfirmation = false;
+                e.returnValue = '';
             }
         });
     </script>
 </body>
-
 </html>

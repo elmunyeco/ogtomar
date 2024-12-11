@@ -205,24 +205,26 @@ def borrar_paciente(request, paciente_id):
         return redirect("index")
     return render(request, "borrar_paciente.html", {"paciente": paciente})
 
+
 def detalle_historia(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
     paciente = historia.paciente
-    
+
     # Añade logs para debug
     print(f"Historia ID: {historia_id}")
     print(f"Historia encontrada: {historia}")
     print(f"Paciente: {paciente}")
-    
+
     context = {
-        'historia': historia,
-        'paciente': paciente,
+        "historia": historia,
+        "paciente": paciente,
     }
-    
+
     # Imprime el contexto completo
     print(f"Contexto: {context}")
-    
+
     return render(request, "detalle_historia.html", context)
+
 
 def ordenes_medicas(request, paciente_id):
     paciente = get_object_or_404(Paciente, id=paciente_id)
@@ -560,6 +562,7 @@ def ordenes_pedicas(request, paciente_id):
     }
     return render(request, "ordenes_pedicas.html", context)
 
+
 from django.template.loader import render_to_string
 from django.http import FileResponse
 from weasyprint import HTML
@@ -568,111 +571,149 @@ from datetime import datetime
 from .models import Paciente
 from django.conf import settings
 
+
 def generar_pdf_orden(request, paciente_id, diagnostico, estudios, tipo=None):
     paciente = Paciente.objects.get(id=paciente_id)
     fecha_solicitud = datetime.now().strftime("%d/%m/%Y")
-    
+
     # Obtener la ruta absoluta del directorio static
-    static_root = settings.STATICFILES_DIRS[0] if hasattr(settings, 'STATICFILES_DIRS') else settings.STATIC_ROOT
-    
+    static_root = (
+        settings.STATICFILES_DIRS[0]
+        if hasattr(settings, "STATICFILES_DIRS")
+        else settings.STATIC_ROOT
+    )
+
     context = {
-        'paciente': paciente,
-        'diagnostico': diagnostico,
-        'fecha_solicitud': datetime.now().strftime("%d/%m/%Y"),
-        'estudios': estudios.split('|'),
-        'STATIC_ROOT': static_root  # Pasar la ruta estática al template
+        "paciente": paciente,
+        "diagnostico": diagnostico,
+        "fecha_solicitud": datetime.now().strftime("%d/%m/%Y"),
+        "estudios": estudios.split("|"),
+        "STATIC_ROOT": static_root,  # Pasar la ruta estática al template
     }
-    
-    html_string = render_to_string('O_M.html', context)
-    
+
+    html_string = render_to_string("O_M.html", context)
+
     # Configurar WeasyPrint para que encuentre los archivos estáticos
     buffer = BytesIO()
-    HTML(string=html_string, base_url=request.build_absolute_uri('/')).write_pdf(buffer)
+    HTML(string=html_string, base_url=request.build_absolute_uri("/")).write_pdf(buffer)
     buffer.seek(0)
-    
-    return FileResponse(buffer, as_attachment=False, filename=f'orden_{tipo}_{paciente.apellido}.pdf')
+
+    return FileResponse(
+        buffer, as_attachment=False, filename=f"orden_{tipo}_{paciente.apellido}.pdf"
+    )
 
 
-from .models import SignosVitales, CondicionMedica, CondicionMedicaHistoria
-from django.views.decorators.http import require_POST  # Agregar esta importación
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from .models import HistoriaClinica, SignosVitales, CondicionMedicaHistoria, CondicionMedica
+
+
+def get_historia_data(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, pk=historia_id)
+    try:
+        signos_vitales = SignosVitales.objects.filter(historia=historia).latest("fecha")
+        condiciones = CondicionMedicaHistoria.objects.filter(historia=historia)
+
+        data = {
+            "signos_vitales": {
+                "presion_sistolica": signos_vitales.presion_sistolica,
+                "presion_diastolica": signos_vitales.presion_diastolica,
+                "peso": signos_vitales.peso,
+                "glucemia": signos_vitales.glucemia,
+                "colesterol": signos_vitales.colesterol,
+            },
+            "condiciones": list(condiciones.values("id")),
+            
+        }
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 def detalle_historia(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
     paciente = historia.paciente
-    
+
     # Obtener últimos signos vitales
-    signos_vitales = SignosVitales.objects.filter(historia=historia).order_by('-fecha').first()
-    
+    signos_vitales = (
+        SignosVitales.objects.filter(historia=historia).order_by("-fecha").first()
+    )
+
     # Obtener condiciones del paciente
     condiciones_paciente = CondicionMedicaHistoria.objects.filter(
         historia=historia
-    ).select_related('condicion')
-    
+    ).select_related("condicion")
+
     # Obtener todas las condiciones posibles
     todas_condiciones = CondicionMedica.objects.all()
-    
+
     # Obtener IDs de las condiciones actuales para marcar los checkboxes
-    condiciones_activas = condiciones_paciente.values_list('condicion_id', flat=True)
-    
+    condiciones_activas = condiciones_paciente.values_list("condicion_id", flat=True)
+
     context = {
-        'historia': historia,
-        'paciente': paciente,
-        'signos_vitales': signos_vitales,
-        'todas_condiciones': todas_condiciones,
-        'condiciones_activas': condiciones_activas,
+        "historia": historia,
+        "paciente": paciente,
+        "signos_vitales": signos_vitales,
+        "todas_condiciones": todas_condiciones,
+        "condiciones_activas": condiciones_activas,
     }
-    
-    return render(request, "detalle_historia_t.html", context)
+
+    return render(request, "detalle_historia_t2.html", context)
+
+from django.views.decorators.http import require_POST
+
 
 @require_POST
 def actualizar_condiciones(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
-    
+
     # Obtener las condiciones seleccionadas del form
-    condiciones_seleccionadas = request.POST.getlist('condiciones')
-    
+    condiciones_seleccionadas = request.POST.getlist("condiciones")
+
     # Borrar condiciones existentes
     CondicionMedicaHistoria.objects.filter(historia=historia).delete()
-    
+
     # Crear nuevas condiciones
     for condicion_id in condiciones_seleccionadas:
         CondicionMedicaHistoria.objects.create(
-            historia=historia,
-            condicion_id=condicion_id
+            historia=historia, condicion_id=condicion_id
         )
-    
-    return redirect('detalle_historia', historia_id=historia_id)
+
+    return redirect("detalle_historia", historia_id=historia_id)
+
 
 @require_POST
 def guardar_signos_vitales(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
-    
+
     SignosVitales.objects.create(
         historia=historia,
-        presion_sistolica=request.POST.get('presion_sistolica'),
-        presion_diastolica=request.POST.get('presion_diastolica'),
-        peso=request.POST.get('peso'),
-        glucemia=request.POST.get('glucemia'),
-        colesterol=request.POST.get('colesterol')
+        presion_sistolica=request.POST.get("presion_sistolica"),
+        presion_diastolica=request.POST.get("presion_diastolica"),
+        peso=request.POST.get("peso"),
+        glucemia=request.POST.get("glucemia"),
+        colesterol=request.POST.get("colesterol"),
     )
 
-    return redirect('detalle_historia', historia_id=historia_id)
+    return redirect("detalle_historia", historia_id=historia_id)
+
 
 from django.views.decorators.http import require_POST
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt  # Solo para testing
 
+
 @csrf_exempt  # Remover en producción
 @require_POST
 def actualizar_historia(request, historia_id):
     import json
+
     data = json.loads(request.body)
-    
+
     # Log data para debug
     print("Historia ID:", historia_id)
-    print("Signos Vitales:", json.dumps(data['signosVitales'], indent=2))
-    print("Nota Evolución:", data['notaEvolucion'])
-    print("Condiciones activas:", [c['id'] for c in data['condiciones'] if c['active']])
-    
-    return JsonResponse({'status': 'ok'})
+    print("Signos Vitales:", json.dumps(data["signosVitales"], indent=2))
+    print("Nota Evolución:", data["notaEvolucion"])
+    print("Condiciones activas:", [c["id"] for c in data["condiciones"] if c["active"]])
+
+    return JsonResponse({"status": "ok"})

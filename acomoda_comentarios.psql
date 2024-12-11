@@ -1,0 +1,29 @@
+DELIMITER //
+
+CREATE PROCEDURE migrar_comentarios()
+BEGIN
+    INSERT INTO comentarios_visitas(fecha, comentarios, idHistoriaClinica)
+    SELECT 
+        fecha,
+        GROUP_CONCAT(comentario ORDER BY id SEPARATOR '\n') as comentarios,
+        idHistoriaClinica
+    FROM comentarios 
+    WHERE idTipoComentario = 1 
+        AND (eliminado IS NULL OR eliminado = 0)
+    GROUP BY fecha, idHistoriaClinica;
+END //
+
+CREATE PROCEDURE migrar_indicaciones()
+BEGIN
+    INSERT INTO indicaciones_visitas(fecha, indicaciones, idHistoriaClinica)
+    SELECT 
+        fecha,
+        GROUP_CONCAT(comentario ORDER BY id SEPARATOR '\n') as indicaciones,
+        idHistoriaClinica
+    FROM comentarios 
+    WHERE idTipoComentario = 2 
+        AND (eliminado IS NULL OR eliminado = 0)
+    GROUP BY fecha, idHistoriaClinica;
+END //
+
+DELIMITER ;

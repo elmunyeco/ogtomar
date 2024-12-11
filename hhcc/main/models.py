@@ -16,6 +16,7 @@ class TipoDocumento(models.Model):
     def __str__(self):
         return self.nombre
 
+
 # Modelo Paciente
 class Paciente(models.Model):
     SEXO_CHOICES = [
@@ -107,33 +108,36 @@ class HistoriaClinica(models.Model):
 class CondicionMedica(models.Model):
     nombre = models.CharField(max_length=100)
     orden = models.IntegerField(default=0)
-    
+
     class Meta:
-        db_table = 'condiciones_medicas'
-        ordering = ['orden']
+        db_table = "condiciones_medicas"
+        ordering = ["orden"]
 
     def __str__(self):
         return self.nombre
 
+
 class CondicionMedicaHistoria(models.Model):
-    historia = models.ForeignKey('HistoriaClinica', on_delete=models.CASCADE)
-    condicion = models.ForeignKey('CondicionMedica', on_delete=models.CASCADE)
-    
+    historia = models.ForeignKey("HistoriaClinica", on_delete=models.CASCADE)
+    condicion = models.ForeignKey("CondicionMedica", on_delete=models.CASCADE)
+
     class Meta:
-        db_table = 'condiciones_medicas_historias'
-        unique_together = ['historia', 'condicion']
+        db_table = "condiciones_medicas_historias"
+        unique_together = ["historia", "condicion"]
 
     def __str__(self):
         return f"{self.condicion.nombre} - {self.historia.paciente}"
-            
+
+
 """ class Visita(models.Model):
     historia_clinica = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE)
     fecha = models.DateField()
     # otros campos relacionados a la visita
 """
 
+
 class SignosVitales(models.Model):
-    historia = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE) 
+    historia = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE)
     fecha = models.DateTimeField(default=timezone.now)
     presion_sistolica = models.IntegerField(null=True, blank=True)
     presion_diastolica = models.IntegerField(null=True, blank=True)
@@ -147,3 +151,35 @@ class SignosVitales(models.Model):
 
     def __str__(self):
         return f"Signos Vitales de la visita {self.visita.id} para HC {self.visita.historia_clinica.id}"
+
+
+class ComentariosVisitas(models.Model):
+    fecha = models.DateField()
+    comentarios = models.TextField()
+    historia_clinica = models.ForeignKey(
+        "HistoriaClinica", on_delete=models.CASCADE, db_column="idHistoriaClinica"
+    )
+
+    class Meta:
+        db_table = "comentarios_visitas"
+        indexes = [
+            models.Index(fields=["fecha"]),
+            models.Index(fields=["historia_clinica"]),
+            models.Index(fields=["fecha", "historia_clinica"]),
+        ]
+
+
+class IndicacionesVisitas(models.Model):
+    fecha = models.DateField()
+    indicaciones = models.TextField()
+    historia_clinica = models.ForeignKey(
+        "HistoriaClinica", on_delete=models.CASCADE, db_column="idHistoriaClinica"
+    )
+
+    class Meta:
+        db_table = "indicaciones_visitas"
+        indexes = [
+            models.Index(fields=["fecha"]),
+            models.Index(fields=["historia_clinica"]),
+            models.Index(fields=["fecha", "historia_clinica"]),
+        ]
