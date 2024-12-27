@@ -154,8 +154,13 @@ class SignosVitales(models.Model):
 
 
 class ComentariosVisitas(models.Model):
+    TIPO_COMENTARIO = [
+        ('EVOL', 'Evolución'),
+        ('INDIC', 'Indicaciones'),
+    ]
     fecha = models.DateField()
     comentarios = models.TextField()
+    tipo = models.CharField(max_length=5, choices=TIPO_COMENTARIO, default='EVOL')
     historia_clinica = models.ForeignKey(
         "HistoriaClinica", on_delete=models.CASCADE, db_column="idHistoriaClinica"
     )
