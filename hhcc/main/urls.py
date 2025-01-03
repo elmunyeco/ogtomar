@@ -50,4 +50,14 @@ urlpatterns = [
         views.generar_pdf_orden,
         name="generar_pdf_orden",
     ),
+    path(
+        "api/historia/<int:historia_id>",
+        views.get_historia_data,
+        name="get_historia_data",
+    ),
+    path(
+        "api/historia/<int:historia_id>/ultimos-comentarios/",
+        views.get_ultimo_comentario_indicaciones,
+        name="get_ultimo_comentario_indicaciones",
+    ),
 ]

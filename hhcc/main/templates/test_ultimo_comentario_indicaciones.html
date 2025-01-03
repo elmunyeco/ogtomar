@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Historia Clínica</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        pre { 
+            background: #f5f5f5; 
+            padding: 20px; 
+            border-radius: 5px; 
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body x-data="{
+    historiaData: null,
+    async loadHistoria() {
+        try {
+            const response = await fetch('http://localhost:8080/api/historia/7544/ultimos-comentarios');
+            this.historiaData = await response.json();
+        } catch (error) {
+            console.error('Error:', error);
+            this.historiaData = { error: error.message };
+        }
+    }
+}" x-init="loadHistoria()">
+    <h1>Historia Clínica #7544</h1>
+    <pre x-text="JSON.stringify(historiaData, null, 2)"></pre>
+</body>
+</html>

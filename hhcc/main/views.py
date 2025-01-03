@@ -660,6 +660,35 @@ def detalle_historia(request, historia_id):
 
     return render(request, "detalle_historia_t2.html", context)
 
+
+from .models import ComentariosVisitas
+from django.db.models import Subquery
+
+def get_ultimo_comentario_indicaciones(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, pk=historia_id)
+    try:
+        comentarios = ComentariosVisitas.objects.filter(
+            historia_clinica=historia,
+            fecha=Subquery(
+                ComentariosVisitas.objects.filter(
+                    historia_clinica=historia
+                ).order_by('-fecha').values('fecha')[:1]
+            )
+        )
+        
+        data = {
+            'comentarios': [
+                {
+                    'tipo': c.tipo,
+                    'texto': c.comentarios,
+                    'fecha': c.fecha.strftime('%Y-%m-%d')
+                } for c in comentarios
+            ]
+        }
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 from django.views.decorators.http import require_POST
 
 
