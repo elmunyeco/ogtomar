@@ -1,0 +1,15 @@
+SELECT 
+    COUNT(*) as cantidad,
+    idTipoComentario
+FROM (
+    SELECT 
+        fecha,
+        idHistoriaClinica,
+        idTipoComentario
+    FROM comentarios 
+    WHERE (eliminado IS NULL OR eliminado = 0)
+        AND idTipoComentario IN (1, 2)
+    GROUP BY fecha, idHistoriaClinica, idTipoComentario
+) as subquery
+GROUP BY idTipoComentario;
+

@@ -1,0 +1,20 @@
+DELIMITER //
+
+CREATE PROCEDURE migrar_comentarios()
+BEGIN
+    INSERT INTO comentarios_visitas(fecha, comentarios, idHistoriaClinica, tipo)
+    SELECT 
+        fecha,
+        GROUP_CONCAT(comentario ORDER BY id SEPARATOR '\n') as comentarios,
+        idHistoriaClinica,
+        CASE 
+            WHEN idTipoComentario = 1 THEN 'EVOL'
+            WHEN idTipoComentario = 2 THEN 'INDIC'
+        END as tipo
+    FROM comentarios 
+    WHERE (eliminado IS NULL OR eliminado = 0)
+        AND idTipoComentario IN (1, 2)
+    GROUP BY fecha, idHistoriaClinica, idTipoComentario;
+END //
+
+DELIMITER ;
