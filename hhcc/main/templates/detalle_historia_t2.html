@@ -105,7 +105,7 @@
             glucemia: '{{ signos_vitales.glucemia|default:"" }}',
             colesterol: '{{ signos_vitales.colesterol|default:"" }}'
         },
-        condiciones: new Set({{ condiciones_activas|safe }}),
+        condiciones: new Set([{% for id in condiciones_activas %}{{ id }}{% if not forloop.last %},{% endif %}{% endfor %}]),
         comentarios: '',
         cambios_pendientes: false
     },
