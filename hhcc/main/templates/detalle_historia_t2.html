@@ -111,9 +111,11 @@
     },
     showSaveConfirmation: false,
     errorMessage: '',
+    
     debug() {
         console.log('Estado actual:', JSON.parse(JSON.stringify(this.estado)));
     },
+    
     toggleCondicion(id) {
         if (this.estado.condiciones.has(id)) {
             this.estado.condiciones.delete(id);
@@ -122,10 +124,44 @@
         }
         this.estado.cambios_pendientes = true;
         this.debug();
+    },
+
+    async guardarCambios() {
+        try {
+            const response = await fetch('{% url 'guardar_historia' historia.id %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    signos_vitales: this.estado.signos_vitales,
+                    condiciones: Array.from(this.estado.condiciones),
+                    comentarios: this.estado.comentarios
+                })
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text);
+            }
+
+            const data = await response.json();
+            
+            if (data.error) {
+                this.errorMessage = data.error;
+            } else {
+                this.estado.cambios_pendientes = false;
+                this.showSaveConfirmation = false;
+                // Opcional: redirigir o mostrar mensaje de éxito
+                window.location.href = '{% url 'detalle_historia' historia.id %}';
+            }
+        } catch (error) {
+            this.errorMessage = error.message || 'Error al guardar los cambios';
+            console.error('Error:', error);
+        }
     }
 }">
-
-
 
     <main class="container mx-auto p-6 max-w-6xl">
         <!-- Patient Header -->
@@ -186,16 +222,12 @@
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Presión arterial</div>
                                 <div class="flex items-center space-x-2">
-                                    <input type="text" 
-                                        x-model="estado.signos_vitales.presion_sistolica"
-                                        @input="estado.cambios_pendientes = true; debug()"
-                                        placeholder="PAS"
+                                    <input type="text" x-model="estado.signos_vitales.presion_sistolica"
+                                        @input="estado.cambios_pendientes = true; debug()" placeholder="PAS"
                                         class="w-16 p-1.5 border rounded text-center text-sm">
                                     <span class="text-gray-400">/</span>
-                                    <input type="text"
-                                        x-model="estado.signos_vitales.presion_diastolica"
-                                        @input="estado.cambios_pendientes = true; debug()"
-                                        placeholder="PAD"
+                                    <input type="text" x-model="estado.signos_vitales.presion_diastolica"
+                                        @input="estado.cambios_pendientes = true; debug()" placeholder="PAD"
                                         class="w-16 p-1.5 border rounded text-center text-sm">
                                 </div>
                             </div>
@@ -205,8 +237,7 @@
                             <i class="fas fa-weight text-[#9a4035] w-5"></i>
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Peso</div>
-                                <input type="text"
-                                    x-model="estado.signos_vitales.peso"
+                                <input type="text" x-model="estado.signos_vitales.peso"
                                     @input="estado.cambios_pendientes = true; debug()"
                                     class="w-full p-1.5 border rounded text-center text-sm">
                             </div>
@@ -216,8 +247,7 @@
                             <i class="fas fa-tint text-[#9a4035] w-5"></i>
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Glucemia</div>
-                                <input type="text"
-                                    x-model="estado.signos_vitales.glucemia"
+                                <input type="text" x-model="estado.signos_vitales.glucemia"
                                     @input="estado.cambios_pendientes = true; debug()"
                                     class="w-full p-1.5 border rounded text-center text-sm">
                             </div>
@@ -227,8 +257,7 @@
                             <i class="fas fa-chart-line text-[#9a4035] w-5"></i>
                             <div class="flex-1">
                                 <div class="text-xs text-gray-500 mb-1">Colesterol</div>
-                                <input type="text"
-                                    x-model="estado.signos_vitales.colesterol"
+                                <input type="text" x-model="estado.signos_vitales.colesterol"
                                     @input="estado.cambios_pendientes = true; debug()"
                                     class="w-full p-1.5 border rounded text-center text-sm">
                             </div>
@@ -241,9 +270,7 @@
                     <div class="flex justify-between items-center mb-4">
                         <span class="font-medium">Comentarios</span>
                     </div>
-                    <textarea 
-                        x-model="estado.comentarios"
-                        @input="estado.cambios_pendientes = true; debug()"
+                    <textarea x-model="estado.comentarios" @input="estado.cambios_pendientes = true; debug()"
                         placeholder="Evolucion... (nr = shift + enter)"
                         class="w-full p-3 border rounded-lg resize-none focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
                         rows="4"></textarea>
@@ -259,10 +286,8 @@
                     {% csrf_token %}
                     {% for condicion in todas_condiciones %}
                     <label class="diagnostico-item hover:bg-gray-50 rounded-md cursor-pointer">
-                        <input type="checkbox" 
-                            :checked="estado.condiciones.has({{ condicion.id }})"
-                            @change="toggleCondicion({{ condicion.id }})"
-                            class="form-checkbox">
+                        <input type="checkbox" :checked="estado.condiciones.has({{ condicion.id }})"
+                            @change="toggleCondicion({{ condicion.id }})" class="form-checkbox">
                         <span class="text-sm">{{ condicion.nombre }}</span>
                     </label>
                     {% endfor %}
@@ -291,9 +316,7 @@
                     class="btn-hover-effect px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors">
                     Cancelar
                 </button>
-                <button 
-                    @click="showSaveConfirmation = true"
-                    x-show="estado.cambios_pendientes"
+                <button @click="showSaveConfirmation = true" x-show="estado.cambios_pendientes"
                     class="btn-hover-effect px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-colors">
                     Guardar cambios
                 </button>
@@ -302,7 +325,7 @@
     </main>
 
     <!-- Save Confirmation Modal -->
-    <div x-show="showSaveConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <!div x-show="showSaveConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
         <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
             <h3 class="text-lg font-medium mb-4">Confirmar Guardar</h3>
             <p class="text-gray-600 mb-6">¿Está seguro que desea guardar los cambios?</p>
@@ -317,6 +340,24 @@
             </div>
         </div>
     </div>
+
+    <!-- Save Confirmation Modal -->
+    <!--div x-show="showSaveConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h3 class="text-lg font-medium mb-4">Confirmar Guardar</h3>
+            <p class="text-gray-600 mb-6">¿Está seguro que desea guardar los cambios?</p>
+            <div class="flex justify-end space-x-4">
+                <button @click="showSaveConfirmation = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+                    Cancelar
+                </button>
+                <button @click="guardarCambios()"
+                    class="px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b]">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div-->
+
 
     <script>
         // Validación de inputs numéricos
@@ -340,4 +381,5 @@
         });
     </script>
 </body>
+
 </html>

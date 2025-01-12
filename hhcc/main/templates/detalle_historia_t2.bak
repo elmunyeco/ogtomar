@@ -1,13 +1,20 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Historia Clínica - {{ paciente.nombre }} {{ paciente.apellido }}</title>
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <!-- Mantengo los mismos estilos -->
+
     <style>
         .diagnosticos-grid {
             display: grid;
@@ -15,20 +22,90 @@
             gap: 0.5rem 1rem;
             align-items: center;
         }
-        /* ... resto de los estilos sin cambios ... */
+
+        .diagnostico-item {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            padding: 0.25rem;
+        }
+
+        /* Custom checkbox styles */
+        .form-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            border: 1.5px solid #9a4035;
+            border-radius: 0.25rem;
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .form-checkbox:checked {
+            background-color: #9a4035;
+        }
+
+        .form-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 0.75rem;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Input focus styles */
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #9a4035;
+            box-shadow: 0 0 0 1px #9a4035;
+        }
+
+        /* Custom scrollbar for textarea */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        textarea::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        textarea::-webkit-scrollbar-thumb {
+            background: #9a4035;
+            border-radius: 4px;
+        }
+
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #7a332b;
+        }
+
+        /* Animated button hover effects */
+        .btn-hover-effect {
+            transition: all 0.3s ease;
+        }
+
+        .btn-hover-effect:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(154, 64, 53, 0.2);
+        }
     </style>
 </head>
 
 <body class="bg-gray-100" x-data="{
     estado: {
         signos_vitales: {
-            presion_sistolica: '{{ signos_vitales.presion_sistolica|default:\"\" }}',
-            presion_diastolica: '{{ signos_vitales.presion_diastolica|default:\"\" }}',
-            peso: '{{ signos_vitales.peso|default:\"\" }}',
-            glucemia: '{{ signos_vitales.glucemia|default:\"\" }}',
-            colesterol: '{{ signos_vitales.colesterol|default:\"\" }}'
+            presion_sistolica: '{{ signos_vitales.presion_sistolica|default:"" }}',
+            presion_diastolica: '{{ signos_vitales.presion_diastolica|default:"" }}',
+            peso: '{{ signos_vitales.peso|default:"" }}',
+            glucemia: '{{ signos_vitales.glucemia|default:"" }}',
+            colesterol: '{{ signos_vitales.colesterol|default:"" }}'
         },
-        condiciones: new Set({{ condiciones_activas|safe }}),
+        condiciones: new Set([{% for id in condiciones_activas %}{{ id }}{% if not forloop.last %},{% endif %}{% endfor %}]),
         comentarios: '',
         cambios_pendientes: false
     },
@@ -47,14 +124,57 @@
         this.debug();
     }
 }">
-    <!-- Mismo contenedor principal -->
+
+
+
     <main class="container mx-auto p-6 max-w-6xl">
-        <!-- Header sin cambios -->
+        <!-- Patient Header -->
         <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <!-- ... contenido del header sin cambios ... -->
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center space-x-4">
+                    <span class="text-xl font-medium text-gray-900">{{ paciente.nombre }} {{ paciente.apellido }}</span>
+                    <span class="text-gray-500">{{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}</span>
+                </div>
+
+                <div class="flex items-center space-x-6">
+                    <button
+                        class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
+                        <i class="fas fa-pills text-xl mb-1"></i>
+                        <span class="text-xs">Medicación</span>
+                    </button>
+                    <button @click="window.location.href='{% url 'ordenes_medicas' paciente.id %}'"
+                        class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
+                        <i class="fas fa-file-medical text-xl mb-1"></i>
+                        <span class="text-xs">Prácticas</span>
+                    </button>
+                    <button onclick="window.print()"
+                        class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
+                        <i class="fas fa-print text-xl mb-1"></i>
+                        <span class="text-xs">Imprimir</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-6 text-sm">
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Nacimiento</span>
+                    <span>{{ paciente.fechaNac|date:"d/m/Y" }} ({{ paciente.fechaNac|timesince|truncatewords:1 }}
+                        años)</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Teléfono</span>
+                    <span>{{ paciente.telefono }}</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Última visita</span>
+                    <span>{{ historia.fechaAlta|date:"d/m/Y" }}</span>
+                </div>
+            </div>
         </div>
 
+        <!-- Main Content -->
         <div class="grid grid-cols-2 gap-6">
+            <!-- Left Column -->
             <div class="space-y-6">
                 <!-- Signos Vitales -->
                 <div class="bg-white rounded-lg shadow-sm p-6">
