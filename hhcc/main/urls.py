@@ -60,4 +60,9 @@ urlpatterns = [
         views.get_ultimo_comentario_indicaciones,
         name="get_ultimo_comentario_indicaciones",
     ),
+    path(
+        "api/historia/<int:historia_id>/guardar/",
+        views.guardar_historia,
+        name="guardar_historia",
+    ),
 ]

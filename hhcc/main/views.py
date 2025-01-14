@@ -746,3 +746,41 @@ def actualizar_historia(request, historia_id):
     print("Condiciones activas:", [c["id"] for c in data["condiciones"] if c["active"]])
 
     return JsonResponse({"status": "ok"})
+
+
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+import json
+
+@require_POST
+def guardar_historia(request, historia_id):
+   try:
+       historia = get_object_or_404(HistoriaClinica, pk=historia_id)
+       data = json.loads(request.body)
+       
+       # Guardar signos vitales
+       SignosVitales.objects.create(
+           historia=historia,
+           fecha=timezone.now(),
+           **data['signos_vitales']
+       )
+
+       # Actualizar condiciones
+       historia.condiciones.clear()
+       historia.condiciones.add(*data['condiciones'])
+
+       # Guardar comentario
+       if data['comentarios']:
+           ComentariosVisitas.objects.create(
+               historia_clinica=historia,
+               fecha=timezone.now(),
+               comentarios=data['comentarios'],
+               tipo='EVOL'
+           )
+
+       return JsonResponse({'status': 'success'})
+
+   except Exception as e:
+       return JsonResponse({'error': str(e)}, status=400)
