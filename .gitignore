@@ -1,22 +1,2 @@
-# Python
-__pycache__/
-
-# Virtual Env
-venv/
-bin/
-lib/
-lib64/
-.env
-
-# Django
-db.sqlite3
-media/
-static/
-local_settings.py
-
-# IDE
-.vscode/
-.idea/
-
-# Logs
-*.log
+# Created by venv; see https://docs.python.org/3/library/venv.html
+*

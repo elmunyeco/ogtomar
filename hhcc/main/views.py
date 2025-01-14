@@ -605,7 +605,12 @@ def generar_pdf_orden(request, paciente_id, diagnostico, estudios, tipo=None):
 
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
-from .models import HistoriaClinica, SignosVitales, CondicionMedicaHistoria, CondicionMedica
+from .models import (
+    HistoriaClinica,
+    SignosVitales,
+    CondicionMedicaHistoria,
+    CondicionMedica,
+)
 
 
 def get_historia_data(request, historia_id):
@@ -623,7 +628,6 @@ def get_historia_data(request, historia_id):
                 "colesterol": signos_vitales.colesterol,
             },
             "condiciones": list(condiciones.values("id")),
-            
         }
         return JsonResponse(data)
     except Exception as e:
@@ -664,30 +668,33 @@ def detalle_historia(request, historia_id):
 from .models import ComentariosVisitas
 from django.db.models import Subquery
 
+
 def get_ultimo_comentario_indicaciones(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, pk=historia_id)
     try:
         comentarios = ComentariosVisitas.objects.filter(
             historia_clinica=historia,
             fecha=Subquery(
-                ComentariosVisitas.objects.filter(
-                    historia_clinica=historia
-                ).order_by('-fecha').values('fecha')[:1]
-            )
+                ComentariosVisitas.objects.filter(historia_clinica=historia)
+                .order_by("-fecha")
+                .values("fecha")[:1]
+            ),
         )
-        
+
         data = {
-            'comentarios': [
+            "comentarios": [
                 {
-                    'tipo': c.tipo,
-                    'texto': c.comentarios,
-                    'fecha': c.fecha.strftime('%Y-%m-%d')
-                } for c in comentarios
+                    "tipo": c.tipo,
+                    "texto": c.comentarios,
+                    "fecha": c.fecha.strftime("%Y-%m-%d"),
+                }
+                for c in comentarios
             ]
         }
         return JsonResponse(data)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({"error": str(e)}, status=500)
+
 
 from django.views.decorators.http import require_POST
 
@@ -753,34 +760,35 @@ from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 import json
+from .utils import process_signos_vitales
+
 
 @require_POST
 def guardar_historia(request, historia_id):
-   try:
-       historia = get_object_or_404(HistoriaClinica, pk=historia_id)
-       data = json.loads(request.body)
-       
-       # Guardar signos vitales
-       SignosVitales.objects.create(
-           historia=historia,
-           fecha=timezone.now(),
-           **data['signos_vitales']
-       )
+    try:
+        historia = get_object_or_404(HistoriaClinica, pk=historia_id)
+        data = json.loads(request.body)
 
-       # Actualizar condiciones
-       historia.condiciones.clear()
-       historia.condiciones.add(*data['condiciones'])
+        # Guardar signos vitales
+        signos_vitales = process_signos_vitales(data)
+        SignosVitales.objects.create(
+            historia=historia, fecha=timezone.now(), **signos_vitales
+        )
 
-       # Guardar comentario
-       if data['comentarios']:
-           ComentariosVisitas.objects.create(
-               historia_clinica=historia,
-               fecha=timezone.now(),
-               comentarios=data['comentarios'],
-               tipo='EVOL'
-           )
+        # Actualizar condiciones
+        historia.condiciones.clear()
+        historia.condiciones.add(*data["condiciones"])
 
-       return JsonResponse({'status': 'success'})
+        # Guardar comentario
+        if data["comentarios"]:
+            ComentariosVisitas.objects.create(
+                historia_clinica=historia,
+                fecha=timezone.now(),
+                comentarios=data["comentarios"],
+                tipo="EVOL",
+            )
 
-   except Exception as e:
-       return JsonResponse({'error': str(e)}, status=400)
+        return JsonResponse({"status": "success"})
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
