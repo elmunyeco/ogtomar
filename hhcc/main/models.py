@@ -79,6 +79,18 @@ class Paciente(models.Model):
         return f"{self.nombre} {self.apellido}"
 
 
+class CondicionMedica(models.Model):
+    nombre = models.CharField(max_length=100)
+    orden = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = "condiciones_medicas"
+        ordering = ["orden"]
+
+    def __str__(self):
+        return self.nombre
+
+
 class HistoriaClinica(models.Model):
 
     # Fecha de alta de la historia clínica
@@ -88,6 +100,9 @@ class HistoriaClinica(models.Model):
     paciente = models.ForeignKey(
         "Paciente", on_delete=models.RESTRICT, related_name="historias_clinicas"
     )
+
+    condiciones = models.ManyToManyField(CondicionMedica, through='CondicionMedicaHistoria')
+
 
     class Meta:
         db_table = "historias_clinicas"  # Nombre de la tabla en MySQL
@@ -105,16 +120,6 @@ class HistoriaClinica(models.Model):
             return f"Historia Clínica #{self.id} del paciente {self.paciente.nombre} {self.paciente.apellido}"
 
 
-class CondicionMedica(models.Model):
-    nombre = models.CharField(max_length=100)
-    orden = models.IntegerField(default=0)
-
-    class Meta:
-        db_table = "condiciones_medicas"
-        ordering = ["orden"]
-
-    def __str__(self):
-        return self.nombre
 
 
 class CondicionMedicaHistoria(models.Model):
@@ -127,6 +132,9 @@ class CondicionMedicaHistoria(models.Model):
 
     def __str__(self):
         return f"{self.condicion.nombre} - {self.historia.paciente}"
+    
+
+    
 
 
 """ class Visita(models.Model):

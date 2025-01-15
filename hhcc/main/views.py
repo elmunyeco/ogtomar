@@ -776,6 +776,7 @@ def guardar_historia(request, historia_id):
         )
 
         # Actualizar condiciones
+
         historia.condiciones.clear()
         historia.condiciones.add(*data["condiciones"])
 
