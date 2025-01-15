@@ -634,7 +634,7 @@ def get_historia_data(request, historia_id):
         return JsonResponse({"error": str(e)}, status=500)
 
 
-def detalle_historia(request, historia_id):
+def detalle_historia_viejo(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
     paciente = historia.paciente
 
@@ -660,6 +660,36 @@ def detalle_historia(request, historia_id):
         "signos_vitales": signos_vitales,
         "todas_condiciones": todas_condiciones,
         "condiciones_activas": condiciones_activas,
+    }
+
+    return render(request, "detalle_historia_t2.html", context)
+
+
+def detalle_historia(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, id=historia_id)
+    today = timezone.now().date()
+
+    # Obtener última visita (para cargar signos vitales y condiciones)
+    signos_vitales = SignosVitales.objects.filter(
+        historia=historia, fecha=today
+    ).first()
+
+    # Obtener comentarios del día si existen
+    comentarios_hoy = ComentariosVisitas.objects.filter(
+        historia_clinica=historia, fecha=today, tipo="EVOL"
+    ).first()
+
+    condiciones_paciente = CondicionMedicaHistoria.objects.filter(historia=historia)
+    todas_condiciones = CondicionMedica.objects.all()
+    condiciones_activas = condiciones_paciente.values_list("condicion_id", flat=True)
+
+    context = {
+        "historia": historia,
+        "paciente": historia.paciente,
+        "signos_vitales": signos_vitales,
+        "todas_condiciones": todas_condiciones,
+        "condiciones_activas": condiciones_activas,
+        "comentarios_hoy": comentarios_hoy.comentarios if comentarios_hoy else "",
     }
 
     return render(request, "detalle_historia_t2.html", context)
@@ -796,38 +826,50 @@ def guardar_historia(request, historia_id): """
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400) """
 
+
 def guardar_historia(request, historia_id):
     try:
         historia = get_object_or_404(HistoriaClinica, pk=historia_id)
         data = json.loads(request.body)
-        
-        # Guardar signos vitales (si hay algún valor)
+        today = timezone.now().date()
+
+        # Guardar signos vitales
         signos_vitales = process_signos_vitales(data)
         if any(v is not None for v in signos_vitales.values()):
-            SignosVitales.objects.create(
+            fecha_visita = data.get('fecha_visita', today)  # Permitir fecha específica
+            signos_existentes = SignosVitales.objects.filter(
                 historia=historia, 
-                fecha=timezone.now(), 
-                **signos_vitales
-            )
-        
-        # Actualizar condiciones usando el through model
+                fecha=fecha_visita
+            ).first()
+            
+            if signos_existentes:
+                for key, value in signos_vitales.items():
+                    setattr(signos_existentes, key, value)
+                signos_existentes.save()
+            else:
+                SignosVitales.objects.create(
+                    historia=historia, 
+                    fecha=fecha_visita, 
+                    **signos_vitales
+                )
+
+        # Actualizar condiciones
         if "condiciones" in data:
             CondicionMedicaHistoria.objects.filter(historia=historia).delete()
-            for condicion_id in data["condiciones"]:
-                CondicionMedicaHistoria.objects.create(
-                    historia=historia,
-                    condicion_id=condicion_id
-                )
-        
-        # Guardar comentario
-        if data.get("comentarios"):
-            ComentariosVisitas.objects.create(
+            CondicionMedicaHistoria.objects.bulk_create([
+                CondicionMedicaHistoria(historia=historia, condicion_id=cond_id)
+                for cond_id in data["condiciones"]
+            ])
+
+        # Guardar/actualizar comentario
+
+        if comentarios := data.get("comentarios"):
+            ComentariosVisitas.objects.update_or_create(
                 historia_clinica=historia,
-                fecha=timezone.now(),
-                comentarios=data["comentarios"],
+                fecha=today,
                 tipo="EVOL",
+                defaults={"comentarios": comentarios}
             )
-            
         return JsonResponse({"status": "success"})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)

@@ -146,7 +146,7 @@ class CondicionMedicaHistoria(models.Model):
 
 class SignosVitales(models.Model):
     historia = models.ForeignKey(HistoriaClinica, on_delete=models.CASCADE)
-    fecha = models.DateTimeField(default=timezone.now)
+    fecha = models.DateField(default=timezone.now)
     presion_sistolica = models.IntegerField(null=True, blank=True)
     presion_diastolica = models.IntegerField(null=True, blank=True)
     peso = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)

@@ -106,7 +106,7 @@
             colesterol: '{{ signos_vitales.colesterol|default:"" }}'
         },
         condiciones: new Set([{% for id in condiciones_activas %}{{ id }}{% if not forloop.last %},{% endif %}{% endfor %}]),
-        comentarios: '',
+        comentarios: '{{ comentarios_hoy|default:""|escapejs }}',
         cambios_pendientes: false
     },
     showSaveConfirmation: false,
@@ -157,8 +157,7 @@
             } else {
                 this.estado.cambios_pendientes = false;
                 this.showSaveConfirmation = false;
-                // Opcional: redirigir o mostrar mensaje de éxito
-                window.location.href = '{% url 'detalle_historia' historia.id %}';
+                window.location.reload();
             }
         } catch (error) {
             this.errorMessage = error.message || 'Error al guardar los cambios';
