@@ -775,6 +775,8 @@ def guardar_historia(request, historia_id):
             historia=historia, fecha=timezone.now(), **signos_vitales
         )
 
+        # En la vista
+
         # Actualizar condiciones
 
         historia.condiciones.clear()
