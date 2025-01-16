@@ -762,36 +762,72 @@ from django.utils import timezone
 import json
 from .utils import process_signos_vitales
 
-
-@require_POST
-def guardar_historia(request, historia_id):
-    try:
-        historia = get_object_or_404(HistoriaClinica, pk=historia_id)
-        data = json.loads(request.body)
-
+""" @csrf_exempt  # Remover en producción """
+""" @require_POST
+def guardar_historia(request, historia_id): """
+"""     try:
+        historia = get_object_or_404(HistoriaClinica, pk=historia_id) """
+"""         data = json.loads(request.body) """
+""" 
         # Guardar signos vitales
-        signos_vitales = process_signos_vitales(data)
-        SignosVitales.objects.create(
-            historia=historia, fecha=timezone.now(), **signos_vitales
-        )
+        signos_vitales = process_signos_vitales(data) """
+"""         SignosVitales.objects.create( """
+"""             historia=historia, fecha=timezone.now(), **signos_vitales """
+"""         )
 
         # En la vista
 
         # Actualizar condiciones
 
-        historia.condiciones.clear()
-        historia.condiciones.add(*data["condiciones"])
-
+        historia.condiciones.clear() """
+"""         historia.condiciones.add(*data["condiciones"]) """
+""" 
         # Guardar comentario
         if data["comentarios"]:
+            ComentariosVisitas.objects.create( """
+"""                 historia_clinica=historia, """
+"""                 fecha=timezone.now(), """
+"""                 comentarios=data["comentarios"], """
+"""                 tipo="EVOL",
+            )
+
+        return JsonResponse({"status": "success"}) """
+""" 
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400) """
+
+def guardar_historia(request, historia_id):
+    try:
+        historia = get_object_or_404(HistoriaClinica, pk=historia_id)
+        data = json.loads(request.body)
+        
+        # Guardar signos vitales (si hay algún valor)
+        signos_vitales = process_signos_vitales(data)
+        if any(v is not None for v in signos_vitales.values()):
+            SignosVitales.objects.create(
+                historia=historia, 
+                fecha=timezone.now(), 
+                **signos_vitales
+            )
+        
+        # Actualizar condiciones usando el through model
+        if "condiciones" in data:
+            CondicionMedicaHistoria.objects.filter(historia=historia).delete()
+            for condicion_id in data["condiciones"]:
+                CondicionMedicaHistoria.objects.create(
+                    historia=historia,
+                    condicion_id=condicion_id
+                )
+        
+        # Guardar comentario
+        if data.get("comentarios"):
             ComentariosVisitas.objects.create(
                 historia_clinica=historia,
                 fecha=timezone.now(),
                 comentarios=data["comentarios"],
                 tipo="EVOL",
             )
-
+            
         return JsonResponse({"status": "success"})
-
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)

@@ -19,7 +19,7 @@ def isFloat(value):
         return None
 
 def process_signos_vitales(data):
-   campos_int = ['presion_sistolica', 'presion_diastolica', 'colesterol', 'glucemia' ]
+   campos_int = ['presion_sistolica', 'presion_diastolica', 'colesterol', 'glucemia']
    campos_float = ['peso']
    
    signos_vitales = {}
@@ -28,8 +28,7 @@ def process_signos_vitales(data):
        if campo in campos_int:
            signos_vitales[campo] = isInt(valor) 
        elif campo in campos_float:
-           signos_vitales[campo] = isFloat(valor)
+           val = isFloat(valor)
+           signos_vitales[campo] = round(val, 2) if val is not None else None
            
    return signos_vitales
-
-# A ver esta garompa?
