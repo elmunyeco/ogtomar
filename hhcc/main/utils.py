@@ -31,3 +31,5 @@ def process_signos_vitales(data):
            signos_vitales[campo] = isFloat(valor)
            
    return signos_vitales
+
+# A ver esta garompa?
