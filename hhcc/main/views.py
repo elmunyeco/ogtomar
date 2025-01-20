@@ -692,7 +692,7 @@ def detalle_historia(request, historia_id):
         "comentarios_hoy": comentarios_hoy.comentarios if comentarios_hoy else "",
     }
 
-    return render(request, "detalle_historia_t2.html", context)
+    return render(request, "detalle_historia_t3.html", context)
 
 
 from .models import ComentariosVisitas
