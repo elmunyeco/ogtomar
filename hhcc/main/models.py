@@ -101,8 +101,9 @@ class HistoriaClinica(models.Model):
         "Paciente", on_delete=models.RESTRICT, related_name="historias_clinicas"
     )
 
-    condiciones = models.ManyToManyField(CondicionMedica, through='CondicionMedicaHistoria')
-
+    condiciones = models.ManyToManyField(
+        CondicionMedica, through="CondicionMedicaHistoria"
+    )
 
     class Meta:
         db_table = "historias_clinicas"  # Nombre de la tabla en MySQL
@@ -120,8 +121,6 @@ class HistoriaClinica(models.Model):
             return f"Historia Clínica #{self.id} del paciente {self.paciente.nombre} {self.paciente.apellido}"
 
 
-
-
 class CondicionMedicaHistoria(models.Model):
     historia = models.ForeignKey("HistoriaClinica", on_delete=models.CASCADE)
     condicion = models.ForeignKey("CondicionMedica", on_delete=models.CASCADE)
@@ -132,9 +131,6 @@ class CondicionMedicaHistoria(models.Model):
 
     def __str__(self):
         return f"{self.condicion.nombre} - {self.historia.paciente}"
-    
-
-    
 
 
 """ class Visita(models.Model):
@@ -163,12 +159,12 @@ class SignosVitales(models.Model):
 
 class ComentariosVisitas(models.Model):
     TIPO_COMENTARIO = [
-        ('EVOL', 'Evolución'),
-        ('INDIC', 'Indicaciones'),
+        ("EVOL", "Evolución"),
+        ("INDIC", "Indicaciones"),
     ]
     fecha = models.DateField()
     comentarios = models.TextField()
-    tipo = models.CharField(max_length=5, choices=TIPO_COMENTARIO, default='EVOL')
+    tipo = models.CharField(max_length=5, choices=TIPO_COMENTARIO, default="EVOL")
     historia_clinica = models.ForeignKey(
         "HistoriaClinica", on_delete=models.CASCADE, db_column="idHistoriaClinica"
     )
@@ -183,16 +179,23 @@ class ComentariosVisitas(models.Model):
 
 
 class IndicacionesVisitas(models.Model):
-    fecha = models.DateField()
-    indicaciones = models.TextField()
     historia_clinica = models.ForeignKey(
-        "HistoriaClinica", on_delete=models.CASCADE, db_column="idHistoriaClinica"
+        "HistoriaClinica", 
+        on_delete=models.CASCADE,
+        db_column="idHistoriaClinica"
     )
+    medicamento = models.TextField()
+    ochoHoras = models.TextField(null=True)
+    doceHoras = models.TextField(null=True)
+    dieciochoHoras = models.TextField(null=True)
+    veintiunaHoras = models.TextField(null=True)
+    fecha = models.DateField()
+    eliminado = models.BooleanField(null=True)
 
     class Meta:
         db_table = "indicaciones_visitas"
         indexes = [
             models.Index(fields=["fecha"]),
             models.Index(fields=["historia_clinica"]),
-            models.Index(fields=["fecha", "historia_clinica"]),
+            models.Index(fields=["historia_clinica", "fecha"]),
         ]
