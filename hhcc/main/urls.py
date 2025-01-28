@@ -65,4 +65,24 @@ urlpatterns = [
         views.guardar_historia,
         name="guardar_historia",
     ),
+    path(
+        "historia/<int:historia_id>/indicaciones/",
+        views.indicaciones_list,
+        name="indicaciones",
+    ),
+    path(
+        "historia/<int:historia_id>/indicaciones/agregar/",
+        views.indicacion_agregar,
+        name="indicacion_agregar",
+    ),
+    path(
+        "indicaciones/<int:id>/eliminar/",
+        views.indicacion_eliminar,
+        name="indicacion_eliminar",
+    ),
+    path(
+        "historia/<int:historia_id>/indicaciones/comentario/",
+        views.guardar_comentarios_indicaciones,
+        name="guardar_comentarios_indicaciones",
+    ),
 ]

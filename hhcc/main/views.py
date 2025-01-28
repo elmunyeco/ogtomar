@@ -792,41 +792,6 @@ from django.utils import timezone
 import json
 from .utils import process_signos_vitales
 
-""" @csrf_exempt  # Remover en producción """
-""" @require_POST
-def guardar_historia(request, historia_id): """
-"""     try:
-        historia = get_object_or_404(HistoriaClinica, pk=historia_id) """
-"""         data = json.loads(request.body) """
-""" 
-        # Guardar signos vitales
-        signos_vitales = process_signos_vitales(data) """
-"""         SignosVitales.objects.create( """
-"""             historia=historia, fecha=timezone.now(), **signos_vitales """
-"""         )
-
-        # En la vista
-
-        # Actualizar condiciones
-
-        historia.condiciones.clear() """
-"""         historia.condiciones.add(*data["condiciones"]) """
-""" 
-        # Guardar comentario
-        if data["comentarios"]:
-            ComentariosVisitas.objects.create( """
-"""                 historia_clinica=historia, """
-"""                 fecha=timezone.now(), """
-"""                 comentarios=data["comentarios"], """
-"""                 tipo="EVOL",
-            )
-
-        return JsonResponse({"status": "success"}) """
-""" 
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400) """
-
-
 def guardar_historia(request, historia_id):
     try:
         historia = get_object_or_404(HistoriaClinica, pk=historia_id)
@@ -873,3 +838,127 @@ def guardar_historia(request, historia_id):
         return JsonResponse({"status": "success"})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
+
+
+from django.views.decorators.csrf import csrf_protect
+
+@csrf_protect
+def indicaciones_list(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, id=historia_id)
+    
+    indicaciones = [ind.to_dict() for ind in IndicacionesVisitas.objects.filter(
+        historia_clinica=historia,
+        eliminado=False
+    ).order_by('-fecha')]
+
+    ultimo_comentario = ComentariosVisitas.objects.filter(
+        historia_clinica=historia,
+        tipo='INDIC'
+    ).order_by('-fecha').first()
+
+    return render(request, 'indicaciones/lista.html', {
+        'indicaciones_json': json.dumps(indicaciones),
+        'comentario_json': json.dumps(
+            ultimo_comentario.to_dict() if ultimo_comentario 
+            else {'comentarios': '', 'fecha': datetime.now().strftime('%Y-%m-%d')}
+        ),
+        'historia': historia
+    })
+    
+    
+@csrf_protect
+def indicacion_agregar(request, historia_id):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            
+            # Validación básica
+            required_fields = ['medicamento', 'fecha']
+            if not all(field in data for field in required_fields):
+                return JsonResponse({
+                    'status': 'error', 
+                    'message': 'Faltan campos requeridos'
+                }, status=400)
+            
+            indicacion = IndicacionesVisitas.objects.create(
+                historia_clinica_id=historia_id,
+                medicamento=data['medicamento'],
+                ochoHoras=data.get('ochoHoras', ''),
+                doceHoras=data.get('doceHoras', ''),
+                dieciochoHoras=data.get('dieciochoHoras', ''),
+                veintiunaHoras=data.get('veintiunaHoras', ''),
+                fecha=data['fecha'],
+                eliminado=False
+            )
+            return JsonResponse({
+                'status': 'success', 
+                'data': indicacion.to_dict()
+            })
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'status': 'error', 
+                'message': 'JSON inválido'
+            }, status=400)
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error', 
+                'message': str(e)
+            }, status=500)
+    
+    return render(request, 'indicaciones/agregar.html', {
+        'historia': get_object_or_404(HistoriaClinica, id=historia_id)
+    })
+    
+@csrf_protect
+def indicacion_eliminar(request, id):
+    if request.method == 'POST':
+        try:
+            indicacion = get_object_or_404(IndicacionesVisitas, id=id)
+            indicacion.eliminado = True
+            indicacion.save()
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Indicación eliminada correctamente'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Método no permitido'
+    }, status=405)
+    
+@csrf_protect
+def guardar_comentarios_indicaciones(request, historia_id):
+    if request.method != 'POST':
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Método no permitido'
+        }, status=405)
+        
+    try:
+        data = json.loads(request.body)
+        if 'comentarios' not in data:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Falta el campo comentarios'
+            }, status=400)
+
+        comentario = ComentariosVisitas.objects.create(
+            historia_clinica_id=historia_id,
+            comentarios=data['comentarios'],
+            tipo='INDIC',
+            fecha=timezone.now().date()
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'data': comentario.to_dict()
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error', 
+            'message': str(e)
+        }, status=500)    
