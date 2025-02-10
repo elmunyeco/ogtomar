@@ -1,0 +1,68 @@
+1. Vistas básicas:
+- index
+- landing_page
+- landing_page_dropdown
+- buscador
+- listar_buscar_pacientes
+- listar_buscar_historias
+
+2. Manejo de pacientes:
+- guardar_paciente
+- borrar_paciente
+
+3. PDF y órdenes:
+- ordenes_medicas
+- descargarPDFSolicitudes
+- ordenes_pedicas
+- generar_pdf_orden
+
+4. Historia clínica:
+Desactualizadas
+- detalle_historia (versión actual)
+- get_historia_data
+- guardar_historia
+
+5. Indicaciones (actualizadas):
+- indicaciones_list
+- indicacion_agregar
+- indicacion_eliminar
+- guardar_comentarios_indicaciones
+
+Desactualizadas
+1. detalle_historia_viejo (reemplazada por detalle_historia)
+2. actualizar_condiciones (reemplazada por guardar_historia)
+3. guardar_signos_vitales (reemplazada por guardar_historia)
+4. actualizar_historia (versión de prueba, reemplazada por guardar_historia)
+
+GET  /                                    → views.index
+GET  /landing/                           → views.landing_page
+GET  /landing_dropdown/                  → views.landing_page_dropdown
+GET  /buscador/                         → views.buscador
+GET  /pacientes/                        → views.listar_buscar_pacientes
+GET  /historias/                        → views.listar_buscar_historias
+
+GET/POST  /guardar_paciente/<int:pk>/     → views.guardar_paciente
+POST      /borrar_paciente/<int:pk>/      → views.borrar_paciente
+
+
+GET  /ordenes_medicas/<int:paciente_id>/                                                    → views.ordenes_medicas
+GET  /descargarPDFSolicitudes/<int:paciente_id>/<str:diagnostico>/<str:estudios>/<str:tipo>/ → views.descargarPDFSolicitudes
+GET  /ordenes_pedicas/<int:paciente_id>/                                                    → views.ordenes_pedicas
+GET  /generar_pdf_orden/<int:paciente_id>/<str:diagnostico>/<str:estudios>/<str:tipo>/     → views.generar_pdf_orden
+
+GET   /detalle_historia/<int:historia_id>/      → views.detalle_historia
+GET   /api/historia/<int:historia_id>           → views.get_historia_data
+POST  /api/historia/<int:historia_id>/guardar/  → views.guardar_historia
+
+indicaciones
+
+GET   /historia/<int:historia_id>/indicaciones/           → views.indicaciones_list
+POST  /historia/<int:historia_id>/indicaciones/agregar/   → views.indicacion_agregar
+POST  /indicaciones/<int:id>/eliminar/                    → views.indicacion_eliminar
+POST  /historia/<int:historia_id>/indicaciones/comentario/ → views.guardar_comentarios_indicaciones
+
+NO
+
+/actualizar_condiciones/<int:historia_id>/
+/guardar_signos_vitales/<int:historia_id>/
+/historia/<int:historia_id>/actualizar/

@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
-from .models import Paciente, HistoriaClinica, TipoDocumento
+from .models import Paciente, HistoriaClinica, TipoDocumento, IndicacionesVisitas
 from .forms import PacienteForm
 from django.shortcuts import get_object_or_404
 
@@ -929,6 +929,9 @@ def indicacion_eliminar(request, id):
         'status': 'error',
         'message': 'Método no permitido'
     }, status=405)
+    
+    
+from django.utils import timezone
     
 @csrf_protect
 def guardar_comentarios_indicaciones(request, historia_id):

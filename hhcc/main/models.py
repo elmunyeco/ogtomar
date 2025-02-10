@@ -168,7 +168,15 @@ class ComentariosVisitas(models.Model):
     historia_clinica = models.ForeignKey(
         "HistoriaClinica", on_delete=models.CASCADE, db_column="idHistoriaClinica"
     )
-
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'fecha': self.fecha.strftime('%Y-%m-%d'),
+            'comentarios': self.comentarios,
+            'tipo': self.tipo
+        }
+    
     class Meta:
         db_table = "comentarios_visitas"
         indexes = [
@@ -182,8 +190,9 @@ class IndicacionesVisitas(models.Model):
     historia_clinica = models.ForeignKey(
         "HistoriaClinica", 
         on_delete=models.CASCADE,
-        db_column="idHistoriaClinica"
+        db_column="historia_clinica_id"
     )
+    
     medicamento = models.TextField()
     ochoHoras = models.TextField(null=True)
     doceHoras = models.TextField(null=True)
