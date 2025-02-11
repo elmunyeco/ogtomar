@@ -21,7 +21,7 @@
                     'X-CSRFToken': '{{ csrf_token }}'
                 },
                 body: JSON.stringify(this.indicacion)
-            });
+            })
 
             const data = await response.json();
             if (response.ok) {
