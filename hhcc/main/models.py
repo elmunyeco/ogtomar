@@ -168,15 +168,15 @@ class ComentariosVisitas(models.Model):
     historia_clinica = models.ForeignKey(
         "HistoriaClinica", on_delete=models.CASCADE, db_column="idHistoriaClinica"
     )
-    
+
     def to_dict(self):
         return {
-            'id': self.id,
-            'fecha': self.fecha.strftime('%Y-%m-%d'),
-            'comentarios': self.comentarios,
-            'tipo': self.tipo
+            "id": self.id,
+            "fecha": self.fecha.strftime("%Y-%m-%d"),
+            "comentarios": self.comentarios,
+            "tipo": self.tipo,
         }
-    
+
     class Meta:
         db_table = "comentarios_visitas"
         indexes = [
@@ -188,11 +188,9 @@ class ComentariosVisitas(models.Model):
 
 class IndicacionesVisitas(models.Model):
     historia_clinica = models.ForeignKey(
-        "HistoriaClinica", 
-        on_delete=models.CASCADE,
-        db_column="historia_clinica_id"
+        "HistoriaClinica", on_delete=models.CASCADE, db_column="historia_clinica_id"
     )
-    
+
     medicamento = models.TextField()
     ochoHoras = models.TextField(null=True)
     doceHoras = models.TextField(null=True)
@@ -200,6 +198,19 @@ class IndicacionesVisitas(models.Model):
     veintiunaHoras = models.TextField(null=True)
     fecha = models.DateField()
     eliminado = models.BooleanField(null=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "historia_clinica_id": self.historia_clinica_id,
+            "medicamento": self.medicamento,
+            "ochoHoras": self.ochoHoras,
+            "doceHoras": self.doceHoras,
+            "dieciochoHoras": self.dieciochoHoras,
+            "veintiunaHoras": self.veintiunaHoras,
+            "fecha": self.fecha.strftime('%Y-%m-%d'),
+            "eliminado": self.eliminado,
+        }
 
     class Meta:
         db_table = "indicaciones_visitas"

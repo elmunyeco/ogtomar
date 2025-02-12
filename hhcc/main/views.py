@@ -865,7 +865,8 @@ def indicaciones_list(request, historia_id):
         'historia': historia
     })
     
-    
+from datetime import datetime
+
 @csrf_protect
 def indicacion_agregar(request, historia_id):
     if request.method == 'POST':
@@ -887,7 +888,7 @@ def indicacion_agregar(request, historia_id):
                 doceHoras=data.get('doceHoras', ''),
                 dieciochoHoras=data.get('dieciochoHoras', ''),
                 veintiunaHoras=data.get('veintiunaHoras', ''),
-                fecha=data['fecha'],
+                fecha=datetime.strptime(data['fecha'], '%Y-%m-%d').date(),
                 eliminado=False
             )
             return JsonResponse({
