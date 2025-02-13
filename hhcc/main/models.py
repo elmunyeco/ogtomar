@@ -162,7 +162,7 @@ class ComentariosVisitas(models.Model):
         ("EVOL", "Evolución"),
         ("INDIC", "Indicaciones"),
     ]
-    fecha = models.DateField()
+    fecha = models.DateTimeField(auto_now_add=True)
     comentarios = models.TextField()
     tipo = models.CharField(max_length=5, choices=TIPO_COMENTARIO, default="EVOL")
     historia_clinica = models.ForeignKey(
@@ -172,7 +172,7 @@ class ComentariosVisitas(models.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "fecha": self.fecha.strftime("%Y-%m-%d"),
+            "fecha": self.fecha.strftime("%Y-%m-%d %H:%M:%S"),
             "comentarios": self.comentarios,
             "tipo": self.tipo,
         }

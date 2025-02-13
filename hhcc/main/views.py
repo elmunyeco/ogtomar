@@ -954,7 +954,7 @@ def guardar_comentarios_indicaciones(request, historia_id):
             historia_clinica_id=historia_id,
             comentarios=data['comentarios'],
             tipo='INDIC',
-            fecha=timezone.now().date()
+            fecha=timezone.now()
         )
         
         return JsonResponse({
