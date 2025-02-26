@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historial Médico</title>
+  <!-- Alpine.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.13.5/cdn.min.js" defer></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 p-4">
+  <div class="max-w-6xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg p-4" x-data="historialMedico()">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-xl font-bold text-gray-800">Historial de Visitas Médicas</h2>
+        <div class="flex space-x-2">
+          <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[#9a4035] text-white">
+            <span class="w-3 h-3 mr-1 rounded-full bg-white"></span>
+            Reciente
+          </span>
+          <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[#B25C51] text-white">
+            <span class="w-3 h-3 mr-1 rounded-full bg-white"></span>
+            6 Meses
+          </span>
+          <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[#CA786D] text-white">
+            <span class="w-3 h-3 mr-1 rounded-full bg-white"></span>
+            Anterior
+          </span>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <template x-for="(visita, index) in visitas" :key="visita.id">
+          <div class="border rounded-lg overflow-hidden">
+            <!-- Cabecera del panel -->
+            <div class="text-white p-3 cursor-pointer flex items-center justify-between"
+              :class="getTimeRangeColor(visita.date)" @click="togglePanel(visita.id)">
+              <div class="flex items-center">
+                <!-- Icono de chevron abajo (cuando está abierto) -->
+                <svg x-show="openPanel === visita.id" class="w-5 h-5 mr-2" width="20" height="20" viewBox="0 0 24 24"
+                  fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                </svg>
+
+                <!-- Icono de chevron derecha (cuando está cerrado) -->
+                <svg x-show="openPanel !== visita.id" class="w-5 h-5 mr-2" width="20" height="20" viewBox="0 0 24 24"
+                  fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                </svg>
+
+                <span class="flex items-center">
+                  <!-- Icono de calendario -->
+                  <svg class="w-4 h-4 mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" stroke="currentColor" stroke-width="2" />
+                    <line x1="16" x2="16" y1="2" y2="6" stroke="currentColor" stroke-width="2" />
+                    <line x1="8" x2="8" y1="2" y2="6" stroke="currentColor" stroke-width="2" />
+                    <line x1="3" x2="21" y1="10" y2="10" stroke="currentColor" stroke-width="2" />
+                  </svg>
+                  <span class="font-medium" x-text="formatDate(visita.date)"></span>
+                </span>
+              </div>
+
+              <div class="flex items-center space-x-4">
+                <template x-if="visita.comments.length > 0">
+                  <span class="flex items-center text-xs">
+                    <span class="mr-1" x-text="visita.comments.length"></span>
+                    <span x-text="visita.comments.length === 1 ? 'comentario' : 'comentarios'"></span>
+                  </span>
+                </template>
+                
+                <!-- Icono de historial clínico -->
+                <template x-if="visita.vitalSigns.weight !== '0'">
+                  <svg class="w-4 h-4" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" stroke-width="2" />
+                    <path d="M8 7H16" stroke="currentColor" stroke-width="2" />
+                    <path d="M8 12H16" stroke="currentColor" stroke-width="2" />
+                    <path d="M8 17H12" stroke="currentColor" stroke-width="2" />
+                    <circle cx="6" cy="7" r="1" fill="currentColor" />
+                    <circle cx="6" cy="12" r="1" fill="currentColor" />
+                    <circle cx="6" cy="17" r="1" fill="currentColor" />
+                  </svg>
+                </template>
+
+                <!-- Icono de medicamentos -->
+                <template x-if="visita.medications.length > 0">
+                  <svg class="w-4 h-4" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10.5 20.5l10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" stroke="currentColor"
+                      stroke-width="2" />
+                    <path d="M8.5 8.5l7 7" stroke="currentColor" stroke-width="2" />
+                  </svg>
+                </template>
+              </div>
+            </div>
+
+            <!-- Contenido del panel (visible cuando está abierto) -->
+            <div x-show="openPanel === visita.id" x-transition class="p-4 bg-white">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Panel de comentarios -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                  <h3 class="text-lg font-semibold text-[#9a4035] mb-3 pb-2 border-b border-[#d1b0ab]">
+
+                    <span class="mr-2">Visitas</span>
+                    <span class="text-xs font-normal bg-[#f8e1de] text-[#9a4035] px-2 py-1 rounded ml-auto">
+
+                      <span x-text="visita.comments.length"></span>
+                      <span x-text="visita.comments.length === 1 ? ' comentario' : ' comentarios'"></span>
+                    </span>
+                  </h3>
+
+                  <template x-if="visita.comments.length === 0">
+                    <p class="text-gray-500 italic text-center py-4">No hay comentarios registrados</p>
+                  </template>
+
+                  <template x-if="visita.comments.length > 0">
+                    <div class="space-y-3">
+                      <template x-for="comment in visita.comments" :key="comment.id">
+                        <div class="relative bg-white p-3 rounded shadow-sm border-l-4 border-[#9a4035]">
+                          <p class="text-gray-700" x-text="comment.text"></p>
+                          <button class="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                            title="Eliminar comentario">
+                            <!-- Icono de basura/eliminar -->
+                            <svg class="w-4 h-4" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                              xmlns="http://www.w3.org/2000/svg">
+                              <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
+                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
+                              <line x1="10" x2="10" y1="11" y2="17" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
+                              <line x1="14" x2="14" y1="11" y2="17" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
+                            </svg>
+                          </button>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Panel de signos vitales -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                  <h3 class="text-lg font-semibold text-[#9a4035] mb-3 pb-2 border-b border-[#d1b0ab]">
+
+                    <span class="mr-2">Signos Vitales</span>
+                    <!-- Icono de corazón -->
+                    <svg class="w-5 h-5 text-red-500 ml-auto" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                      xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
+                        stroke="currentColor" stroke-width="2" fill="none" />
+                    </svg>
+                  </h3>
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white rounded p-3 flex flex-col shadow-sm">
+                      <span class="text-sm text-gray-500">Peso</span>
+                      <span class="text-lg font-medium text-gray-800"
+                        x-text="formatVitalSign(visita.vitalSigns.weight, 'Kg')"></span>
+                    </div>
+
+                    <div class="bg-white rounded p-3 flex flex-col shadow-sm">
+                      <span class="text-sm text-gray-500">Colesterol</span>
+                      <span class="text-lg font-medium text-gray-800"
+                        x-text="formatVitalSign(visita.vitalSigns.cholesterol, 'mg/dl')"></span>
+                    </div>
+
+                    <div class="bg-white rounded p-3 flex flex-col shadow-sm">
+                      <span class="text-sm text-gray-500">Glucemia</span>
+                      <span class="text-lg font-medium text-gray-800"
+                        x-text="formatVitalSign(visita.vitalSigns.glucose, 'mg/dl')"></span>
+                    </div>
+
+                    <div class="bg-white rounded p-3 flex flex-col shadow-sm">
+                      <span class="text-sm text-gray-500">Presión Arterial</span>
+                      <span class="text-lg font-medium text-gray-800">
+                        <span
+                          x-text="visita.vitalSigns.systolic === '0' ? '-' : `${visita.vitalSigns.systolic}/${visita.vitalSigns.diastolic} mmHg`"></span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel de medicamentos (solo visible si hay medicamentos) -->
+              <template x-if="visita.medications.length > 0">
+                <div class="mt-4 bg-gray-50 rounded-lg p-4">
+                  <h3 class="text-lg font-semibold text-[#9a4035] mb-3 pb-2 border-b border-[#d1b0ab]">
+
+                    <span class="mr-2">Indicaciones Médicas</span>
+                    <!-- Icono de píldora/medicamento -->
+                    <svg class="w-5 h-5 text-green-500 ml-auto" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                      xmlns="http://www.w3.org/2000/svg">
+                      <path d="M10.5 20.5l10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" stroke="currentColor"
+                        stroke-width="2" />
+                      <path d="M8.5 8.5l7 7" stroke="currentColor" stroke-width="2" />
+                    </svg>
+                  </h3>
+
+                  <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                      <thead>
+                        <tr class="bg-gray-100">
+                          <th class="px-4 py-2 text-left">Medicamento</th>
+                          <th class="px-4 py-2 text-center">08:00 hs</th>
+                          <th class="px-4 py-2 text-center">12:00 hs</th>
+                          <th class="px-4 py-2 text-center">18:00 hs</th>
+                          <th class="px-4 py-2 text-center">21:00 hs</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template x-for="med in visita.medications" :key="med.id">
+                          <tr class="border-b hover:bg-[#f8f0ef]">
+                            <td class="px-4 py-3 font-medium" x-text="med.name"></td>
+                            <td class="px-4 py-3 text-center" x-text="med.h8 || '-'"></td>
+                            <td class="px-4 py-3 text-center" x-text="med.h12 || '-'"></td>
+                            <td class="px-4 py-3 text-center" x-text="med.h18 || '-'"></td>
+                            <td class="px-4 py-3 text-center" x-text="med.h21 || '-'"></td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <template x-if="visita.medicationNotes">
+                    <div class="mt-3 p-3 bg-white rounded shadow-inner border-l-4 border-yellow-400">
+                      <h4 class="text-sm font-medium text-gray-500 mb-1">Comentario sobre medicación:</h4>
+                      <p class="text-gray-700" x-text="visita.medicationNotes"></p>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function historialMedico() {
+      return {
+        // Estado para controlar qué panel está abierto
+        openPanel: null,
+
+        // Datos de ejemplo (en producción vendría del backend)
+        visitas: [
+          {
+            id: 1,
+            date: '2025-01-22',
+            comments: [
+              { id: 97536, text: 'tinga tinga' }
+            ],
+            vitalSigns: {
+              weight: '0',
+              cholesterol: '0',
+              glucose: '0',
+              systolic: '0',
+              diastolic: '0'
+            },
+            medications: []
+          },
+          {
+            id: 2,
+            date: '2025-01-17',
+            comments: [
+              { id: 97533, text: 'nueva visita del 17 01 2025' },
+              { id: 97534, text: 'otra nueva visita del 17 01 2025, para ver si hace merge con la anterior.' },
+              { id: 97535, text: 'Abri una nueva visita el mismo 17 01 2025' }
+            ],
+            vitalSigns: {
+              weight: '357',
+              cholesterol: '0',
+              glucose: '0',
+              systolic: '0',
+              diastolic: '0'
+            },
+            medications: []
+          },
+          {
+            id: 3,
+            date: '2024-12-13',
+            comments: [
+              { id: 94679, text: 'Este es un comentario de la VISITA del 2024-12-13' }
+            ],
+            vitalSigns: {
+              weight: '0',
+              cholesterol: '0',
+              glucose: '0',
+              systolic: '0',
+              diastolic: '0'
+            },
+            medications: []
+          },
+          {
+            id: 4,
+            date: '2023-11-02',
+            comments: [],
+            vitalSigns: {
+              weight: '85',
+              cholesterol: '120',
+              glucose: '101',
+              systolic: '130',
+              diastolic: '85'
+            },
+            medications: []
+          },
+          {
+            id: 5,
+            date: '2020-05-06',
+            comments: [
+              { id: 15734, text: 'un comentario' },
+              { id: 15735, text: 'Otro comentario' }
+            ],
+            vitalSigns: {
+              weight: '45',
+              cholesterol: '200',
+              glucose: '118',
+              systolic: '135',
+              diastolic: '90'
+            },
+            medications: [
+              { id: 5629, name: 'Diazepam', h8: '', h12: '', h18: '', h21: '1' },
+              { id: 5628, name: 'Amiodarona', h8: '1/2', h12: '', h18: '', h21: '' }
+            ],
+            medicationNotes: '321313dd'
+          }
+        ],
+
+        // Alternar apertura/cierre de panel
+        togglePanel(id) {
+          this.openPanel = this.openPanel === id ? null : id;
+        },
+
+        // Formatear fecha
+        formatDate(dateString) {
+          const date = new Date(dateString);
+          return date.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+          });
+        },
+
+        // Obtener rango de tiempo desde la fecha actual
+        getTimeRange(dateString) {
+          const today = new Date();
+          const visitDate = new Date(dateString);
+          const diffTime = Math.abs(today - visitDate);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays <= 30) return 'recent';
+          if (diffDays <= 180) return 'medium';
+          return 'old';
+        },
+
+        // Obtener color de acuerdo al rango de tiempo
+        getTimeRangeColor(dateString) {
+          const range = this.getTimeRange(dateString);
+          if (range === 'recent') return 'bg-[#9a4035]';
+          if (range === 'medium') return 'bg-[#B25C51]';
+          return 'bg-[#CA786D]';
+        },
+
+        // Formatear signos vitales
+        formatVitalSign(value, unit) {
+          if (!value || value === '0') return '-';
+          return `${value} ${unit}`;
+        }
+      };
+    }
+  </script>
+</body>
+
+</html>
