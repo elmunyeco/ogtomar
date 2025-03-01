@@ -792,6 +792,7 @@ from django.utils import timezone
 import json
 from .utils import process_signos_vitales
 
+
 def guardar_historia(request, historia_id):
     try:
         historia = get_object_or_404(HistoriaClinica, pk=historia_id)
@@ -801,30 +802,29 @@ def guardar_historia(request, historia_id):
         # Guardar signos vitales
         signos_vitales = process_signos_vitales(data)
         if any(v is not None for v in signos_vitales.values()):
-            fecha_visita = data.get('fecha_visita', today)  # Permitir fecha específica
+            fecha_visita = data.get("fecha_visita", today)  # Permitir fecha específica
             signos_existentes = SignosVitales.objects.filter(
-                historia=historia, 
-                fecha=fecha_visita
+                historia=historia, fecha=fecha_visita
             ).first()
-            
+
             if signos_existentes:
                 for key, value in signos_vitales.items():
                     setattr(signos_existentes, key, value)
                 signos_existentes.save()
             else:
                 SignosVitales.objects.create(
-                    historia=historia, 
-                    fecha=fecha_visita, 
-                    **signos_vitales
+                    historia=historia, fecha=fecha_visita, **signos_vitales
                 )
 
         # Actualizar condiciones
         if "condiciones" in data:
             CondicionMedicaHistoria.objects.filter(historia=historia).delete()
-            CondicionMedicaHistoria.objects.bulk_create([
-                CondicionMedicaHistoria(historia=historia, condicion_id=cond_id)
-                for cond_id in data["condiciones"]
-            ])
+            CondicionMedicaHistoria.objects.bulk_create(
+                [
+                    CondicionMedicaHistoria(historia=historia, condicion_id=cond_id)
+                    for cond_id in data["condiciones"]
+                ]
+            )
 
         # Guardar/actualizar comentario
 
@@ -833,7 +833,7 @@ def guardar_historia(request, historia_id):
                 historia_clinica=historia,
                 fecha=today,
                 tipo="EVOL",
-                defaults={"comentarios": comentarios}
+                defaults={"comentarios": comentarios},
             )
         return JsonResponse({"status": "success"})
     except Exception as e:
@@ -842,127 +842,210 @@ def guardar_historia(request, historia_id):
 
 from django.views.decorators.csrf import csrf_protect
 
+
 @csrf_protect
 def indicaciones_list(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
-    
-    indicaciones = [ind.to_dict() for ind in IndicacionesVisitas.objects.filter(
-        historia_clinica=historia,
-        eliminado=False
-    ).order_by('-fecha')]
 
-    ultimo_comentario = ComentariosVisitas.objects.filter(
-        historia_clinica=historia,
-        tipo='INDIC'
-    ).order_by('-fecha').first()
+    indicaciones = [
+        ind.to_dict()
+        for ind in IndicacionesVisitas.objects.filter(
+            historia_clinica=historia, eliminado=False
+        ).order_by("-fecha")
+    ]
 
-    return render(request, 'indicaciones/lista.html', {
-        'indicaciones_json': json.dumps(indicaciones),
-        'comentario_json': json.dumps(
-            ultimo_comentario.to_dict() if ultimo_comentario 
-            else {'comentarios': '', 'fecha': datetime.now().strftime('%Y-%m-%d')}
-        ),
-        'historia': historia
-    })
-    
+    ultimo_comentario = (
+        ComentariosVisitas.objects.filter(historia_clinica=historia, tipo="INDIC")
+        .order_by("-fecha")
+        .first()
+    )
+
+    return render(
+        request,
+        "indicaciones/lista.html",
+        {
+            "indicaciones_json": json.dumps(indicaciones),
+            "comentario_json": json.dumps(
+                ultimo_comentario.to_dict()
+                if ultimo_comentario
+                else {"comentarios": "", "fecha": datetime.now().strftime("%Y-%m-%d")}
+            ),
+            "historia": historia,
+        },
+    )
+
+
 from datetime import datetime
+
 
 @csrf_protect
 def indicacion_agregar(request, historia_id):
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             data = json.loads(request.body)
-            
+
             # Validación básica
-            required_fields = ['medicamento', 'fecha']
+            required_fields = ["medicamento", "fecha"]
             if not all(field in data for field in required_fields):
-                return JsonResponse({
-                    'status': 'error', 
-                    'message': 'Faltan campos requeridos'
-                }, status=400)
-            
+                return JsonResponse(
+                    {"status": "error", "message": "Faltan campos requeridos"},
+                    status=400,
+                )
+
             indicacion = IndicacionesVisitas.objects.create(
                 historia_clinica_id=historia_id,
-                medicamento=data['medicamento'],
-                ochoHoras=data.get('ochoHoras', ''),
-                doceHoras=data.get('doceHoras', ''),
-                dieciochoHoras=data.get('dieciochoHoras', ''),
-                veintiunaHoras=data.get('veintiunaHoras', ''),
-                fecha=datetime.strptime(data['fecha'], '%Y-%m-%d').date(),
-                eliminado=False
+                medicamento=data["medicamento"],
+                ochoHoras=data.get("ochoHoras", ""),
+                doceHoras=data.get("doceHoras", ""),
+                dieciochoHoras=data.get("dieciochoHoras", ""),
+                veintiunaHoras=data.get("veintiunaHoras", ""),
+                fecha=datetime.strptime(data["fecha"], "%Y-%m-%d").date(),
+                eliminado=False,
             )
-            return JsonResponse({
-                'status': 'success', 
-                'data': indicacion.to_dict()
-            })
+            return JsonResponse({"status": "success", "data": indicacion.to_dict()})
         except json.JSONDecodeError:
-            return JsonResponse({
-                'status': 'error', 
-                'message': 'JSON inválido'
-            }, status=400)
+            return JsonResponse(
+                {"status": "error", "message": "JSON inválido"}, status=400
+            )
         except Exception as e:
-            return JsonResponse({
-                'status': 'error', 
-                'message': str(e)
-            }, status=500)
-    
-    return render(request, 'indicaciones/agregar.html', {
-        'historia': get_object_or_404(HistoriaClinica, id=historia_id)
-    })
-    
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+    return render(
+        request,
+        "indicaciones/agregar.html",
+        {"historia": get_object_or_404(HistoriaClinica, id=historia_id)},
+    )
+
+
 @csrf_protect
 def indicacion_eliminar(request, id):
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             indicacion = get_object_or_404(IndicacionesVisitas, id=id)
             indicacion.eliminado = True
             indicacion.save()
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Indicación eliminada correctamente'
-            })
+            return JsonResponse(
+                {"status": "success", "message": "Indicación eliminada correctamente"}
+            )
         except Exception as e:
-            return JsonResponse({
-                'status': 'error',
-                'message': str(e)
-            }, status=500)
-    return JsonResponse({
-        'status': 'error',
-        'message': 'Método no permitido'
-    }, status=405)
-    
-    
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+    return JsonResponse(
+        {"status": "error", "message": "Método no permitido"}, status=405
+    )
+
+
 from django.utils import timezone
-    
+
+
 @csrf_protect
 def guardar_comentarios_indicaciones(request, historia_id):
-    if request.method != 'POST':
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Método no permitido'
-        }, status=405)
-        
+    if request.method != "POST":
+        return JsonResponse(
+            {"status": "error", "message": "Método no permitido"}, status=405
+        )
+
     try:
         data = json.loads(request.body)
-        if 'comentarios' not in data:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Falta el campo comentarios'
-            }, status=400)
+        if "comentarios" not in data:
+            return JsonResponse(
+                {"status": "error", "message": "Falta el campo comentarios"}, status=400
+            )
 
         comentario = ComentariosVisitas.objects.create(
             historia_clinica_id=historia_id,
-            comentarios=data['comentarios'],
-            tipo='INDIC',
-            fecha=timezone.now()
+            comentarios=data["comentarios"],
+            tipo="INDIC",
+            fecha=timezone.now(),
         )
-        
-        return JsonResponse({
-            'status': 'success',
-            'data': comentario.to_dict()
-        })
+
+        return JsonResponse({"status": "success", "data": comentario.to_dict()})
     except Exception as e:
-        return JsonResponse({
-            'status': 'error', 
-            'message': str(e)
-        }, status=500)    
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@csrf_protect
+def historial_medico(request, id_historia):
+    historia = get_object_or_404(HistoriaClinica, id=id_historia)
+    paciente = historia.paciente
+    
+    # Obtener datos para JSON
+    comentarios = ComentariosVisitas.objects.filter(historia_clinica=historia).order_by('-fecha')
+    signos_vitales = SignosVitales.objects.filter(historia=historia).order_by('-fecha')
+    indicaciones = IndicacionesVisitas.objects.filter(historia_clinica=historia, eliminado=False).order_by('-fecha')
+    
+    # Formatear datos para el componente
+    visitas_json = []
+    fechas_unicas = set()
+    
+    # Obtener fechas y normalizarlas al mismo tipo
+    com_fechas = [fecha.date() if isinstance(fecha, datetime) else fecha 
+                for fecha in comentarios.values_list('fecha', flat=True)]
+    sv_fechas = [fecha.date() if isinstance(fecha, datetime) else fecha 
+                for fecha in signos_vitales.values_list('fecha', flat=True)]
+
+    todas_fechas = com_fechas + sv_fechas
+    todas_fechas = sorted(set(todas_fechas), reverse=True)
+
+    for fecha in todas_fechas:
+        fecha_str = fecha.strftime('%Y-%m-%d')
+        
+        # Buscar datos para esta fecha
+        coms_fecha = comentarios.filter(fecha=fecha)
+        signos_fecha = signos_vitales.filter(fecha=fecha).first()
+        meds_fecha = indicaciones.filter(fecha=fecha)
+        
+        # Formatear medicamentos
+        medicamentos = []
+        for med in meds_fecha:
+            medicamentos.append({
+                'id': med.id,
+                'name': med.medicamento,
+                'h8': med.ochoHoras or '',
+                'h12': med.doceHoras or '',
+                'h18': med.dieciochoHoras or '',
+                'h21': med.veintiunaHoras or ''
+            })
+        
+        # Crear visita
+        visita = {
+            'id': len(visitas_json) + 1,
+            'date': fecha_str,
+            'comments': [{'id': c.id, 'text': c.comentarios} for c in coms_fecha],
+            'vitalSigns': {
+                'weight': str(signos_fecha.peso) if signos_fecha and signos_fecha.peso else '0',
+                'cholesterol': str(signos_fecha.colesterol) if signos_fecha and signos_fecha.colesterol else '0',
+                'glucose': str(signos_fecha.glucemia) if signos_fecha and signos_fecha.glucemia else '0',
+                'systolic': str(signos_fecha.presion_sistolica) if signos_fecha and signos_fecha.presion_sistolica else '0',
+                'diastolic': str(signos_fecha.presion_diastolica) if signos_fecha and signos_fecha.presion_diastolica else '0'
+            },
+            'medications': medicamentos
+        }
+        
+        visitas_json.append(visita)
+    
+    # Convertir a JSON
+    import json
+    historial_json = json.dumps({'visitas': visitas_json})
+    
+    return render(request, 'historial_medico/historial_medico.html', {
+        'historia': historia,
+        'paciente': paciente,
+        'historial_json': historial_json,
+        'debug': settings.DEBUG
+    })
+
+
+@require_POST
+def eliminar_comentario(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "No autorizado"}, status=401)
+
+    try:
+        data = json.loads(request.body)
+        comentario_id = data.get("comentario_id")
+
+        comentario = get_object_or_404(ComentariosVisitas, id=comentario_id)
+        comentario.delete()
+
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)

@@ -85,4 +85,10 @@ urlpatterns = [
         views.guardar_comentarios_indicaciones,
         name="guardar_comentarios_indicaciones",
     ),
+    path(
+        "historial_medico/<int:id_historia>/",
+        views.historial_medico,
+        name="historial_medico",
+    ),
+    path("eliminar-comentario/", views.eliminar_comentario, name="eliminar_comentario"),
 ]
