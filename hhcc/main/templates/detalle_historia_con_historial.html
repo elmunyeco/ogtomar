@@ -165,7 +165,7 @@
     }
 }">
 
-    <main class="container mx-auto p-6 max-w-6xl">
+    <main class="container mx-auto p-6 max-w-7xl">
         <!-- Patient Header -->
         <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div class="flex justify-between items-center mb-4">
@@ -193,18 +193,17 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-6 text-sm">
-                <div class="flex flex-col">
-                    <span class="text-gray-500">Nacimiento</span>
-                    <span>{{ paciente.fechaNac|date:"d/m/Y" }} ({{ paciente.fechaNac|timesince|truncatewords:1 }}
-                        años)</span>
+            <div class="flex flex-wrap gap-4 text-sm mt-2">
+                <div>
+                    <span class="text-gray-500 mr-2">Nacimiento:</span>
+                    <span>{{ paciente.fechaNac|date:"d/m/Y" }} ({{ paciente.fechaNac|timesince|truncatewords:1 }} años)</span>
                 </div>
-                <div class="flex flex-col">
-                    <span class="text-gray-500">Teléfono</span>
+                <div>
+                    <span class="text-gray-500 mr-2">Teléfono:</span>
                     <span>{{ paciente.telefono }}</span>
                 </div>
-                <div class="flex flex-col">
-                    <span class="text-gray-500">Última visita</span>
+                <div>
+                    <span class="text-gray-500 mr-2">Última visita:</span>
                     <span>{{ historia.fechaAlta|date:"d/m/Y" }}</span>
                 </div>
             </div>
@@ -417,7 +416,7 @@
 
                                     <!-- Panel de signos vitales -->
                                     <div class="bg-gray-50 rounded-lg p-4">
-                                        <h3 class="text-lg font-semibold text-[#9a4035] mb-3 pb-2 border-b border-[#d1b0ab] flex items-center">
+                                        <h3 class="text-lg fguardarCambiosont-semibold text-[#9a4035] mb-3 pb-2 border-b border-[#d1b0ab] flex items-center">
                                             <span class="mr-2">Signos Vitales</span>
                                             <svg class="w-5 h-5 text-red-500 ml-auto" width="20" height="20" viewBox="0 0 24 24" fill="none">
                                                 <path
@@ -562,18 +561,29 @@
                         formatDate(dateString) {
                             try {
                                 if (!dateString) return '-';
-                                const date = new Date(dateString);
+                                
+                                // Separar la fecha en sus componentes
+                                const parts = dateString.split('-');  // "2019-02-21" -> ["2019", "02", "21"]
+                                const year = parseInt(parts[0]);      // 2019
+                                const month = parseInt(parts[1]) - 1; // 1 (febrero es 1 porque en JS los meses van de 0-11)
+                                const day = parseInt(parts[2]);       // 21
+                                
+                                // Crear fecha con componentes específicos (año, mes, día)
+                                // Esto crea una fecha en la zona horaria local sin ajuste UTC
+                                const date = new Date(year, month, day);
+                                
+                                // Formatear la fecha al estilo español (día/mes/año)
                                 return date.toLocaleDateString('es-ES', {
-                                    day: '2-digit',
-                                    month: '2-digit',
-                                    year: 'numeric'
+                                    day: '2-digit',     // día con dos dígitos (01-31)
+                                    month: '2-digit',   // mes con dos dígitos (01-12)
+                                    year: 'numeric'     // año con 4 dígitos
                                 });
                             } catch (e) {
                                 console.error("Error formateando fecha:", e);
                                 return dateString || '-';
                             }
                         },
-
+                        
                         getTimeRange(dateString) {
                             try {
                                 const today = new Date();
@@ -663,6 +673,7 @@
                 </button>
             </div>
         </div>
+        <div class="pb-20"></div> <!-- Padding para que el zocalo de botones no pise el ultimo registro-->
     </main>
 </body>
 </html>
