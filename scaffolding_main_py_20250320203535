@@ -1,0 +1,17 @@
+./hhcc/hhcc/__init__.py
+./hhcc/hhcc/asgi.py
+./hhcc/hhcc/urls.py
+./hhcc/hhcc/wsgi.py
+./hhcc/hhcc/settings.py
+./hhcc/main/admin.py
+./hhcc/main/apps.py
+./hhcc/main/tests.py
+./hhcc/main/forms.py
+./hhcc/main/signals.py
+./hhcc/main/urls.py
+./hhcc/main/models.py
+./hhcc/main/utils.py
+./hhcc/main/__init__.py
+./hhcc/main/views.py
+./hhcc/manage.py
+./post_migration_pacientes.py

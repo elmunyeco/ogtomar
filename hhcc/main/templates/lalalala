@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Encuentra todos los archivos HTML y los recorre
+find . -name "*.html" | sort | while read file; do
+    # Imprime un encabezado con el nombre del archivo
+    echo "================================================================================"
+    echo "ARCHIVO: $file"
+    echo "================================================================================"
+    
+    # Muestra el contenido del archivo
+    cat "$file"
+    
+    # Agrega un separador para facilitar la lectura
+    echo -e "\n\n"
+done
