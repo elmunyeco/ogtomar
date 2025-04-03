@@ -1,8 +1,2 @@
-bin/
-include/
-lib/
-lib64/
-pyvenv.cfg
-share 
-os
-sys
+# Created by venv; see https://docs.python.org/3/library/venv.html
+*
