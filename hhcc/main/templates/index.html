@@ -1,10 +1,13 @@
 <!doctype html>
 <html lang="en">
-<head>
+<head>{% load static %}
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Indice Principal</title>
-</head>
+
+    <!-- Enlace al CSS centralizado -->
+    <link rel="stylesheet" href="{% static 'main/css/style.css' %}"></head>
 <body>
     <h1>Bienvenido a la Página Principal</h1>
     <a href="{% url 'cargar_paciente' %}">Cargar Paciente</a>

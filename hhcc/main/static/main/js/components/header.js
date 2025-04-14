@@ -1,78 +1,105 @@
 // static/main/js/components/header.js
-document.addEventListener('alpine:init', () => {
-    Alpine.data('headerComponent', (initialActiveSection = '', initialBreadcrumbs = []) => ({
-        activeSection: initialActiveSection,
-        breadcrumbs: initialBreadcrumbs,
-        isSubmenuOpen: false,
-        hoveredItem: null,
-        
-        init() {
-            // Determinar sección activa basada en la URL actual si no se especifica
-            if (!this.activeSection) {
-                const path = window.location.pathname;
-                if (path.includes('/pacientes')) {
-                    this.activeSection = 'pacientes';
-                } else if (path.includes('/historias')) {
-                    this.activeSection = 'historias';
-                } else if (path.includes('/ordenes')) {
-                    this.activeSection = 'ordenes';
-                } else if (path === '/' || path === '/index.html') {
-                    this.activeSection = 'inicio';
-                }
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Inicializando menú de navegación...');
+    
+    // Referencias a elementos del menú
+    const menuToggles = document.querySelectorAll('.menu-toggle');
+    const menuItems = document.querySelectorAll('.menu-item[data-menu]');
+    const logoutButton = document.getElementById('logout-button');
+    
+    // Asegurarse de que todos los submenús estén ocultos al cargar
+    menuItems.forEach(item => {
+        const submenu = item.querySelector('.submenu-items');
+        if (submenu) {
+            submenu.classList.add('hidden');
+        }
+    });
+    
+    /**
+     * Función para cerrar todos los submenús
+     */
+    function closeAllMenus() {
+        menuItems.forEach(item => {
+            const submenu = item.querySelector('.submenu-items');
+            if (submenu) {
+                submenu.classList.add('hidden');
+            }
+        });
+    }
+    
+    /**
+     * Manejador para clicks en los toggles de menú
+     * Abre o cierra el submenú correspondiente
+     */
+    menuToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const menuItem = this.closest('.menu-item');
+            const submenu = menuItem.querySelector('.submenu-items');
+            
+            if (!submenu.classList.contains('hidden')) {
+                // Si ya está abierto, ciérralo
+                submenu.classList.add('hidden');
+            } else {
+                // Cierra todos los menús y abre el seleccionado
+                closeAllMenus();
+                submenu.classList.remove('hidden');
+            }
+        });
+    });
+    
+    /**
+     * Cerrar menús al hacer clic fuera de ellos
+     */
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.menu-item')) {
+            closeAllMenus();
+        }
+    });
+    
+    /**
+     * Permitir clics dentro de los submenús sin cerrarlos
+     */
+    const submenus = document.querySelectorAll('.submenu-items');
+    submenus.forEach(submenu => {
+        submenu.addEventListener('click', function(e) {
+            // Si el clic fue en un enlace, permitir la navegación normal
+            if (!e.target.closest('a')) {
+                e.stopPropagation();
+            }
+        });
+    });
+    
+    /**
+     * Manejador para el botón de cerrar sesión
+     */
+    if (logoutButton) {
+        logoutButton.addEventListener('click', function() {
+            // Puedes personalizarlo según las necesidades de tu aplicación
+            window.location.href = '/logout/';
+        });
+    }
+    
+    /**
+     * Soporte para navegación con teclado para accesibilidad
+     */
+    menuToggles.forEach(toggle => {
+        toggle.addEventListener('keydown', function(e) {
+            // Presionar Enter o Espacio activa el menú
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
             }
             
-            // Breadcrumbs por defecto si no se especifican
-            if (this.breadcrumbs.length === 0) {
-                this.breadcrumbs = [
-                    { label: 'Inicio', url: '/' }
-                ];
-                
-                // Añadir breadcrumbs basados en la sección activa
-                switch (this.activeSection) {
-                    case 'pacientes':
-                        this.breadcrumbs.push({ label: 'Pacientes', url: '/pacientes/' });
-                        break;
-                    case 'historias':
-                        this.breadcrumbs.push({ label: 'Historias', url: '/historias/' });
-                        break;
-                    case 'ordenes':
-                        this.breadcrumbs.push({ label: 'Órdenes', url: '/ordenes/' });
-                        break;
-                }
+            // Presionar Escape cierra los menús
+            if (e.key === 'Escape') {
+                closeAllMenus();
             }
-        },
-        
-        // Método para manejar hover en los elementos del menú
-        hoverMenuItem(item) {
-            this.hoveredItem = item;
-        },
-        
-        // Método para limpiar el hover
-        clearHover() {
-            this.hoveredItem = null;
-        },
-        
-        // Método para cerrar sesión
-        logout() {
-            // En producción, esto redireccionaría a la URL de logout
-            alert('Sesión cerrada');
-            // Opcional: redireccionar después del logout
-            // window.location.href = '/';
-        },
-        
-        // Método para verificar si un elemento de menú está activo
-        isActive(section) {
-            return this.activeSection === section;
-        },
-        
-        // Método para establecer breadcrumbs desde fuera del componente
-        setBreadcrumbs(breadcrumbs) {
-            this.breadcrumbs = breadcrumbs;
-        },
-        
-        // Método para añadir un breadcrumb desde fuera del componente
-        addBreadcrumb(label, url = null) {
-            this.breadcrumbs.push({ label, url });
-        }
-    }));
+        });
+    });
+    
+    console.log('Menú de navegación inicializado correctamente');
 });

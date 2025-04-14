@@ -1,76 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 
-<head>
+<head>{% load static %}
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lista de Pacientes</title>
     <!-- Importación de Tailwind CSS desde CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .active a {
-            font-weight: bold;
-            color: blue;
-        }
+    
 
-        nav ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        nav ul li {
-            display: inline;
-            margin-right: 5px;
-        }
-
-        /* Clase personalizada para altura */
-        .h-18 {
-            height: 4.5rem;
-        }
-
-        /* Ajustes para el botón */
-        .button-shadow {
-            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Clase para ajustar la sombra */
-        .select-shadow {
-            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Ajustes específicos para el contenedor del select y el botón */
-        .input-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-container input {
-            padding-right: 7rem;
-            /* Suficiente espacio para el select y el botón */
-        }
-
-        /* Posicionamiento del select */
-        .input-container select {
-            position: absolute;
-            right: 6.5rem;
-            /* Coloca el select dentro del input, ajusta según necesidad */
-            height: 2.8rem;
-            /* Ajusta la altura del select para que sea consistente con el input */
-            border-radius: 9999px;
-            /* Para que el select sea completamente redondeado */
-        }
-
-        /* Posicionamiento del botón */
-        .input-container button {
-            position: absolute;
-            right: 0.5rem;
-            /* Margen adecuado entre el borde derecho del input y el botón */
-            height: 2.8rem;
-            /* Ajusta la altura del botón */
-        }
-    </style>
-</head>
+    <!-- Enlace al CSS centralizado -->
+    <link rel="stylesheet" href="{% static 'main/css/style.css' %}"></head>
 
 <body class="bg-gray-100 p-6">
     <div class="container mx-auto mt-10">

@@ -1212,3 +1212,22 @@ def detalle_historia_con_historial(request, historia_id):
     }
 
     return render(request, "detalle_historia_con_historial.html", context)
+
+
+def h1_html(request):
+    """
+    Vista para la página "Uno" en el submenú de Historias
+    """
+    return render(request, 'historial_medico/h1.html')
+
+def h2_html(request):
+    """
+    Vista para la página "Dos" en el submenú de Historias
+    """
+    return render(request, 'historial_medico/h2.html')
+
+def h3_html(request):
+    """
+    Vista para la página "Tres" en el submenú de Historias
+    """
+    return render(request, 'historial_medico/h3.html')

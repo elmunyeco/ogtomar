@@ -1,24 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
+<head>{% load static %}
+    
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Componente de Búsqueda con Fondo Transparente</title>
   <!-- Incluir Tailwind CSS desde CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Estilos personalizados -->
-  <style>
-    /* Clase personalizada para altura */
-    .h-18 {
-      height: 4.5rem;
-    }
+  
 
-    /* Ajustes para el botón */
-    .button-shadow {
-      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    }
-  </style>
-</head>
+    <!-- Enlace al CSS centralizado -->
+    <link rel="stylesheet" href="{% static 'main/css/style.css' %}"></head>
 <body>
   <div class="relative max-w-3xl px-4 mx-auto mt-10 sm:px-6">
     <form action="/" method="get">

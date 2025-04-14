@@ -91,4 +91,10 @@ urlpatterns = [
         name="detalle_historia_con_historial",
     ),
     path("eliminar-comentario/", views.eliminar_comentario, name="eliminar_comentario"),
+    
+    
+    # Nuevas URLs para las páginas de ejemplo
+    path('h1/', views.h1_html, name='h1_html'),
+    path('h2/', views.h2_html, name='h2_html'),
+    path('h3/', views.h3_html, name='h3_html')
 ]

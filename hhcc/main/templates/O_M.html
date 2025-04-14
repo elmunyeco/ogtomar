@@ -1,50 +1,13 @@
 {% load static %}
 <!DOCTYPE html>
 <html>
-<head>
+<head>{% load static %}
+    
     <meta charset="UTF-8">
-    <style>
-        @page {
-            margin: 2cm;
-        }
-        
-        .header {
-            display: grid;
-            grid-template-columns: 80px 1fr 150px;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .logo {
-            width: 70px;
-            height: 70px;
-        }
-        
-        .doctor-info {
-            text-align: center;
-            color: #9a4035;
-        }
-        
-        .doctor-info p:first-child {
-            font-size: 16px;
-            font-weight: bold;
-            margin: 0;
-        }
-        
-        .doctor-info p:last-child {
-            fext-align: center;
-            font-size: 10px;
-            line-height: 1.5;
-        }
+    
 
-        ul {
-            list-style: disc;
-            margin-left: 20px;
-            font-size: 10px;
-            line-height: 1.5;
-        }
-    </style>
-</head>
+    <!-- Enlace al CSS centralizado -->
+    <link rel="stylesheet" href="{% static 'main/css/style.css' %}"></head>
 <body>
     <div class="header">
         <img src="file:///{{ STATIC_ROOT }}/main/images/logosolo.png" class="logo" alt="Logo">
