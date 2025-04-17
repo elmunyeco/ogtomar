@@ -134,7 +134,8 @@ def listar_buscar_historias(request):
 
     return render(
         request,
-        "listar_buscar_historias.html",
+        "django-template-header.html",
+#        "listar_buscar_historias.html",
         {"page_obj": page_obj, "query": query, "tipo": tipo},
     )
 
@@ -962,76 +963,112 @@ def guardar_comentarios_indicaciones(request, historia_id):
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
+
 @csrf_protect
 def historial_medico(request, id_historia):
     historia = get_object_or_404(HistoriaClinica, id=id_historia)
     paciente = historia.paciente
-    
+
     # Obtener datos para JSON
-    comentarios = ComentariosVisitas.objects.filter(historia_clinica=historia).order_by('-fecha')
-    signos_vitales = SignosVitales.objects.filter(historia=historia).order_by('-fecha')
-    indicaciones = IndicacionesVisitas.objects.filter(historia_clinica=historia, eliminado=False).order_by('-fecha')
-    
+    comentarios = ComentariosVisitas.objects.filter(historia_clinica=historia).order_by(
+        "-fecha"
+    )
+    signos_vitales = SignosVitales.objects.filter(historia=historia).order_by("-fecha")
+    indicaciones = IndicacionesVisitas.objects.filter(
+        historia_clinica=historia, eliminado=False
+    ).order_by("-fecha")
+
     # Formatear datos para el componente
     visitas_json = []
     fechas_unicas = set()
-    
+
     # Obtener fechas y normalizarlas al mismo tipo
-    com_fechas = [fecha.date() if isinstance(fecha, datetime) else fecha 
-                for fecha in comentarios.values_list('fecha', flat=True)]
-    sv_fechas = [fecha.date() if isinstance(fecha, datetime) else fecha 
-                for fecha in signos_vitales.values_list('fecha', flat=True)]
+    com_fechas = [
+        fecha.date() if isinstance(fecha, datetime) else fecha
+        for fecha in comentarios.values_list("fecha", flat=True)
+    ]
+    sv_fechas = [
+        fecha.date() if isinstance(fecha, datetime) else fecha
+        for fecha in signos_vitales.values_list("fecha", flat=True)
+    ]
 
     todas_fechas = com_fechas + sv_fechas
     todas_fechas = sorted(set(todas_fechas), reverse=True)
 
     for fecha in todas_fechas:
-        fecha_str = fecha.strftime('%Y-%m-%d')
-        
+        fecha_str = fecha.strftime("%Y-%m-%d")
+
         # Buscar datos para esta fecha
         coms_fecha = comentarios.filter(fecha=fecha)
         signos_fecha = signos_vitales.filter(fecha=fecha).first()
         meds_fecha = indicaciones.filter(fecha=fecha)
-        
+
         # Formatear medicamentos
         medicamentos = []
         for med in meds_fecha:
-            medicamentos.append({
-                'id': med.id,
-                'name': med.medicamento,
-                'h8': med.ochoHoras or '',
-                'h12': med.doceHoras or '',
-                'h18': med.dieciochoHoras or '',
-                'h21': med.veintiunaHoras or ''
-            })
-        
+            medicamentos.append(
+                {
+                    "id": med.id,
+                    "name": med.medicamento,
+                    "h8": med.ochoHoras or "",
+                    "h12": med.doceHoras or "",
+                    "h18": med.dieciochoHoras or "",
+                    "h21": med.veintiunaHoras or "",
+                }
+            )
+
         # Crear visita
         visita = {
-            'id': len(visitas_json) + 1,
-            'date': fecha_str,
-            'comments': [{'id': c.id, 'text': c.comentarios} for c in coms_fecha],
-            'vitalSigns': {
-                'weight': str(signos_fecha.peso) if signos_fecha and signos_fecha.peso else '0',
-                'cholesterol': str(signos_fecha.colesterol) if signos_fecha and signos_fecha.colesterol else '0',
-                'glucose': str(signos_fecha.glucemia) if signos_fecha and signos_fecha.glucemia else '0',
-                'systolic': str(signos_fecha.presion_sistolica) if signos_fecha and signos_fecha.presion_sistolica else '0',
-                'diastolic': str(signos_fecha.presion_diastolica) if signos_fecha and signos_fecha.presion_diastolica else '0'
+            "id": len(visitas_json) + 1,
+            "date": fecha_str,
+            "comments": [{"id": c.id, "text": c.comentarios} for c in coms_fecha],
+            "vitalSigns": {
+                "weight": (
+                    str(signos_fecha.peso)
+                    if signos_fecha and signos_fecha.peso
+                    else "0"
+                ),
+                "cholesterol": (
+                    str(signos_fecha.colesterol)
+                    if signos_fecha and signos_fecha.colesterol
+                    else "0"
+                ),
+                "glucose": (
+                    str(signos_fecha.glucemia)
+                    if signos_fecha and signos_fecha.glucemia
+                    else "0"
+                ),
+                "systolic": (
+                    str(signos_fecha.presion_sistolica)
+                    if signos_fecha and signos_fecha.presion_sistolica
+                    else "0"
+                ),
+                "diastolic": (
+                    str(signos_fecha.presion_diastolica)
+                    if signos_fecha and signos_fecha.presion_diastolica
+                    else "0"
+                ),
             },
-            'medications': medicamentos
+            "medications": medicamentos,
         }
-        
+
         visitas_json.append(visita)
-    
+
     # Convertir a JSON
     import json
-    historial_json = json.dumps({'visitas': visitas_json})
-    
-    return render(request, 'historial_medico/historial_medico.html', {
-        'historia': historia,
-        'paciente': paciente,
-        'historial_json': historial_json,
-        'debug': settings.DEBUG
-    })
+
+    historial_json = json.dumps({"visitas": visitas_json})
+
+    return render(
+        request,
+        "historial_medico/historial_medico.html",
+        {
+            "historia": historia,
+            "paciente": paciente,
+            "historial_json": historial_json,
+            "debug": settings.DEBUG,
+        },
+    )
 
 
 @require_POST
@@ -1073,62 +1110,95 @@ def detalle_historia_con_historial(request, historia_id):
 
     # Código del historial médico
     # Obtener datos para JSON
-    comentarios = ComentariosVisitas.objects.filter(historia_clinica=historia).order_by('-fecha')
-    signos_vitales_historial = SignosVitales.objects.filter(historia=historia).order_by('-fecha')
-    indicaciones = IndicacionesVisitas.objects.filter(historia_clinica=historia, eliminado=False).order_by('-fecha')
-    
+    comentarios = ComentariosVisitas.objects.filter(historia_clinica=historia).order_by(
+        "-fecha"
+    )
+    signos_vitales_historial = SignosVitales.objects.filter(historia=historia).order_by(
+        "-fecha"
+    )
+    indicaciones = IndicacionesVisitas.objects.filter(
+        historia_clinica=historia, eliminado=False
+    ).order_by("-fecha")
+
     # Formatear datos para el componente
     visitas_json = []
-    
+
     # Obtener fechas y normalizarlas al mismo tipo
-    com_fechas = [fecha.date() if isinstance(fecha, datetime) else fecha 
-                for fecha in comentarios.values_list('fecha', flat=True)]
-    sv_fechas = [fecha.date() if isinstance(fecha, datetime) else fecha 
-                for fecha in signos_vitales_historial.values_list('fecha', flat=True)]
+    com_fechas = [
+        fecha.date() if isinstance(fecha, datetime) else fecha
+        for fecha in comentarios.values_list("fecha", flat=True)
+    ]
+    sv_fechas = [
+        fecha.date() if isinstance(fecha, datetime) else fecha
+        for fecha in signos_vitales_historial.values_list("fecha", flat=True)
+    ]
 
     todas_fechas = com_fechas + sv_fechas
     todas_fechas = sorted(set(todas_fechas), reverse=True)
 
     for fecha in todas_fechas:
-        fecha_str = fecha.strftime('%Y-%m-%d')
-        
+        fecha_str = fecha.strftime("%Y-%m-%d")
+
         # Buscar datos para esta fecha
         coms_fecha = comentarios.filter(fecha=fecha)
         signos_fecha = signos_vitales_historial.filter(fecha=fecha).first()
         meds_fecha = indicaciones.filter(fecha=fecha)
-        
+
         # Formatear medicamentos
         medicamentos = []
         for med in meds_fecha:
-            medicamentos.append({
-                'id': med.id,
-                'name': med.medicamento,
-                'h8': med.ochoHoras or '',
-                'h12': med.doceHoras or '',
-                'h18': med.dieciochoHoras or '',
-                'h21': med.veintiunaHoras or ''
-            })
-        
+            medicamentos.append(
+                {
+                    "id": med.id,
+                    "name": med.medicamento,
+                    "h8": med.ochoHoras or "",
+                    "h12": med.doceHoras or "",
+                    "h18": med.dieciochoHoras or "",
+                    "h21": med.veintiunaHoras or "",
+                }
+            )
+
         # Crear visita
         visita = {
-            'id': len(visitas_json) + 1,
-            'date': fecha_str,
-            'comments': [{'id': c.id, 'text': c.comentarios} for c in coms_fecha],
-            'vitalSigns': {
-                'weight': str(signos_fecha.peso) if signos_fecha and signos_fecha.peso else '0',
-                'cholesterol': str(signos_fecha.colesterol) if signos_fecha and signos_fecha.colesterol else '0',
-                'glucose': str(signos_fecha.glucemia) if signos_fecha and signos_fecha.glucemia else '0',
-                'systolic': str(signos_fecha.presion_sistolica) if signos_fecha and signos_fecha.presion_sistolica else '0',
-                'diastolic': str(signos_fecha.presion_diastolica) if signos_fecha and signos_fecha.presion_diastolica else '0'
+            "id": len(visitas_json) + 1,
+            "date": fecha_str,
+            "comments": [{"id": c.id, "text": c.comentarios} for c in coms_fecha],
+            "vitalSigns": {
+                "weight": (
+                    str(signos_fecha.peso)
+                    if signos_fecha and signos_fecha.peso
+                    else "0"
+                ),
+                "cholesterol": (
+                    str(signos_fecha.colesterol)
+                    if signos_fecha and signos_fecha.colesterol
+                    else "0"
+                ),
+                "glucose": (
+                    str(signos_fecha.glucemia)
+                    if signos_fecha and signos_fecha.glucemia
+                    else "0"
+                ),
+                "systolic": (
+                    str(signos_fecha.presion_sistolica)
+                    if signos_fecha and signos_fecha.presion_sistolica
+                    else "0"
+                ),
+                "diastolic": (
+                    str(signos_fecha.presion_diastolica)
+                    if signos_fecha and signos_fecha.presion_diastolica
+                    else "0"
+                ),
             },
-            'medications': medicamentos
+            "medications": medicamentos,
         }
-        
+
         visitas_json.append(visita)
-    
+
     # Convertir a JSON
     import json
-    historial_json = json.dumps({'visitas': visitas_json})
+
+    historial_json = json.dumps({"visitas": visitas_json})
 
     context = {
         "historia": historia,
@@ -1138,7 +1208,26 @@ def detalle_historia_con_historial(request, historia_id):
         "condiciones_activas": condiciones_activas,
         "comentarios_hoy": comentarios_hoy.comentarios if comentarios_hoy else "",
         "historial_json": historial_json,
-        "debug": settings.DEBUG
+        "debug": settings.DEBUG,
     }
 
     return render(request, "detalle_historia_con_historial.html", context)
+
+
+def h1_html(request):
+    """
+    Vista para la página "Uno" en el submenú de Historias
+    """
+    return render(request, 'historial_medico/h1.html')
+
+def h2_html(request):
+    """
+    Vista para la página "Dos" en el submenú de Historias
+    """
+    return render(request, 'historial_medico/h2.html')
+
+def h3_html(request):
+    """
+    Vista para la página "Tres" en el submenú de Historias
+    """
+    return render(request, 'historial_medico/h3.html')

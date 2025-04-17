@@ -1,89 +1,75 @@
 {% comment %}
-templates/components/header.html - Componente de encabezado reutilizable con Alpine.js
+templates/components/header.html
 {% endcomment %}
 
 {% load static %}
 
-<!-- ENCABEZADO REUTILIZABLE - COMIENZA -->
-<header 
-    x-data="headerComponent('{{ active_section|default:'' }}', {{ breadcrumbs_json|default:'[]'|safe }})"
-    class="header-container">
-    
-    <!-- Sección superior del encabezado -->
+<header class="header-container">
     <div class="header-main">
         <div class="logo-section">
             <img src="{% static 'main/images/logo.png' %}" alt="Logo Dr. Omar Prieto">
             <div class="doctor-title">
                 <span class="doctor-name">Dr. Omar Prieto</span>
-                <span class="doctor-specialty">Cardiología Integral</span>
+                <span class="doctor-specialty">CARDIOLOGÍA INTEGRAL</span>
             </div>
         </div>
         <div class="user-actions">
             <div class="user-info">
-                <span>Dr.</span>
-                <span class="user-name">Omar Prieto</span>
+                <span>Dr. Omar Prieto</span>
             </div>
-            <button @click="logout()" class="logout-btn">Cerrar Sesión</button>
+            <button id="logout-button" class="logout-btn">Cerrar Sesión</button>
         </div>
     </div>
     
-    <!-- Navegación principal con menú y breadcrumb integrado -->
     <nav class="main-nav">
         <ul class="main-menu">
-            <li class="menu-item" :class="{'active': isActive('inicio')}" 
-                @mouseenter="hoverMenuItem('inicio')" 
-                @mouseleave="clearHover()">
+            <li class="menu-item {% if active_section == 'inicio' %}active{% endif %}">
                 <a href="{% url 'index' %}" class="menu-link">Inicio</a>
             </li>
             
-            <li class="menu-item" :class="{'active': isActive('pacientes')}" 
-                @mouseenter="hoverMenuItem('pacientes')" 
-                @mouseleave="clearHover()">
-                <a href="{% url 'listar_buscar_pacientes' %}" class="menu-link">Pacientes</a>
-                <div class="submenu-items" x-show="hoveredItem === 'pacientes'">
+            <li class="menu-item {% if active_section == 'pacientes' %}active{% endif %}" data-menu="pacientes">
+                <a href="#" class="menu-link menu-toggle">Pacientes</a>
+                <div class="submenu-items hidden">  <!-- Añadido 'hidden' aquí -->
                     <a href="{% url 'listar_buscar_pacientes' %}" class="submenu-link">Buscar Pacientes</a>
                     <a href="{% url 'guardar_paciente' 0 %}" class="submenu-link">Nuevo Paciente</a>
                 </div>
             </li>
             
-            <li class="menu-item" :class="{'active': isActive('historias')}" 
-                @mouseenter="hoverMenuItem('historias')" 
-                @mouseleave="clearHover()">
-                <a href="{% url 'listar_buscar_historias' %}" class="menu-link">Historias</a>
-                <div class="submenu-items" x-show="hoveredItem === 'historias'">
+            <li class="menu-item {% if active_section == 'historias' %}active{% endif %}" data-menu="historias">
+                <a href="#" class="menu-link menu-toggle">Historias</a>
+                <div class="submenu-items hidden">
                     <a href="{% url 'listar_buscar_historias' %}" class="submenu-link">Buscar Historias</a>
+                    <!-- Nuevas opciones en el submenú -->
+                    <a href="{% url 'h1_html' %}" class="submenu-link">Uno</a>
+                    <a href="{% url 'h2_html' %}" class="submenu-link">Dos</a>
+                    <a href="{% url 'h3_html' %}" class="submenu-link">Tres</a>
                 </div>
             </li>
             
-            <li class="menu-item" :class="{'active': isActive('ordenes')}" 
-                @mouseenter="hoverMenuItem('ordenes')" 
-                @mouseleave="clearHover()">
-                <a href="#" class="menu-link">Órdenes</a>
-                <div class="submenu-items" x-show="hoveredItem === 'ordenes'">
+            <li class="menu-item {% if active_section == 'ordenes' %}active{% endif %}" data-menu="ordenes">
+                <a href="#" class="menu-link menu-toggle">Órdenes</a>
+                <div class="submenu-items hidden">  <!-- Añadido 'hidden' aquí -->
                     <a href="{% url 'ordenes_medicas' 0 %}" class="submenu-link">Órdenes Médicas</a>
                     <a href="{% url 'ordenes_pedicas' 0 %}" class="submenu-link">Solicitudes</a>
                 </div>
             </li>
         </ul>
         
-        <!-- Breadcrumb integrado a la derecha -->
         <div class="current-path">
-            <template x-for="(crumb, index) in breadcrumbs" :key="index">
-                <template>
-                    <template x-if="index > 0">
+            {% if breadcrumbs %}
+                {% for crumb in breadcrumbs %}
+                    {% if forloop.counter0 > 0 %}
                         <span class="breadcrumb-separator">›</span>
-                    </template>
+                    {% endif %}
                     <span class="breadcrumb-item">
-                        <template x-if="index < breadcrumbs.length - 1 && crumb.url">
-                            <a :href="crumb.url" x-text="crumb.label"></a>
-                        </template>
-                        <template x-if="index === breadcrumbs.length - 1 || !crumb.url">
-                            <span x-text="crumb.label"></span>
-                        </template>
+                        {% if not forloop.last and crumb.url %}
+                            <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+                        {% else %}
+                            <span>{{ crumb.label }}</span>
+                        {% endif %}
                     </span>
-                </template>
-            </template>
+                {% endfor %}
+            {% endif %}
         </div>
     </nav>
 </header>
-<!-- ENCABEZADO REUTILIZABLE - TERMINA -->
