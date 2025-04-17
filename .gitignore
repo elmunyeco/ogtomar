@@ -1,4 +1,14 @@
 ### Python ###
+# Archivos de entorno virtual en la raíz
+/bin/
+/lib/
+/lib64/
+/share/
+/include/
+/pyvenv.cfg
+/os
+/sys
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
