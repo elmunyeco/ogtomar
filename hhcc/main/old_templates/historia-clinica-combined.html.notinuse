@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historia Clínica - {{ paciente.nombre }} {{ paciente.apellido }}</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        .diagnosticos-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem 1rem;
+            align-items: center;
+        }
+
+        .diagnostico-item {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            padding: 0.25rem;
+        }
+
+        /* Custom checkbox styles */
+        .form-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            border: 1.5px solid #9a4035;
+            border-radius: 0.25rem;
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .form-checkbox:checked {
+            background-color: #9a4035;
+        }
+
+        .form-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 0.75rem;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Input focus styles */
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #9a4035;
+            box-shadow: 0 0 0 1px #9a4035;
+        }
+
+        /* Custom scrollbar for textarea */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        textarea::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        textarea::-webkit-scrollbar-thumb {
+            background: #9a4035;
+            border-radius: 4px;
+        }
+
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #7a332b;
+        }
+
+        /* Animated button hover effects */
+        .btn-hover-effect {
+            transition: all 0.3s ease;
+        }
+
+        .btn-hover-effect:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(154, 64, 53, 0.2);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    {% if debug %}
+    <div style="display: none;">
+        Debug info: Historia: {{ historia }} Paciente: {{ paciente }}
+    </div>
+    {% endif %}
+
+    <div class="container mx-auto p-6 max-w-6xl" role="main" x-data="historiaClinica()">
+        <!-- Header Section -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center space-x-4">
+                    <span class="text-xl font-medium text-gray-900">{{ paciente.nombre }} {{ paciente.apellido }}</span>
+                    <span class="text-gray-500">{{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}</span>
+                </div>
+
+                <div class="flex items-center space-x-6">
+                    <button @click="window.location.href='{% url 'ordenes_medicas' paciente.id %}'"
+                        class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
+                        <i class="fas fa-pills text-xl mb-1"></i>
+                        <span class="text-xs">Medicación</span>
+                    </button>
+                    <button
+                        class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
+                        <i class="fas fa-file-medical text-xl mb-1"></i>
+                        <span class="text-xs">Prácticas</span>
+                    </button>
+                    <button onclick="window.print()"
+                        class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
+                        <i class="fas fa-print text-xl mb-1"></i>
+                        <span class="text-xs">Imprimir</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-6 text-sm">
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Nacimiento</span>
+                    {{ paciente.fechaNac|date:"d/m/Y" }} ({{ paciente.fechaNac|timesince|truncatewords:1 }} años)
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Teléfono</span>
+                    {{ paciente.telefono }}
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Última visita</span>
+                    {{ historia.fechaAlta|date:"d/m/Y" }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-2 gap-6">
+            <!-- Left Column -->
+            <div class="space-y-6">
+                <!-- Signos Vitales -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-4">Signos Vitales</h3>
+                    {% csrf_token %}
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-heart text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Presión arterial</div>
+                                <div class="flex items-center space-x-2">
+                                    <input type="text" 
+                                           x-model="signos.presionSistolica"
+                                           @input="handleSignosChange"
+                                           placeholder="PAS"
+                                           class="w-16 p-1.5 border rounded text-center text-sm">
+                                    <span class="text-gray-400">/</span>
+                                    <input type="text"
+                                           x-model="signos.presionDiastolica"
+                                           @input="handleSignosChange"
+                                           placeholder="PAD"
+                                           class="w-16 p-1.5 border rounded text-center text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-weight text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Peso</div>
+                                <input type="text"
+                                       x-model="signos.peso"
+                                       @input="handleSignosChange"
+                                       class="w-full p-1.5 border rounded text-center text-sm">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-tint text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Glucemia</div>
+                                <input type="text"
+                                       x-model="signos.glucemia"
+                                       @input="handleSignosChange"
+                                       class="w-full p-1.5 border rounded text-center text-sm">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-chart-line text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Colesterol</div>
+                                <input type="text"
+                                       x-model="signos.colesterol"
+                                       @input="handleSignosChange"
+                                       class="w-full p-1.5 border rounded text-center text-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Visitas Section -->
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="font-medium">Visitas</span>
+                        <button class="text-[#9a4035] hover:text-[#7a332b] btn-hover-effect">
+                            <i class="fas fa-plus-circle"></i>
+                        </button>
+                    </div>
+                    <textarea placeholder="Nota de evolución..."
+                            x-model="notas"
+                            @input="handleSignosChange"
+                            class="w-full p-3 border rounded-lg resize-none focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
+                            rows="4"></textarea>
+                </div>
+            </div>
+
+
+
+
+
+            <!-- Condiciones Médicas -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-medium text-gray-700">Condiciones Médicas</h3>
+                </div>
+
+                {% csrf_token %}
+                <div class="space-y-2">
+                    {% for condicion in todas_condiciones %}
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox"
+                               value="{{ condicion.id }}"
+                               x-model="condicionesSeleccionadas"
+                               @change="handleCondicionesChange"
+                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm">{{ condicion.nombre }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer con botones -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
+            <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
+                <button @click="cancelarGuardar" 
+                        class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+                    Cancelar
+                </button>
+                <button @click="guardarCambios" 
+                        :disabled="!unsavedChanges"
+                        class="px-4 py-2 text-sm bg-[#9a4035] text-white rounded hover:bg-[#7a332b] transition-colors btn-hover-effect disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal de confirmación -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+             x-show="showSaveConfirmation"
+             x-cloak>
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                <h3 class="text-lg font-medium mb-4">Confirmar Guardar</h3>
+                <p class="text-gray-600 mb-4">¿Está seguro que desea guardar los cambios?</p>
+                <div class="flex justify-end space-x-4">
+                    <button @click="cancelarGuardar"
+                            class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+                        Cancelar
+                    </button>
+                    <button @click="confirmarGuardar"
+                            class="px-4 py-2 text-sm bg-[#9a4035] text-white rounded hover:bg-[#7a332b] transition-colors">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

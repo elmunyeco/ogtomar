@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>{% load static %}
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historia Clínica - {{ paciente.nombre }} {{ paciente.apellido }}</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    
+
+    <!-- Enlace al CSS centralizado -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}"></head>
+
+<body class="bg-gray-100" x-data="{
+    estado: {
+        signos_vitales: {
+            presion_sistolica: '{{ signos_vitales.presion_sistolica|default:"" }}',
+            presion_diastolica: '{{ signos_vitales.presion_diastolica|default:"" }}',
+            peso: '{{ signos_vitales.peso|default:"" }}',
+            glucemia: '{{ signos_vitales.glucemia|default:"" }}',
+            colesterol: '{{ signos_vitales.colesterol|default:"" }}'
+        },
+        condiciones: new Set([{% for id in condiciones_activas %}{{ id }}{% if not forloop.last %},{% endif %}{% endfor %}]),
+        comentarios: '{{ comentarios_hoy|default:""|escapejs }}',
+        cambios_pendientes: false,
+        errorMessage: ''
+    },
+
+    debug() {
+        const estadoSerializable = {
+            ...this.estado,
+            condiciones: Array.from(this.estado.condiciones)
+        };
+        console.log('Estado actual:', JSON.stringify(estadoSerializable));
+    },
+
+    toggleCondicion(id) {
+        if (this.estado.condiciones.has(id)) {
+            this.estado.condiciones.delete(id);
+        } else {
+            this.estado.condiciones.add(id);
+        }
+        this.estado.cambios_pendientes = true;
+        this.debug();
+    },
+
+    async guardarCambios() {
+        try {
+            const response = await fetch('{% url "guardar_historia" historia.id %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    signos_vitales: this.estado.signos_vitales,
+                    condiciones: Array.from(this.estado.condiciones),
+                    comentarios: this.estado.comentarios
+                })
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text);
+            }
+
+            const data = await response.json();
+            
+            if (data.error) {
+                this.estado.errorMessage = data.error;
+            } else {
+                this.estado.cambios_pendientes = false;
+                this.estado.errorMessage = '';
+                window.location.reload();
+            }
+        } catch (error) {
+            this.estado.errorMessage = error.message || 'Error al guardar los cambios';
+            console.error('Error:', error);
+        }
+    }
+}">
+
+    <main class="container mx-auto p-6 max-w-7xl">
+        <!-- Patient Header -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center space-x-4">
+                    <span class="text-xl font-medium text-gray-900">{{ paciente.nombre }} {{ paciente.apellido }}</span>
+                    <span class="text-gray-500">{{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}</span>
+                </div>
+
+                <div class="flex items-center space-x-6">
+                    <button
+                        class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
+                        <i class="fas fa-pills text-xl mb-1"></i>
+                        <span class="text-xs">Medicación</span>
+                    </button>
+                    <button @click="window.location.href='{% url 'ordenes_medicas' paciente.id %}'"
+                        class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
+                        <i class="fas fa-file-medical text-xl mb-1"></i>
+                        <span class="text-xs">Prácticas</span>
+                    </button>
+                    <button onclick="window.print()"
+                        class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
+                        <i class="fas fa-print text-xl mb-1"></i>
+                        <span class="text-xs">Imprimir</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-4 text-sm mt-2">
+                <d""""""""""iv>
+                    <span class="text-gray-500 mr-2">Nacimiento:</span>
+                    <span>{{ paciente.fechaNac|date:"d/m/Y" }} ({{ paciente.fechaNac|timesince|truncatewords:1 }} años)</span>
+                </div>
+                <div>
+                    <span class="text-gray-500 mr-2">Teléfono:</span>
+                    <span>{{ paciente.telefono }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-500 mr-2">Última visita:</span>
+                    <span>{{ historia.fechaAlta|date:"d/m/Y" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-2 gap-6">
+            <!-- Left Column -->
+            <div class="space-y-6">
+                <!-- Signos Vitales -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-4">Signos Vitales</h3>
+                    <div class="grid grid-cols-2 gap-6">
+                        {% csrf_token %}
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-heart text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Presión arterial</div>
+                                <div class="flex items-center space-x-2">
+                                    <input type="text" x-model="estado.signos_vitales.presion_sistolica"
+                                        @input="estado.cambios_pendientes = true; debug()" placeholder="PAS"
+                                        class="w-16 p-1.5 border rounded text-center text-sm">
+                                    <span class="text-gray-400">/</span>
+                                    <input type="text" x-model="estado.signos_vitales.presion_diastolica"
+                                        @input="estado.cambios_pendientes = true; debug()" placeholder="PAD"
+                                        class="w-16 p-1.5 border rounded text-center text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-weight text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Peso</div>
+                                <input type="text" x-model="estado.signos_vitales.peso"
+                                    @input="estado.cambios_pendientes = true; debug()"
+                                    class="w-full p-1.5 border rounded text-center text-sm">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-tint text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Glucemia</div>
+                                <input type="text" x-model="estado.signos_vitales.glucemia"
+                                    @input="estado.cambios_pendientes = true; debug()"
+                                    class="w-full p-1.5 border rounded text-center text-sm">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-chart-line text-[#9a4035] w-5"></i>
+                            <div class="flex-1">
+                                <div class="text-xs text-gray-500 mb-1">Colesterol</div>
+                                <input type="text" x-model="estado.signos_vitales.colesterol"
+                                    @input="estado.cambios_pendientes = true; debug()"
+                                    class="w-full p-1.5 border rounded text-center text-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comentarios -->
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="font-medium">Comentarios</span>
+                    </div>
+                    <textarea x-model="estado.comentarios" @input="estado.cambios_pendientes = true; debug()"
+                        placeholder="Evolucion... (nr = shift + enter)"
+                        class="w-full p-3 border rounded-lg resize-none focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
+                        rows="4"></textarea>
+                </div>
+            </div>
+
+            <!-- Condiciones Médicas -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-medium text-gray-700">Condiciones Médicas</h3>
+                </div>
+                <div class="diagnosticos-grid">
+                    {% csrf_token %}
+                    {% for condicion in todas_condiciones %}
+                    <label class="diagnostico-item hover:bg-gray-50 rounded-md cursor-pointer">
+                        <input type="checkbox" :checked="estado.condiciones.has({{ condicion.id }})"
+                            @change="toggleCondicion({{ condicion.id }})" class="form-checkbox">
+                        <span class="text-sm">{{ condicion.nombre }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial Médico Section (ADDED) -->
+        <div class="mt-8 bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Historial de Visitas Médicas</h2>
+            <div class="flex space-x-2 mb-4">
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[#9a4035] text-white">
+                    <span class="w-3 h-3 mr-1 rounded-full bg-white"></span>
+                    Reciente
+                </span>
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[#B25C51] text-white">
+                    <span class="w-3 h-3 mr-1 rounded-full bg-white"></span>
+                    6 Meses
+                </span>
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[#CA786D] text-white">
+                    <span class="w-3 h-3 mr-1 rounded-full bg-white"></span>
+                    Anterior
+                </span>
+            </div>
+
+            <!-- Historial Médico Alpine Component -->
+            <div x-data="historialMedico">
+                <div class="space-y-2">
+                    <template x-for="(visita, index) in visitas" :key="visita.id">
+                        <div class="border rounded-lg overflow-hidden">
+                            <div class="text-white p-3 cursor-pointer flex items-center justify-between"
+                                :class="getTimeRangeColor(visita.date)" @click="togglePanel(visita.id)">
+                                <div class="flex items-center">
+                                    <svg x-show="openPanel === visita.id" class="w-5 h-5 mr-2" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round"/>
+                                    </svg>
+                                    <svg x-show="openPanel !== visita.id" class="w-5 h-5 mr-2" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round"/>
+                                    </svg>
+
+                                    <span class="flex items-center">
+                                        <svg class="w-4 h-4 mr-2" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <rect width="18" height="18" x="3" y="4" rx="2" ry="2" stroke="currentColor" stroke-width="2" />
+                                            <line x1="16" x2="16" y1="2" y2="6" stroke="currentColor" stroke-width="2" />
+                                            <line x1="8" x2="8" y1="2" y2="6" stroke="currentColor" stroke-width="2" />
+                                            <line x1="3" x2="21" y1="10" y2="10" stroke="currentColor" stroke-width="2" />
+                                        </svg>
+                                        <span class="font-medium" x-text="formatDate(visita.date)"></span>
+                                    </span>
+                                </div>
+
+                                <div class="flex items-center space-x-4">
+                                    <template x-if="(visita.comments?.length || 0) > 0">
+                                        <span class="flex items-center text-xs">
+                                            <span class="mr-1" x-text="visita.comments?.length || 0"></span>
+                                            <span x-text="(visita.comments?.length || 0) === 1 ? 'comentario' : 'comentarios'"></span>
+                                        </span>
+                                    </template>
+
+                                    <template x-if="visita.vitalSigns?.weight && visita.vitalSigns.weight !== '0'">
+                                        <svg class="w-4 h-4" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" stroke-width="2" />
+                                            <path d="M8 7H16" stroke="currentColor" stroke-width="2" />
+                                            <path d="M8 12H16" stroke="currentColor" stroke-width="2" />
+                                            <path d="M8 17H12" stroke="currentColor" stroke-width="2" />
+                                            <circle cx="6" cy="7" r="1" fill="currentColor" />
+                                            <circle cx="6" cy="12" r="1" fill="currentColor" />
+                                            <circle cx="6" cy="17" r="1" fill="currentColor" />
+                                        </svg>
+                                    </template>
+
+                                    <template x-if="(visita.medications?.length || 0) > 0">
+                                        <svg class="w-4 h-4" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                            <path d="M10.5 20.5l10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" stroke="currentColor"
+                                                stroke-width="2" />
+                                            <path d="M8.5 8.5l7 7" stroke="currentColor" stroke-width="2" />
+                                        </svg>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div :id="`panel-${visita.id}`" x-show="openPanel === visita.id" x-transition class="p-4 bg-white">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <!-- Panel de comentarios -->
+                                    <div class="bg-gray-50 rounded-lg p-4">
+                                        <h3 class="text-lg font-semibold text-[#9a4035] mb-3 pb-2 border-b border-[#d1b0ab] flex items-center">
+                                            <span class="mr-2">Visitas</span>
+                                            <span class="text-xs font-normal bg-[#f8e1de] text-[#9a4035] px-2 py-1 rounded ml-auto">
+                                                <span x-text="visita.comments?.length || 0"></span>
+                                                <span x-text="(visita.comments?.length || 0) === 1 ? ' comentario' : ' comentarios'"></span>
+                                            </span>
+                                        </h3>
+
+                                        <template x-if="(visita.comments?.length || 0) === 0">
+                                            <p class="text-gray-500 italic text-center py-4">No hay comentarios registrados</p>
+                                        </template>
+
+                                        <template x-if="(visita.comments?.length || 0) > 0">
+                                            <div class="space-y-3">
+                                                <template x-for="comment in visita.comments" :key="comment.id">
+                                                    <div class="relative bg-white p-3 rounded shadow-sm border-l-4 border-[#9a4035]">
+                                                        <p class="text-gray-700" x-text="comment.text || ''"></p>
+                                                        <button @click="eliminarComentario(comment.id)"
+                                                            class="absolute top-2 right-2 text-gray-400 hover:text-[#9a4035]"
+                                                            title="Eliminar comentario">
+                                                            <svg class="w-4 h-4" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                                <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" stroke="currentColor" stroke-width="2"
+                                                                    stroke-linecap="round" />
+                                                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" stroke="currentColor" stroke-width="2"
+                                                                    stroke-linecap="round" />
+                                                                <line x1="10" x2="10" y1="11" y2="17" stroke="currentColor" stroke-width="2"
+                                                                    stroke-linecap="round" />
+                                                                <line x1="14" x2="14" y1="11" y2="17" stroke="currentColor" stroke-width="2"
+                                                                    stroke-linecap="round" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <!-- Panel de signos vitales -->
+                                    <div class="bg-gray-50 rounded-lg p-4">
+                                        <h3 class="text-lg fguardarCambiosont-semibold text-[#9a4035] mb-3 pb-2 border-b border-[#d1b0ab] flex items-center">
+                                            <span class="mr-2">Signos Vitales</span>
+                                            <svg class="w-5 h-5 text-red-500 ml-auto" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                                <path
+                                                    d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
+                                                    stroke="currentColor" stroke-width="2" fill="none" />
+                                            </svg>
+                                        </h3>
+
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div class="bg-white rounded p-3 flex flex-col shadow-sm">
+                                                <span class="text-sm text-gray-500">Peso</span>
+                                                <span class="text-lg font-medium text-gray-800"
+                                                    x-text="formatVitalSign(visita.vitalSigns?.weight, 'Kg')"></span>
+                                            </div>
+
+                                            <div class="bg-white rounded p-3 flex flex-col shadow-sm">
+                                                <span class="text-sm text-gray-500">Colesterol</span>
+                                                <span class="text-lg font-medium text-gray-800"
+                                                    x-text="formatVitalSign(visita.vitalSigns?.cholesterol, 'mg/dl')"></span>
+                                            </div>
+
+                                            <div class="bg-white rounded p-3 flex flex-col shadow-sm">
+                                                <span class="text-sm text-gray-500">Glucemia</span>
+                                                <span class="text-lg font-medium text-gray-800"
+                                                    x-text="formatVitalSign(visita.vitalSigns?.glucose, 'mg/dl')"></span>
+                                            </div>
+
+                                            <div class="bg-white rounded p-3 flex flex-col shadow-sm">
+                                                <span class="text-sm text-gray-500">Presión Arterial</span>
+                                                <span class="text-lg font-medium text-gray-800">
+                                                    <span
+                                                        x-text="!visita.vitalSigns?.systolic || visita.vitalSigns?.systolic === '0' ? '-' : `${visita.vitalSigns?.systolic}/${visita.vitalSigns?.diastolic} mmHg`"></span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Panel de medicamentos (solo visible si hay medicamentos) -->
+                                <template x-if="(visita.medications?.length || 0) > 0">
+                                    <div class="mt-4 bg-gray-50 rounded-lg p-4">
+                                        <h3 class="text-lg font-semibold text-[#9a4035] mb-3 pb-2 border-b border-[#d1b0ab] flex items-center">
+                                            <span class="mr-2">Indicaciones Médicas</span>
+                                            <svg class="w-5 h-5 text-green-500 ml-auto" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                                <path d="M10.5 20.5l10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" stroke="currentColor"
+                                                    stroke-width="2" />
+                                                <path d="M8.5 8.5l7 7" stroke="currentColor" stroke-width="2" />
+                                            </svg>
+                                        </h3>
+
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full border-collapse">
+                                                <thead>
+                                                    <tr class="bg-gray-100">
+                                                        <th class="px-4 py-2 text-left">Medicamento</th>
+                                                        <th class="px-4 py-2 text-center">08:00 hs</th>
+                                                        <th class="px-4 py-2 text-center">12:00 hs</th>
+                                                        <th class="px-4 py-2 text-center">18:00 hs</th>
+                                                        <th class="px-4 py-2 text-center">21:00 hs</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <template x-for="med in visita.medications" :key="med.id">
+                                                        <tr class="border-b hover:bg-[#f8f0ef]">
+                                                            <td class="px-4 py-3 font-medium" x-text="med.name || ''"></td>
+                                                            <td class="px-4 py-3 text-center" x-text="med.h8 || '-'"></td>
+                                                            <td class="px-4 py-3 text-center" x-text="med.h12 || '-'"></td>
+                                                            <td class="px-4 py-3 text-center" x-text="med.h18 || '-'"></td>
+                                                            <td class="px-4 py-3 text-center" x-text="med.h21 || '-'"></td>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <template x-if="visita.medicationNotes">
+                                            <div class="mt-3 p-3 bg-white rounded shadow-inner border-l-4 border-yellow-400">
+                                                <h4 class="text-sm font-medium text-gray-500 mb-1">Comentario sobre medicación:</h4>
+                                                <p class="text-gray-700" x-text="visita.medicationNotes || ''"></p>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alpine initialization script for historialMedico component -->
+        <script>
+            document.addEventListener('alpine:init', () => {
+                Alpine.data('historialMedico', () => {
+                    // Obtener y analizar datos
+                    let visitas = [];
+                    try {
+                        const datosJson = JSON.parse('{{ historial_json|escapejs }}');
+                        console.log("Datos JSON cargados correctamente:", datosJson);
+                        visitas = datosJson.visitas || [];
+                    } catch (error) {
+                        console.error("Error al procesar JSON:", error);
+                    }
+
+                    return {
+                        openPanel: null,
+                        visitas: visitas,
+                        scrollPositions: {},
+
+                        init() {
+                            console.log("Alpine componente inicializado con datos:", this.visitas);
+                        },
+
+                        togglePanel(id) {
+                            // Si hay un panel abierto, guardar su posición actual
+                            if (this.openPanel !== null) {
+                                this.scrollPositions[this.openPanel] = window.scrollY;
+                            }
+
+                            // Alternar el panel
+                            const wasOpen = this.openPanel === id;
+                            this.openPanel = wasOpen ? null : id;
+
+                            // Si abrimos un panel, enfocar después de que se renderice
+                            if (!wasOpen && id !== null) {
+                                this.$nextTick(() => {
+                                    const element = document.getElementById(`panel-${id}`);
+                                    if (element) {
+                                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    }
+                                });
+                            }
+                            // Si cerramos, restaurar posición anterior
+                            else if (wasOpen) {
+                                this.$nextTick(() => {
+                                    const prevPosition = this.scrollPositions[id] || 0;
+                                    window.scrollTo({ top: prevPosition, behavior: 'smooth' });
+                                });
+                            }
+                        },
+
+                        formatDate(dateString) {
+                            try {
+                                if (!dateString) return '-';
+                                
+                                // Separar la fecha en sus componentes
+                                const parts = dateString.split('-');  // "2019-02-21" -> ["2019", "02", "21"]
+                                const year = parseInt(parts[0]);      // 2019
+                                const month = parseInt(parts[1]) - 1; // 1 (febrero es 1 porque en JS los meses van de 0-11)
+                                const day = parseInt(parts[2]);       // 21
+                                
+                                // Crear fecha con componentes específicos (año, mes, día)
+                                // Esto crea una fecha en la zona horaria local sin ajuste UTC
+                                const date = new Date(year, month, day);
+                                
+                                // Formatear la fecha al estilo español (día/mes/año)
+                                return date.toLocaleDateString('es-ES', {
+                                    day: '2-digit',     // día con dos dígitos (01-31)
+                                    month: '2-digit',   // mes con dos dígitos (01-12)
+                                    year: 'numeric'     // año con 4 dígitos
+                                });
+                            } catch (e) {
+                                console.error("Error formateando fecha:", e);
+                                return dateString || '-';
+                            }
+                        },
+                        
+                        getTimeRange(dateString) {
+                            try {
+                                const today = new Date();
+                                const visitDate = new Date(dateString);
+                                const diffTime = Math.abs(today - visitDate);
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                if (diffDays <= 30) return 'recent';
+                                if (diffDays <= 180) return 'medium';
+                                return 'old';
+                            } catch (e) {
+                                console.error("Error calculando rango de tiempo:", e);
+                                return 'old';
+                            }
+                        },
+
+                        getTimeRangeColor(dateString) {
+                            const range = this.getTimeRange(dateString);
+                            if (range === 'recent') return 'bg-[#9a4035]';
+                            if (range === 'medium') return 'bg-[#B25C51]';
+                            return 'bg-[#CA786D]';
+                        },
+
+                        formatVitalSign(value, unit) {
+                            if (!value || value === '0' || value === 'null' || value === 'undefined') return '-';
+                            return `${value} ${unit}`;
+                        },
+
+                        async eliminarComentario(id) {
+                            if (!confirm('¿Estás seguro de eliminar este comentario?')) return;
+
+                            try {
+                                const response = await fetch('{% url "eliminar_comentario" %}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                                    },
+                                    body: JSON.stringify({ comentario_id: id })
+                                });
+
+                                if (response.ok) {
+                                    // Actualizar la vista removiendo el comentario
+                                    this.visitas = this.visitas.map(visita => ({
+                                        ...visita,
+                                        comments: (visita.comments || []).filter(c => c.id !== id)
+                                    }));
+                                } else {
+                                    alert('Error al eliminar el comentario');
+                                }
+                            } catch (error) {
+                                console.error('Error:', error);
+                                alert('Error al comunicarse con el servidor');
+                            }
+                        }
+                    };
+                });
+            });
+        </script>
+
+        <!-- Error Alert -->
+        <div x-show="estado.errorMessage" x-cloak
+            class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg border border-[#9a4035] p-4 flex items-center space-x-3 min-w-[300px] max-w-md"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform translate-y-4"
+            x-transition:enter-end="opacity-100 transform translate-y-0">
+            <i class="fas fa-exclamation-circle text-[#9a4035]"></i>
+            <span class="text-sm text-gray-600" x-text="estado.errorMessage"></span>
+            <button @click="estado.errorMessage = ''" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Bottom Action Bar -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
+            <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
+                <button
+                    @click="if(!estado.cambios_pendientes || confirm('¿Descartar cambios?')) window.location.href='{% url 'listar_buscar_historias' %}'"
+                    class="btn-hover-effect px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors">
+                    Cancelar
+                </button>
+                <button 
+                    @click="guardarCambios()" 
+                    x-show="estado.cambios_pendientes"
+                    class="btn-hover-effect px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-colors">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+        <div class="pb-20"></div> <!-- Padding para que el zocalo de botones no pise el ultimo registro-->
+    </main>
+</body>
+</html>

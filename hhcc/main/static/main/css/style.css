@@ -1,0 +1,959 @@
+/* para header.html */
+/* ===== Estilos extraídos de hhcc/main/templates/header.html ===== */
+
+.hidden {
+    display: none !important;
+}
+
+.submenu-items {
+    transition: opacity 0.2s;
+}
+
+
+/* ===== Estilos extraídos de hhcc/main/templates/O_M.html ===== */
+@page {
+            margin: 2cm;
+        }
+        
+        .header {
+            display: grid;
+            grid-template-columns: 80px 1fr 150px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            width: 70px;
+            height: 70px;
+        }
+        
+        .doctor-info {
+            text-align: center;
+            color: #9a4035;
+        }
+        
+        .doctor-info p:first-child {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .doctor-info p:last-child {
+            fext-align: center;
+            font-size: 10px;
+            line-height: 1.5;
+        }
+
+        ul {
+            list-style: disc;
+            margin-left: 20px;
+            font-size: 10px;
+            line-height: 1.5;
+        }
+
+/* ===== Estilos extraídos de hhcc/main/templates/base.html ===== */
+/* Estilos para el encabezado y navegación */
+        .header-container {
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid #e8eaed;
+            background-color: white;
+        }
+        
+        .header-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.8rem 1.5rem;
+        }
+        
+        .logo-section {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo-section img {
+            height: 60px;
+            margin-right: 16px;
+        }
+        
+        .doctor-title {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .doctor-name {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #b25a55;
+            line-height: 1.3;
+        }
+        
+        .doctor-specialty {
+            font-size: 0.85rem;
+            font-weight: 500;
+            letter-spacing: 0.6px;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+        
+        .user-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-info {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .user-name {
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .logout-btn {
+            padding: 5px 12px;
+            border-radius: 4px;
+            background-color: #f1f1f1;
+            color: #6c757d;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        
+        .logout-btn:hover {
+            background-color: #e2e2e2;
+        }
+        
+        .main-nav {
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            background-color: #fbfbfc;
+            border-top: 1px solid #f1f1f3;
+            height: 48px;
+        }
+        
+        .main-menu {
+            display: flex;
+            align-items: center;
+            list-style: none;
+            height: 100%;
+        }
+        
+        .menu-item {
+            height: 100%;
+            position: relative;
+        }
+        
+        .menu-link {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            padding: 0 1rem;
+            color: #495057;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .menu-link:hover, .menu-item.active .menu-link {
+            color: #b25a55;
+            background-color: rgba(178, 90, 85, 0.05);
+        }
+        
+        .menu-item.active:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #b25a55;
+        }
+        
+        .submenu-items {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            min-width: 200px;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 0 0 4px 4px;
+            z-index: 100;
+        }
+        
+        .submenu-link {
+            display: block;
+            padding: 0.7rem 1rem;
+            color: #495057;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        
+        .submenu-link:hover {
+            background-color: #f8f9fa;
+            color: #b25a55;
+        }
+        
+        .current-path {
+            display: flex;
+            align-items: center;
+            margin-left: auto;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .breadcrumb-item {
+            color: #6c757d;
+        }
+        
+        .breadcrumb-item a {
+            color: #b25a55;
+            text-decoration: none;
+        }
+        
+        .breadcrumb-item a:hover {
+            text-decoration: underline;
+        }
+        
+        .breadcrumb-separator {
+            color: #ced4da;
+            margin: 0 5px;
+        }
+        
+        .breadcrumb-item:last-child {
+            color: #495057;
+            font-weight: 500;
+        }
+        
+        /* Estilos adicionales para el contenido principal */
+        body {
+            background-color: #f8f9fa;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #495057;
+        }
+        
+        .page-content {
+            padding: 2rem 1.5rem;
+        }
+        
+        .container-content {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+/* ===== Estilos extraídos de hhcc/main/templates/buscador.html ===== */
+/* Clase personalizada para altura */
+    .h-18 {
+      height: 4.5rem;
+    }
+
+    /* Ajustes para el botón */
+    .button-shadow {
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+/* ===== Estilos extraídos de hhcc/main/templates/detalle_historia_con_historial.html ===== */
+.diagnosticos-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem 1rem;
+            align-items: center;
+        }
+
+        .diagnostico-item {
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            padding: 0.25rem;
+        }
+
+        /* Custom checkbox styles */
+        .form-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            border: 1.5px solid #9a4035;
+            border-radius: 0.25rem;
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .form-checkbox:checked {
+            background-color: #9a4035;
+        }
+
+        .form-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 0.75rem;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Input focus styles */
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #9a4035;
+            box-shadow: 0 0 0 1px #9a4035;
+        }
+
+        /* Custom scrollbar for textarea */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        textarea::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        textarea::-webkit-scrollbar-thumb {
+            background: #9a4035;
+            border-radius: 4px;
+        }
+
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: #7a332b;
+        }
+
+        /* Animated button hover effects */
+        .btn-hover-effect {
+            transition: all 0.3s ease;
+        }
+
+        .btn-hover-effect:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(154, 64, 53, 0.2);
+        }
+
+/* ===== Estilos extraídos de hhcc/main/templates/django-template-header.html ===== */
+/* Estilos adicionales para la página de búsqueda */
+    .h-18 {
+        height: 4.5rem;
+    }
+
+    .button-shadow {
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .select-shadow {
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .input-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-container input {
+        padding-right: 7rem;
+    }
+
+    .input-container select {
+        position: absolute;
+        right: 6.5rem;
+        height: 2.8rem;
+        border-radius: 9999px;
+    }
+
+    .input-container button {
+        position: absolute;
+        right: 0.5rem;
+        height: 2.8rem;
+    }
+
+/* ===== Estilos extraídos de hhcc/main/templates/historial_medico/base.html ===== */
+.form-checkbox {
+            appearance: none;
+            border: 1.5px solid #9a4035;
+            border-radius: 0.25rem;
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+            position: relative;
+            cursor: pointer;
+        }
+        .form-checkbox:checked {
+            background-color: #9a4035;
+        }
+        .form-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 0.75rem;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #9a4035;
+            box-shadow: 0 0 0 1px #9a4035;
+        }
+        .btn-hover-effect {
+            transition: all 0.3s ease;
+        }
+        .btn-hover-effect:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(154, 64, 53, 0.2);
+        }
+
+/* ===== Estilos extraídos de hhcc/main/templates/indicaciones/base.html ===== */
+.form-checkbox {
+            appearance: none;
+            border: 1.5px solid #9a4035;
+            border-radius: 0.25rem;
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+            position: relative;
+            cursor: pointer;
+        }
+        .form-checkbox:checked {
+            background-color: #9a4035;
+        }
+        .form-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 0.75rem;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #9a4035;
+            box-shadow: 0 0 0 1px #9a4035;
+        }
+        .btn-hover-effect {
+            transition: all 0.3s ease;
+        }
+        .btn-hover-effect:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(154, 64, 53, 0.2);
+        }
+
+/* ===== Estilos extraídos de hhcc/main/templates/indicaciones/historial_medico/base.html ===== */
+.form-checkbox {
+            appearance: none;
+            border: 1.5px solid #9a4035;
+            border-radius: 0.25rem;
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+            position: relative;
+            cursor: pointer;
+        }
+        .form-checkbox:checked {
+            background-color: #9a4035;
+        }
+        .form-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 0.75rem;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #9a4035;
+            box-shadow: 0 0 0 1px #9a4035;
+        }
+        .btn-hover-effect {
+            transition: all 0.3s ease;
+        }
+        .btn-hover-effect:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(154, 64, 53, 0.2);
+        }
+
+/* ===== Estilos extraídos de hhcc/main/templates/landing_page.html ===== */
+.turbo-progress-bar {
+            position: fixed;
+            display: block;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: #0076ff;
+            z-index: 2147483647;
+            transition: width 300ms ease-out, opacity 150ms 150ms ease-in;
+            transform: translate3d(0, 0, 0);
+        }
+
+        /* Clases de alertas */
+        .alert-box {
+            padding: 10px 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            display: none;
+        }
+
+        .informational {
+            background-color: white;
+            color: black;
+            border: 1px solid #ccc;
+        }
+
+        .warning {
+            background-color: yellow;
+            color: black;
+            border: 1px solid #f6c23e;
+        }
+
+        .alert {
+            background-color: orange;
+            color: white;
+            border: 1px solid #e67e22;
+        }
+
+        .critical {
+            background-color: red;
+            color: white;
+            border: 1px solid #e74c3c;
+        }
+
+        /* Ajustes de notificaciones */
+        .notification-area {
+            text-align: center;
+            font-size: 1rem;
+            color: #4F46E5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+
+        /* Botón Sign In */
+        .btn-sign-in {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px 24px;
+            background-color: #9a4035;
+            color: white;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-sign-in:hover {
+            background-color: #7a332b;
+        }
+
+        /* Definimos el fondo como el SVG */
+        .iframe-container {
+            width: 100%;
+            height: calc(100vh - 150px);
+            position: relative;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            z-index: 2;
+            border: none;
+            background-color: transparent;
+            /* Fondo del iframe transparente */
+            opacity: 1 !important;
+            /* Aseguramos que el iframe sea sólido */
+        }
+
+        .iframe-background {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            background: url("{% static 'main/images/logomar_watermark.svg' %}") no-repeat center center;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 1;
+        }
+
+        /* Ajuste de mensajes toast */
+        #flash-messages {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 300px;
+        }
+
+        .toast {
+            background-color: #4F46E5;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 10px;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .toast-error {
+            background-color: #DC2626;
+        }
+
+/* ===== Estilos extraídos de hhcc/main/templates/landing_page_dropdown.html ===== */
+.turbo-progress-bar {
+            position: fixed;
+            display: block;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: #0076ff;
+            z-index: 2147483647;
+            transition: width 300ms ease-out, opacity 150ms 150ms ease-in;
+            transform: translate3d(0, 0, 0);
+        }
+
+        /* Clases de alertas */
+        .alert-box {
+            padding: 10px 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            display: none;
+        }
+
+        .informational {
+            background-color: white;
+            color: black;
+            border: 1px solid #ccc;
+        }
+
+        .warning {
+            background-color: yellow;
+            color: black;
+            border: 1px solid #f6c23e;
+        }
+
+        .alert {
+            background-color: orange;
+            color: white;
+            border: 1px solid #e67e22;
+        }
+
+        .critical {
+            background-color: red;
+            color: white;
+            border: 1px solid #e74c3c;
+        }
+
+        /* Ajustes de notificaciones */
+        .notification-area {
+            text-align: center;
+            font-size: 1rem;
+            color: #4F46E5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+
+        /* Botón Iniciar Sesión */
+        .btn-sign-in {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px 24px;
+            background-color: #9a4035;
+            color: white;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-sign-in:hover {
+            background-color: #7a332b;
+        }
+
+        /* Definimos el fondo como el SVG */
+        .iframe-container {
+            width: 100%;
+            height: calc(100vh - 150px);
+            position: relative;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            z-index: 2;
+            border: none;
+            background-color: transparent;
+            opacity: 1 !important;
+        }
+
+        .iframe-background {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            background: url("/static/main/images/logomar_watermark.svg") no-repeat center center;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 1;
+        }
+
+        /* Ajuste de mensajes toast */
+        #flash-messages {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 300px;
+        }
+
+        .toast {
+            background-color: #4F46E5;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 10px;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .toast-error {
+            background-color: #DC2626;
+        }
+
+        /* Estilos para el menú desplegable */
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            z-index: 9999;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: block;
+            padding: 8px 16px;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f5f5f5;
+        }
+
+/* ===== Estilos extraídos de hhcc/main/templates/listar_buscar_historias.html ===== */
+.active a {
+            font-weight: bold;
+            color: blue;
+        }
+
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        nav ul li {
+            display: inline;
+            margin-right: 5px;
+        }
+
+        /* Clase personalizada para altura */
+        .h-18 {
+            height: 4.5rem;
+        }
+
+        /* Ajustes para el botón */
+        .button-shadow {
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Clase para ajustar la sombra */
+        .select-shadow {
+            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Ajustes específicos para el contenedor del select y el botón */
+        .input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-container input {
+            padding-right: 7rem;
+            /* Suficiente espacio para el select y el botón */
+        }
+
+        /* Posicionamiento del select */
+        .input-container select {
+            position: absolute;
+            right: 6.5rem;
+            /* Coloca el select dentro del input, ajusta según necesidad */
+            height: 2.8rem;
+            /* Ajusta la altura del select para que sea consistente con el input */
+            border-radius: 9999px;
+            /* Para que el select sea completamente redondeado */
+        }
+
+        /* Posicionamiento del botón */
+        .input-container button {
+            position: absolute;
+            right: 0.5rem;
+            /* Margen adecuado entre el borde derecho del input y el botón */
+            height: 2.8rem;
+            /* Ajusta la altura del botón */
+        }
+
+/* ===== Estilos extraídos de hhcc/main/templates/listar_buscar_pacientes.html ===== */
+.active a {
+            font-weight: bold;
+            color: blue;
+        }
+
+        nav ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        nav ul li {
+            display: inline;
+            margin-right: 5px;
+        }
+
+        /* Clase personalizada para altura */
+        .h-18 {
+            height: 4.5rem;
+        }
+
+        /* Ajustes para el botón */
+        .button-shadow {
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Clase para ajustar la sombra */
+        .select-shadow {
+            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Ajustes específicos para el contenedor del select y el botón */
+        .input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-container input {
+            padding-right: 7rem;
+            /* Suficiente espacio para el select y el botón */
+        }
+
+        /* Posicionamiento del select */
+        .input-container select {
+            position: absolute;
+            right: 6.5rem;
+            /* Coloca el select dentro del input, ajusta según necesidad */
+            height: 2.8rem;
+            /* Ajusta la altura del select para que sea consistente con el input */
+            border-radius: 9999px;
+            /* Para que el select sea completamente redondeado */
+        }
+
+        /* Posicionamiento del botón */
+        .input-container button {
+            position: absolute;
+            right: 0.5rem;
+            /* Margen adecuado entre el borde derecho del input y el botón */
+            height: 2.8rem;
+            /* Ajusta la altura del botón */
+        }
+
+/* ===== Estilos extraídos de hhcc/main/templates/ordenes_medicas.html ===== */
+.lab-grid {
+            display: grid;
+            grid-template-rows: repeat(25, min-content);
+            grid-auto-flow: column;
+            grid-auto-columns: 1fr;
+            gap: 0.25rem 2rem;
+        }
+
+        .lab-item {
+            display: flex;
+            align-items: center;
+            padding: 0.15rem 0.25rem;
+        }
+
+        .lab-item input[type="checkbox"] {
+            width: 0.75rem;
+            height: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .lab-item:hover {
+            background-color: rgb(249, 250, 251);
+            border-radius: 0.25rem;
+        }
+
+/* ===== Estilos extraídos de hhcc/main/templates/ordenes_pedicas.html ===== */
+.lab-grid {
+            display: grid;
+            grid-template-rows: repeat(25, min-content);
+            grid-auto-flow: column;
+            grid-auto-columns: 1fr;
+            gap: 0.25rem 2rem;
+        }
+
+        .lab-item {
+            display: flex;
+            align-items: center;
+            padding: 0.15rem 0.25rem;
+        }
+
+        .lab-item input[type="checkbox"] {
+            width: 0.75rem;
+            height: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .lab-item:hover {
+            background-color: rgb(249, 250, 251);
+            border-radius: 0.25rem;
+        }
+

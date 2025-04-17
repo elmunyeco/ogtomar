@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historia Clínica</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <script>
+        function historiaClinica() {
+            return {
+                signos: {
+                    presionSistolica: '',
+                    presionDiastolica: '',
+                    peso: '',
+                    glucemia: '',
+                    colesterol: ''
+                },
+                condicionesSeleccionadas: [],
+                showSaveConfirmation: false,
+                unsavedChanges: false,
+
+                init() {
+                    // Inicializar con valores existentes si los hay
+                    if (this.$el.dataset.signos) {
+                        this.signos = JSON.parse(this.$el.dataset.signos);
+                    }
+                    if (this.$el.dataset.condiciones) {
+                        this.condicionesSeleccionadas = JSON.parse(this.$el.dataset.condiciones);
+                    }
+                },
+
+                handleSignosChange() {
+                    this.unsavedChanges = true;
+                },
+
+                handleCondicionesChange() {
+                    this.unsavedChanges = true;
+                },
+
+                async guardarCambios() {
+                    if (!this.unsavedChanges) return;
+                    
+                    this.showSaveConfirmation = true;
+                },
+
+                async confirmarGuardar() {
+                    try {
+                        const response = await fetch('/api/historia-clinica/actualizar', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                            },
+                            body: JSON.stringify({
+                                signos: this.signos,
+                                condiciones: this.condicionesSeleccionadas
+                            })
+                        });
+
+                        if (response.ok) {
+                            this.unsavedChanges = false;
+                            this.showSaveConfirmation = false;
+                        } else {
+                            throw new Error('Error al guardar los cambios');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                    }
+                },
+
+                cancelarGuardar() {
+                    this.showSaveConfirmation = false;
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-100">
+    {% if debug %}
+    <div style="display: none;">
+        Debug info: Historia: {{ historia }} Paciente: {{ paciente }}
+    </div>
+    {% endif %}
+
+    <div class="container mx-auto p-6 max-w-6xl" role="main" 
+         x-data="historiaClinica()">
+        
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center space-x-4">
+                    <span class="text-xl font-medium text-gray-900">{{ paciente.nombre }} {{ paciente.apellido }}</span>
+                    <span class="text-gray-500">{{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}</span>
+                </div>
+
+                <div class="flex items-center space-x-6">
+                    <span class="text-xs cursor-pointer hover:text-gray-700">Medicación</span>
+                    <span class="text-xs cursor-pointer hover:text-gray-700">Prácticas</span>
+                    <span class="text-xs cursor-pointer hover:text-gray-700">Imprimir</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-6 text-sm">
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Nacimiento</span>
+                    {{ paciente.fechaNac|date:"d/m/Y" }} ({{ paciente.fechaNac|timesince|truncatewords:1 }} años)
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Teléfono</span>
+                    {{ paciente.telefono }}
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Última visita</span>
+                    {{ historia.fechaAlta|date:"d/m/Y" }}
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-6">
+            <div class="space-y-6">
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-4">Signos Vitales</h3>
+                    {% csrf_token %}
+                    
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="flex-1">
+                            <span class="text-xs text-gray-500 mb-1 block">Presión arterial</span>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" 
+                                       x-model="signos.presionSistolica" 
+                                       @input="handleSignosChange"
+                                       class="w-20 p-1 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <span class="text-gray-400">/</span>
+                                <input type="number" 
+                                       x-model="signos.presionDiastolica" 
+                                       @input="handleSignosChange"
+                                       class="w-20 p-1 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="flex-1">
+                            <span class="text-xs text-gray-500 mb-1 block">Peso</span>
+                            <input type="number" 
+                                   x-model="signos.peso" 
+                                   @input="handleSignosChange"
+                                   class="w-20 p-1 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="flex-1">
+                            <span class="text-xs text-gray-500 mb-1 block">Glucemia</span>
+                            <input type="number" 
+                                   x-model="signos.glucemia" 
+                                   @input="handleSignosChange"
+                                   class="w-20 p-1 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-3">
+                        <div class="flex-1">
+                            <span class="text-xs text-gray-500 mb-1 block">Colesterol</span>
+                            <input type="number" 
+                                   x-model="signos.colesterol" 
+                                   @input="handleSignosChange"
+                                   class="w-20 p-1 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="font-medium">Visitas</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-medium text-gray-700">Condiciones Médicas</h3>
+                </div>
+
+                {% csrf_token %}
+                <div class="space-y-2">
+                    {% for condicion in todas_condiciones %}
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" 
+                               value="{{ condicion.id }}"
+                               x-model="condicionesSeleccionadas"
+                               @change="handleCondicionesChange"
+                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm">{{ condicion.nombre }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer con botones -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
+            <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
+                <button @click="cancelarGuardar" 
+                        class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+                    Cancelar
+                </button>
+                <button @click="guardarCambios" 
+                        :disabled="!unsavedChanges"
+                        class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal de confirmación -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+             x-show="showSaveConfirmation"
+             x-cloak>
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+                <h3 class="text-lg font-medium mb-4">Confirmar Guardar</h3>
+                <p class="text-gray-600 mb-4">¿Está seguro que desea guardar los cambios?</p>
+                <div class="flex justify-end space-x-4">
+                    <button @click="cancelarGuardar"
+                            class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
+                        Cancelar
+                    </button>
+                    <button @click="confirmarGuardar"
+                            class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

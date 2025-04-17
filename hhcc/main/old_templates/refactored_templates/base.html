@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema Dr. Omar Prieto{% endblock %}</title>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Componente de encabezado -->
+    <script defer src="{% static 'main/js/components/header.js' %}"></script>
+    
+    
+    
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body class="min-h-screen flex flex-col">
+    {% include 'components/header.html' %}
+    
+    <main class="flex-grow page-content">
+        <div class="container-content">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>
