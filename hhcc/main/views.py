@@ -134,8 +134,8 @@ def listar_buscar_historias(request):
 
     return render(
         request,
-        "django-template-header.html",
-#        "listar_buscar_historias.html",
+#       "django-template-header.html",
+        "listar_buscar_historias_2.html",
         {"page_obj": page_obj, "query": query, "tipo": tipo},
     )
 
