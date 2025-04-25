@@ -166,7 +166,7 @@ def buscar_criteria(request):
     # No renderizamos resultados aún, solo mostramos en consola
     return render(request, "buscador.html", {"query": query, "resultados": []})
 
-@login_required
+#@login_required
 def crear_paciente(request):
     """
     Vista para crear un nuevo paciente
@@ -182,14 +182,14 @@ def crear_paciente(request):
     
     return render(request, 'crear_paciente.html', {'form': form})
 
-@login_required
+#@login_required
 def detalle_paciente(request, pk):
     """
     Vista para ver el detalle de un paciente
     """
     paciente = get_object_or_404(Paciente, pk=pk)
     # Obtener las historias relacionadas con este paciente
-    historias = Historia.objects.filter(paciente=paciente).order_by('-fecha')
+    historias = HistoriaClinica.objects.filter(paciente=paciente).order_by('-fecha')
     
     context = {
         'paciente': paciente,
@@ -198,7 +198,7 @@ def detalle_paciente(request, pk):
     
     return render(request, 'detalle_paciente.html', context)
 
-@login_required
+#@login_required
 def editar_paciente(request, pk):
     """
     Vista para editar un paciente existente
@@ -216,7 +216,7 @@ def editar_paciente(request, pk):
     
     return render(request, 'editar_paciente.html', {'form': form, 'paciente': paciente})
 
-@login_required
+#@login_required
 def eliminar_paciente(request, pk):
     """
     Vista para eliminar un paciente
