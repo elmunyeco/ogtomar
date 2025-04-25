@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ paciente.nombre }} {{ paciente.apellido }} - CardioPrieto{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'inicio' %}">Inicio</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'listar_buscar_pacientes' %}">Pacientes</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ paciente.nombre }} {{ paciente.apellido }}</li>
+        </ol>
+    </nav>
+
+    <!-- Información del paciente -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="fas fa-user-circle me-2"></i>Ficha del Paciente
+            </h4>
+            <div>
+                <a href="{% url 'editar_paciente' paciente.pk %}" class="btn btn-light btn-sm">
+                    <i class="fas fa-edit"></i> Editar
+                </a>
+                <a href="{% url 'eliminar_paciente' paciente.pk %}" class="btn btn-danger btn-sm">
+                    <i class="fas fa-trash"></i> Eliminar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="card-title">{{ paciente.apellido }}, {{ paciente.nombre }}</h5>
+                    <p class="card-text">
+                        <strong>DNI:</strong> {{ paciente.dni }}<br>
+                        <strong>Fecha de Nacimiento:</strong> {{ paciente.fecha_nacimiento|date:"d/m/Y" }}<br>
+                        <strong>Edad:</strong> {% now "Y" as current_year %}{{ current_year|add:"-1"|add:"-"|add:paciente.fecha_nacimiento.year }} años
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p class="card-text">
+                        <strong>Dirección:</strong> {{ paciente.direccion|default:"No especificada" }}<br>
+                        <strong>Teléfono:</strong> {{ paciente.telefono|default:"No especificado" }}<br>
+                        <strong>Email:</strong> {{ paciente.email|default:"No especificado" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer text-muted">
+            <small>Paciente registrado el {{ paciente.fecha_creacion|date:"d/m/Y H:i" }}</small>
+        </div>
+    </div>
+
+    <!-- Historias clínicas del paciente -->
+    <div class="card">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="fas fa-clipboard-list me-2"></i>Historias Clínicas
+            </h4>
+            <a href="{% url 'crear_historia' %}?paciente_id={{ paciente.id }}" class="btn btn-light btn-sm">
+                <i class="fas fa-plus-circle"></i> Nueva Historia
+            </a>
+        </div>
+        <div class="card-body">
+            {% if historias %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Motivo de Consulta</th>
+                                <th>Diagnóstico</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for historia in historias %}
+                                <tr>
+                                    <td>{{ historia.fecha|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ historia.motivo_consulta|truncatechars:50 }}</td>
+                                    <td>{{ historia.diagnostico|truncatechars:50 }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'detalle_historia' historia.pk %}" class="btn btn-sm btn-primary" title="Ver detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'editar_historia' historia.pk %}" class="btn btn-sm btn-warning" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'eliminar_historia' historia.pk %}" class="btn btn-sm btn-danger" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    Este paciente aún no tiene historias clínicas registradas.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Resaltar filas de la tabla al pasar el cursor
+        $('tbody tr').hover(
+            function() {
+                $(this).addClass('table-active');
+            },
+            function() {
+                $(this).removeClass('table-active');
+            }
+        );
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Nuevo Paciente - CardioPrieto{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'inicio' %}">Inicio</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'listar_buscar_pacientes' %}">Pacientes</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Nuevo Paciente</li>
+                </ol>
+            </nav>
+            
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>Registrar Nuevo Paciente
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.nombre|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.apellido|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.dni|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.fecha_nacimiento|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        {{ form.direccion|as_crispy_field }}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.telefono|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.email|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="{% url 'listar_buscar_pacientes' %}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-times me-1"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Guardar Paciente
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Formato para el campo de fecha de nacimiento
+    $(function() {
+        $("#id_fecha_nacimiento").datepicker({
+            format: 'dd/mm/yyyy',
+            language: 'es',
+            autoclose: true,
+            todayHighlight: true,
+            endDate: '0d'  // Limitar hasta hoy
+        });
+    });
+    
+    // Validación adicional del DNI
+    $(document).ready(function() {
+        $('form').submit(function(event) {
+            var dni = $('#id_dni').val();
+            // Expresión regular para validar DNI argentino (ejemplo)
+            var regex = /^[0-9]{7,8}$/;
+            
+            if (!regex.test(dni)) {
+                alert('El DNI debe contener solo números (7-8 dígitos)');
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+{% endblock %}

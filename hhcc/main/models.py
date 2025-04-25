@@ -64,6 +64,7 @@ class Paciente(models.Model):
             "idTipoDoc",
             "numDoc",
         )  # Combinación única de tipo de documento y número
+        ordering = ['-fechaAlta']
         indexes = [
             models.Index(fields=["nombre"], name="nombre_paciente_idx"),
             models.Index(fields=["apellido"], name="apellido_paciente_idx"),

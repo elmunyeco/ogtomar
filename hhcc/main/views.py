@@ -3,7 +3,7 @@ from django.http import HttpResponse
 from .models import Paciente, HistoriaClinica, TipoDocumento, IndicacionesVisitas
 from .forms import PacienteForm
 from django.shortcuts import get_object_or_404
-
+from django.contrib.auth.decorators import login_required
 
 def index(request):
     return render(request, "index.html")
@@ -122,7 +122,7 @@ def listar_buscar_historias(request):
             historias = historias.filter(paciente__apellido__icontains=query)
 
     # Ordenar las historias por fecha de alta (más reciente primero) y luego por ID
-    historias = historias.order_by("id")
+    historias = historias.order_by("-id")
 
     # Paginación
     paginator = Paginator(historias, 12)  # 12 historias por página
@@ -166,16 +166,70 @@ def buscar_criteria(request):
     # No renderizamos resultados aún, solo mostramos en consola
     return render(request, "buscador.html", {"query": query, "resultados": []})
 
-
-""" def cargar_paciente(request):
-    if request.method == "POST":
+@login_required
+def crear_paciente(request):
+    """
+    Vista para crear un nuevo paciente
+    """
+    if request.method == 'POST':
         form = PacienteForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect("index")
+            paciente = form.save()
+            messages.success(request, f'Paciente {paciente.nombre} {paciente.apellido} creado exitosamente.')
+            return redirect('detalle_paciente', pk=paciente.pk)
     else:
         form = PacienteForm()
-    return render(request, "cargar_paciente.html", {"form": form}) """
+    
+    return render(request, 'crear_paciente.html', {'form': form})
+
+@login_required
+def detalle_paciente(request, pk):
+    """
+    Vista para ver el detalle de un paciente
+    """
+    paciente = get_object_or_404(Paciente, pk=pk)
+    # Obtener las historias relacionadas con este paciente
+    historias = Historia.objects.filter(paciente=paciente).order_by('-fecha')
+    
+    context = {
+        'paciente': paciente,
+        'historias': historias,
+    }
+    
+    return render(request, 'detalle_paciente.html', context)
+
+@login_required
+def editar_paciente(request, pk):
+    """
+    Vista para editar un paciente existente
+    """
+    paciente = get_object_or_404(Paciente, pk=pk)
+    
+    if request.method == 'POST':
+        form = PacienteForm(request.POST, instance=paciente)
+        if form.is_valid():
+            paciente = form.save()
+            messages.success(request, f'Paciente {paciente.nombre} {paciente.apellido} actualizado exitosamente.')
+            return redirect('detalle_paciente', pk=paciente.pk)
+    else:
+        form = PacienteForm(instance=paciente)
+    
+    return render(request, 'editar_paciente.html', {'form': form, 'paciente': paciente})
+
+@login_required
+def eliminar_paciente(request, pk):
+    """
+    Vista para eliminar un paciente
+    """
+    paciente = get_object_or_404(Paciente, pk=pk)
+    
+    if request.method == 'POST':
+        nombre_completo = f"{paciente.nombre} {paciente.apellido}"
+        paciente.delete()
+        messages.success(request, f'Paciente {nombre_completo} eliminado exitosamente.')
+        return redirect('listar_buscar_pacientes')
+    
+    return render(request, 'eliminar_paciente.html', {'paciente': paciente})
 
 
 def guardar_paciente(request, paciente_id=None):
