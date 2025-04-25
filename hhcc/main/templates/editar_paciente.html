@@ -7,28 +7,117 @@
 <!-- Estilos adicionales específicos para esta página -->
 <style>
   .form-container {
-    width: 95%;
-    max-width: 800px;
+    width: 98%;
+    max-width: 1200px; /* Card más ancha */
     margin: 0 auto;
   }
   
-  .form-label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+  .input-field {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid #d1d5db;
+    border-radius: 0.375rem;
+    background-color: white;
+    transition: all 0.2s ease;
   }
   
-  .form-input {
-    @apply mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm;
+  .select-field {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid #d1d5db;
+    border-radius: 0.375rem;
+    background-color: white;
+    transition: all 0.2s ease;
+    appearance: auto;
+  }
+  
+  .input-field:focus, .select-field:focus {
+    border-color: #9a4035;
+    outline: none;
+    box-shadow: 0 0 0 1px #9a4035;
   }
   
   .form-error {
-    @apply mt-1 text-sm text-red-600;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #dc2626;
+  }
+
+  .form-field {
+    margin-bottom: 1.5rem;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.2s ease;
   }
   
-  /* Optimización para dispositivos móviles */
-  @media (max-width: 640px) {
-    .form-container {
-      width: 98%;
-    }
+  .form-field:hover {
+    background-color: #f3f4f6;
+  }
+  
+  .field-label {
+    font-weight: 700;
+    color: #374151;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  
+  .age-display {
+    font-size: 0.875rem;
+    color: #4b5563;
+    margin-top: 0.5rem;
+  }
+  
+  .radio-group {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.25rem;
+  }
+  
+  .radio-option {
+    display: flex;
+    align-items: center;
+  }
+  
+  .radio-option input[type="radio"] {
+    margin-right: 0.5rem;
+  }
+  
+  .btn-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+  
+  .btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .btn-cancel {
+    background-color: white;
+    color: #9a4035;
+    border: 1px solid #9a4035;
+  }
+  
+  .btn-cancel:hover {
+    background-color: #f3f4f6;
+  }
+  
+  .btn-save {
+    background-color: #9a4035;
+    color: white;
+    border: 1px solid #9a4035;
+  }
+  
+  .btn-save:hover {
+    background-color: #7a332b;
   }
 </style>
 {% endblock %}
@@ -37,81 +126,242 @@
 <h1 class="text-2xl font-bold mb-8 text-left">Editar Paciente</h1>
 
 <div class="form-container">
-    <div class="bg-white shadow-md rounded-lg p-6 mb-8">
+    <div class="bg-white shadow-md rounded-lg p-8 mb-8">
         <form method="POST" novalidate>
             {% csrf_token %}
             
-            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div class="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
+                <!-- Tipo de Documento -->
+                <div class="form-field">
+                    <label for="{{ form.idTipoDoc.id_for_label }}" class="field-label">Tipo de Documento</label>
+                    <select name="{{ form.idTipoDoc.html_name }}" id="{{ form.idTipoDoc.id_for_label }}" 
+                        class="select-field"
+                        {% if form.idTipoDoc.field.required %}required{% endif %}>
+                        {% for value, text in form.idTipoDoc.field.choices %}
+                        <option value="{{ value }}" {% if form.idTipoDoc.value|stringformat:"s" == value|stringformat:"s" %}selected{% endif %}>{{ text }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form.idTipoDoc.errors %}
+                    <p class="form-error">{{ form.idTipoDoc.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Número de Documento -->
+                <div class="form-field">
+                    <label for="{{ form.numDoc.id_for_label }}" class="field-label">Nº Documento</label>
+                    <input type="text" name="{{ form.numDoc.html_name }}" id="{{ form.numDoc.id_for_label }}" 
+                        value="{{ form.numDoc.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese número de documento"
+                        {% if form.numDoc.field.required %}required{% endif %}>
+                    {% if form.numDoc.errors %}
+                    <p class="form-error">{{ form.numDoc.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
                 <!-- Nombre -->
-                <div>
-                    <label for="{{ form.nombre.id_for_label }}" class="form-label">Nombre</label>
-                    {{ form.nombre }}
+                <div class="form-field">
+                    <label for="{{ form.nombre.id_for_label }}" class="field-label">Nombre</label>
+                    <input type="text" name="{{ form.nombre.html_name }}" id="{{ form.nombre.id_for_label }}" 
+                        value="{{ form.nombre.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese nombre del paciente"
+                        {% if form.nombre.field.required %}required{% endif %}>
                     {% if form.nombre.errors %}
                     <p class="form-error">{{ form.nombre.errors.0 }}</p>
                     {% endif %}
                 </div>
                 
                 <!-- Apellido -->
-                <div>
-                    <label for="{{ form.apellido.id_for_label }}" class="form-label">Apellido</label>
-                    {{ form.apellido }}
+                <div class="form-field">
+                    <label for="{{ form.apellido.id_for_label }}" class="field-label">Apellido</label>
+                    <input type="text" name="{{ form.apellido.html_name }}" id="{{ form.apellido.id_for_label }}" 
+                        value="{{ form.apellido.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese apellido del paciente"
+                        {% if form.apellido.field.required %}required{% endif %}>
                     {% if form.apellido.errors %}
                     <p class="form-error">{{ form.apellido.errors.0 }}</p>
                     {% endif %}
                 </div>
                 
-                <!-- DNI -->
-                <div>
-                    <label for="{{ form.dni.id_for_label }}" class="form-label">DNI</label>
-                    {{ form.dni }}
-                    {% if form.dni.errors %}
-                    <p class="form-error">{{ form.dni.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
                 <!-- Fecha de Nacimiento -->
-                <div>
-                    <label for="{{ form.fecha_nacimiento.id_for_label }}" class="form-label">Fecha de Nacimiento</label>
-                    {{ form.fecha_nacimiento }}
-                    {% if form.fecha_nacimiento.errors %}
-                    <p class="form-error">{{ form.fecha_nacimiento.errors.0 }}</p>
+                <div class="form-field">
+                    <label for="{{ form.fechaNac.id_for_label }}" class="field-label">Fecha de Nacimiento</label>
+                    <input type="date" name="{{ form.fechaNac.html_name }}" id="{{ form.fechaNac.id_for_label }}" 
+                        value="{{ form.fechaNac.value|date:'Y-m-d'|default:'' }}"
+                        class="input-field"
+                        {% if form.fechaNac.field.required %}required{% endif %}
+                        onchange="calcularEdad(this.value)">
+                    {% if form.fechaNac.errors %}
+                    <p class="form-error">{{ form.fechaNac.errors.0 }}</p>
+                    {% endif %}
+                    <div id="edad-display" class="age-display">
+                        {% if form.fechaNac.value %}
+                        El paciente tiene {{ edad }} años.
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Sexo -->
+                <div class="form-field">
+                    <label class="field-label">Sexo</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="{{ form.sexo.html_name }}" value="M" 
+                                {% if form.sexo.value == "M" %}checked{% endif %}
+                                {% if form.sexo.field.required %}required{% endif %}>
+                            <span>Hombre</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="{{ form.sexo.html_name }}" value="F" 
+                                {% if form.sexo.value == "F" %}checked{% endif %}
+                                {% if form.sexo.field.required %}required{% endif %}>
+                            <span>Mujer</span>
+                        </label>
+                    </div>
+                    {% if form.sexo.errors %}
+                    <p class="form-error">{{ form.sexo.errors.0 }}</p>
                     {% endif %}
                 </div>
                 
-                <!-- Dirección (span completo) -->
-                <div class="md:col-span-2">
-                    <label for="{{ form.direccion.id_for_label }}" class="form-label">Dirección</label>
-                    {{ form.direccion }}
+                <!-- Dirección -->
+                <div class="form-field">
+                    <label for="{{ form.direccion.id_for_label }}" class="field-label">Dirección</label>
+                    <input type="text" name="{{ form.direccion.html_name }}" id="{{ form.direccion.id_for_label }}" 
+                        value="{{ form.direccion.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese dirección completa" 
+                        {% if form.direccion.field.required %}required{% endif %}>
                     {% if form.direccion.errors %}
                     <p class="form-error">{{ form.direccion.errors.0 }}</p>
                     {% endif %}
                 </div>
                 
+                <!-- Localidad -->
+                <div class="form-field">
+                    <label for="{{ form.localidad.id_for_label }}" class="field-label">Localidad</label>
+                    <input type="text" name="{{ form.localidad.html_name }}" id="{{ form.localidad.id_for_label }}" 
+                        value="{{ form.localidad.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese localidad" 
+                        {% if form.localidad.field.required %}required{% endif %}>
+                    {% if form.localidad.errors %}
+                    <p class="form-error">{{ form.localidad.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
                 <!-- Teléfono -->
-                <div>
-                    <label for="{{ form.telefono.id_for_label }}" class="form-label">Teléfono</label>
-                    {{ form.telefono }}
+                <div class="form-field">
+                    <label for="{{ form.telefono.id_for_label }}" class="field-label">Teléfono</label>
+                    <input type="text" name="{{ form.telefono.html_name }}" id="{{ form.telefono.id_for_label }}" 
+                        value="{{ form.telefono.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese número de teléfono"
+                        {% if form.telefono.field.required %}required{% endif %}>
                     {% if form.telefono.errors %}
                     <p class="form-error">{{ form.telefono.errors.0 }}</p>
                     {% endif %}
                 </div>
                 
+                <!-- Celular -->
+                <div class="form-field">
+                    <label for="{{ form.celular.id_for_label }}" class="field-label">Celular</label>
+                    <input type="text" name="{{ form.celular.html_name }}" id="{{ form.celular.id_for_label }}" 
+                        value="{{ form.celular.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese número de celular"
+                        {% if form.celular.field.required %}required{% endif %}>
+                    {% if form.celular.errors %}
+                    <p class="form-error">{{ form.celular.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
                 <!-- Email -->
-                <div>
-                    <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
-                    {{ form.email }}
-                    {% if form.email.errors %}
-                    <p class="form-error">{{ form.email.errors.0 }}</p>
+                <div class="form-field">
+                    <label for="{{ form.mail.id_for_label }}" class="field-label">Email</label>
+                    <input type="email" name="{{ form.mail.html_name }}" id="{{ form.mail.id_for_label }}" 
+                        value="{{ form.mail.value|default:'' }}"
+                        class="input-field"
+                        placeholder="ejemplo@correo.com"
+                        {% if form.mail.field.required %}required{% endif %}>
+                    {% if form.mail.errors %}
+                    <p class="form-error">{{ form.mail.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Obra Social -->
+                <div class="form-field">
+                    <label for="{{ form.obraSocial.id_for_label }}" class="field-label">Obra Social</label>
+                    <input type="text" name="{{ form.obraSocial.html_name }}" id="{{ form.obraSocial.id_for_label }}" 
+                        value="{{ form.obraSocial.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese obra social"
+                        {% if form.obraSocial.field.required %}required{% endif %}>
+                    {% if form.obraSocial.errors %}
+                    <p class="form-error">{{ form.obraSocial.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Plan -->
+                <div class="form-field">
+                    <label for="{{ form.plan.id_for_label }}" class="field-label">Plan</label>
+                    <input type="text" name="{{ form.plan.html_name }}" id="{{ form.plan.id_for_label }}" 
+                        value="{{ form.plan.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese plan"
+                        {% if form.plan.field.required %}required{% endif %}>
+                    {% if form.plan.errors %}
+                    <p class="form-error">{{ form.plan.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Número de Afiliado -->
+                <div class="form-field">
+                    <label for="{{ form.afiliado.id_for_label }}" class="field-label">Número de Afiliado</label>
+                    <input type="text" name="{{ form.afiliado.html_name }}" id="{{ form.afiliado.id_for_label }}" 
+                        value="{{ form.afiliado.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese número de afiliado"
+                        {% if form.afiliado.field.required %}required{% endif %}>
+                    {% if form.afiliado.errors %}
+                    <p class="form-error">{{ form.afiliado.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Profesión -->
+                <div class="form-field">
+                    <label for="{{ form.profesion.id_for_label }}" class="field-label">Profesión</label>
+                    <input type="text" name="{{ form.profesion.html_name }}" id="{{ form.profesion.id_for_label }}" 
+                        value="{{ form.profesion.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese profesión"
+                        {% if form.profesion.field.required %}required{% endif %}>
+                    {% if form.profesion.errors %}
+                    <p class="form-error">{{ form.profesion.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Médico Referente -->
+                <div class="form-field">
+                    <label for="{{ form.referente.id_for_label }}" class="field-label">Médico Referente</label>
+                    <input type="text" name="{{ form.referente.html_name }}" id="{{ form.referente.id_for_label }}" 
+                        value="{{ form.referente.value|default:'' }}"
+                        class="input-field"
+                        placeholder="Ingrese médico referente"
+                        {% if form.referente.field.required %}required{% endif %}>
+                    {% if form.referente.errors %}
+                    <p class="form-error">{{ form.referente.errors.0 }}</p>
                     {% endif %}
                 </div>
             </div>
             
             <!-- Botones de acción -->
-            <div class="mt-8 flex justify-end space-x-3">
-                <a href="{% url 'detalle_paciente' paciente.id %}" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+            <div class="btn-actions">
+                <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-cancel">
                     Cancelar
                 </a>
-                <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-[#9a4035] hover:bg-[#7a332b] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#9a4035]">
+                <button type="submit" class="btn btn-save">
                     Guardar Cambios
                 </button>
             </div>
@@ -122,8 +372,64 @@
 
 {% block extra_js %}
 <script>
-    // Este script se ejecuta después de que la página carga
+    // Función para calcular la edad basada en la fecha de nacimiento
+    function calcularEdad(fechaNacimiento) {
+        if (!fechaNacimiento) return;
+        
+        const hoy = new Date();
+        const fechaNac = new Date(fechaNacimiento);
+        
+        let edad = hoy.getFullYear() - fechaNac.getFullYear();
+        const mes = hoy.getMonth() - fechaNac.getMonth();
+        
+        // Si aún no ha llegado su cumpleaños este año, resta un año
+        if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNac.getDate())) {
+            edad--;
+        }
+        
+        document.getElementById('edad-display').textContent = `El paciente tiene ${edad} años.`;
+    }
+    
+    // Calcular la edad inicial si ya hay una fecha de nacimiento
     document.addEventListener('DOMContentLoaded', function() {
+        const fechaNacimiento = document.getElementById('{{ form.fechaNac.id_for_label }}').value;
+        if (fechaNacimiento) {
+            calcularEdad(fechaNacimiento);
+        }
+        
+        // Asegurar que el efecto hover funcione correctamente
+        const formFields = document.querySelectorAll('.form-field');
+        
+        formFields.forEach(field => {
+            // Añadir clase al pasar el cursor
+            field.addEventListener('mouseenter', function() {
+                this.classList.add('hover');
+                this.style.backgroundColor = '#f3f4f6';
+            });
+            
+            // Quitar clase al retirar el cursor
+            field.addEventListener('mouseleave', function() {
+                this.classList.remove('hover');
+                if (!this.contains(document.activeElement)) {
+                    this.style.backgroundColor = '';
+                }
+            });
+            
+            // Mantener estilo al enfocar un campo interno
+            const inputs = field.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    field.style.backgroundColor = '#f3f4f6';
+                });
+                
+                input.addEventListener('blur', function() {
+                    if (!field.classList.contains('hover')) {
+                        field.style.backgroundColor = '';
+                    }
+                });
+            });
+        });
+        
         // Configurar breadcrumbs para Alpine
         const breadcrumbs = [
             { label: 'Inicio', url: '/' },
@@ -134,49 +440,12 @@
         
         // Si estamos en Alpine, configurar el componente
         if (window.Alpine) {
-            Alpine.store('breadcrumbs', breadcrumbs);
-            
             // Acceder al componente del header para actualizar sus breadcrumbs
             const header = document.querySelector('[x-data="headerComponent"]');
             if (header && header.__x) {
                 header.__x.$data.activeSection = 'pacientes';
                 header.__x.$data.breadcrumbs = breadcrumbs;
             }
-        }
-        
-        // Inicializar datepicker para fecha de nacimiento si existe
-        if (window.flatpickr) {
-            flatpickr("#{{ form.fecha_nacimiento.id_for_label }}", {
-                dateFormat: "d/m/Y",
-                maxDate: "today",
-                locale: "es"
-            });
-        }
-        
-        // Validación del DNI
-        const dniInput = document.getElementById("{{ form.dni.id_for_label }}");
-        if (dniInput) {
-            dniInput.addEventListener('blur', function() {
-                const dniValue = this.value.trim();
-                const dniRegex = /^[0-9]{7,8}$/;
-                
-                if (!dniRegex.test(dniValue)) {
-                    // Mostrar error
-                    let errorElement = this.parentNode.querySelector('.form-error');
-                    if (!errorElement) {
-                        errorElement = document.createElement('p');
-                        errorElement.className = 'form-error';
-                        this.parentNode.appendChild(errorElement);
-                    }
-                    errorElement.textContent = 'El DNI debe contener entre 7 y 8 dígitos numéricos';
-                } else {
-                    // Quitar mensaje de error si existe
-                    const errorElement = this.parentNode.querySelector('.form-error');
-                    if (errorElement) {
-                        errorElement.textContent = '';
-                    }
-                }
-            });
         }
     });
 </script>
