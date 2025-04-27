@@ -45,7 +45,6 @@
         <!-- Select para elegir tipo de búsqueda -->
         <select name="tipo" id="tipo"
             class="search-type absolute right-40 h-10 px-4 py-2 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-            <option value="ID" {% if tipo == 'ID' %}selected{% endif %}>ID Paciente</option>
             <option value="Documento" {% if tipo == 'Documento' %}selected{% endif %}>DNI</option>
             <option value="Nombre" {% if tipo == 'Nombre' %}selected{% endif %}>Nombre</option>
             <option value="Apellido" {% if tipo == 'Apellido' %}selected{% endif %}>Apellido</option>

@@ -4,6 +4,8 @@ from .models import Paciente, HistoriaClinica, TipoDocumento, IndicacionesVisita
 from .forms import PacienteForm
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+
 
 def index(request):
     return render(request, "index.html")
@@ -64,9 +66,7 @@ def listar_buscar_pacientes(request):
         pacientes = Paciente.objects.all()
 
     # Ordenar los pacientes por un campo específico antes de paginar
-    pacientes = pacientes.order_by(
-        "id"
-    )  # Ordenar por ID para evitar inconsistencias en la paginación
+    pacientes = pacientes.order_by("-id")  # Ordenar por ID para evitar inconsistencias en la paginación
 
     # Paginador para dividir los pacientes en grupos de 14
     paginator = Paginator(pacientes, 12)  # 14 pacientes por página
@@ -121,8 +121,7 @@ def listar_buscar_historias(request):
             # Búsqueda por apellido del paciente
             historias = historias.filter(paciente__apellido__icontains=query)
 
-    # Ordenar las historias por fecha de alta (más reciente primero) y luego por ID
-    historias = historias.order_by("-id")
+    historias = historias.order_by("-id") # Ordenar por ID para evitar inconsistencias en la paginación
 
     # Paginación
     paginator = Paginator(historias, 12)  # 12 historias por página
@@ -134,7 +133,6 @@ def listar_buscar_historias(request):
 
     return render(
         request,
-#       "django-template-header.html",
         "listar_buscar_historias_2.html",
         {"page_obj": page_obj, "query": query, "tipo": tipo},
     )
@@ -189,7 +187,7 @@ def detalle_paciente(request, pk):
     """
     paciente = get_object_or_404(Paciente, pk=pk)
     # Obtener las historias relacionadas con este paciente
-    historias = HistoriaClinica.objects.filter(paciente=paciente).order_by('-fecha')
+    historias = HistoriaClinica.objects.filter(paciente=paciente).order_by('-fechaAlta')
     
     context = {
         'paciente': paciente,
@@ -211,10 +209,25 @@ def editar_paciente(request, pk):
             paciente = form.save()
             messages.success(request, f'Paciente {paciente.nombre} {paciente.apellido} actualizado exitosamente.')
             return redirect('detalle_paciente', pk=paciente.pk)
+        else:
+            # Debug para ver los errores del formulario
+            print(f"Errores del formulario: {form.errors}")
+            messages.error(request, "Por favor corrige los errores en el formulario.")
     else:
         form = PacienteForm(instance=paciente)
     
-    return render(request, 'editar_paciente.html', {'form': form, 'paciente': paciente})
+    # Calcular edad para mostrar en el formulario
+    from datetime import date
+    edad = None
+    if paciente.fechaNac:
+        today = date.today()
+        edad = today.year - paciente.fechaNac.year - ((today.month, today.day) < (paciente.fechaNac.month, paciente.fechaNac.day))
+    
+    return render(request, 'editar_paciente.html', {
+        'form': form, 
+        'paciente': paciente,
+        'edad': edad
+    })
 
 #@login_required
 def eliminar_paciente(request, pk):
