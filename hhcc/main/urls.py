@@ -11,32 +11,10 @@ urlpatterns = [
     path('pacientes/<int:pk>/editar/', views.editar_paciente, name='editar_paciente'),
     path('pacientes/<int:pk>/eliminar/', views.eliminar_paciente, name='eliminar_paciente'),
     path("historias/", views.listar_buscar_historias, name="listar_buscar_historias"),
-    path("guardar_paciente/<int:pk>/", views.guardar_paciente, name="guardar_paciente"),
-    path("borrar_paciente/<int:pk>/", views.borrar_paciente, name="borrar_paciente"),
     path(
         "ordenes_medicas/<int:paciente_id>/",
         views.ordenes_medicas,
         name="ordenes_medicas",
-    ),
-    path(
-        "detalle_historia/<int:historia_id>/",
-        views.detalle_historia,
-        name="detalle_historia",
-    ),
-    path(
-        "actualizar_condiciones/<int:historia_id>/",
-        views.actualizar_condiciones,
-        name="actualizar_condiciones",
-    ),
-    path(
-        "guardar_signos_vitales/<int:historia_id>/",
-        views.guardar_signos_vitales,
-        name="guardar_signos_vitales",
-    ),
-    path(
-        "historia/<int:historia_id>/actualizar/",
-        views.actualizar_historia,
-        name="actualizar_historia",
     ),
     path(
         "descargarPDFSolicitudes/<int:paciente_id>/<str:diagnostico>/<str:estudios>/<str:tipo>/",
@@ -52,11 +30,6 @@ urlpatterns = [
         "generar_pdf_orden/<int:paciente_id>/<str:diagnostico>/<str:estudios>/<str:tipo>/",
         views.generar_pdf_orden,
         name="generar_pdf_orden",
-    ),
-    path(
-        "api/historia/<int:historia_id>",
-        views.get_historia_data,
-        name="get_historia_data",
     ),
     path(
         "api/historia/<int:historia_id>/ultimos-comentarios/",
