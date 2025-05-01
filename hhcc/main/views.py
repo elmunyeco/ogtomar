@@ -229,35 +229,6 @@ def eliminar_paciente(request, pk):
     return render(request, 'eliminar_paciente.html', {'paciente': paciente})
 
 
-def guardar_paciente(request, paciente_id=None):
-    if paciente_id:
-        # Si hay un ID de paciente, entonces estamos editando
-        paciente = get_object_or_404(Paciente, id=paciente_id)
-    else:
-        # Si no hay ID, estamos creando un nuevo paciente
-        paciente = None
-
-    if request.method == "POST":
-        form = PacienteForm(request.POST, instance=paciente)
-        if form.is_valid():
-            form.save()
-            return redirect("index")
-    else:
-        form = PacienteForm(instance=paciente)
-
-    return render(
-        request, "guardar_paciente.html", {"form": form, "paciente": paciente}
-    )
-
-
-def borrar_paciente(request, paciente_id):
-    paciente = get_object_or_404(Paciente, id=paciente_id)
-    if request.method == "POST":
-        paciente.delete()
-        return redirect("index")
-    return render(request, "borrar_paciente.html", {"paciente": paciente})
-
-
 def detalle_historia(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
     paciente = historia.paciente
