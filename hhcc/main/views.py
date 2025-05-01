@@ -181,22 +181,6 @@ def crear_paciente(request):
     return render(request, 'crear_paciente.html', {'form': form})
 
 #@login_required
-def detalle_paciente(request, pk):
-    """
-    Vista para ver el detalle de un paciente
-    """
-    paciente = get_object_or_404(Paciente, pk=pk)
-    # Obtener las historias relacionadas con este paciente
-    historias = HistoriaClinica.objects.filter(paciente=paciente).order_by('-fechaAlta')
-    
-    context = {
-        'paciente': paciente,
-        'historias': historias,
-    }
-    
-    return render(request, 'detalle_paciente.html', context)
-
-#@login_required
 def editar_paciente(request, pk):
     """
     Vista para editar un paciente existente
@@ -208,7 +192,7 @@ def editar_paciente(request, pk):
         if form.is_valid():
             paciente = form.save()
             messages.success(request, f'Paciente {paciente.nombre} {paciente.apellido} actualizado exitosamente.')
-            return redirect('detalle_paciente', pk=paciente.pk)
+            return redirect('editar_paciente', pk=paciente.pk)
         else:
             # Debug para ver los errores del formulario
             print(f"Errores del formulario: {form.errors}")

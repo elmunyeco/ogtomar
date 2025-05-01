@@ -358,7 +358,7 @@
             
             <!-- Botones de acción -->
             <div class="btn-actions">
-                <a href="{% url 'detalle_paciente' paciente.id %}" class="btn btn-cancel">
+                <a href="{% url 'editar_paciente' paciente.id %}" class="btn btn-cancel">
                     Cancelar
                 </a>
                 <button type="submit" class="btn btn-save">
@@ -434,7 +434,7 @@
         const breadcrumbs = [
             { label: 'Inicio', url: '/' },
             { label: 'Pacientes', url: '/pacientes/' },
-            { label: '{{ paciente.nombre }} {{ paciente.apellido }}', url: '{% url "detalle_paciente" paciente.id %}' },
+            { label: '{{ paciente.nombre }} {{ paciente.apellido }}', url: '{% url "editar_paciente" paciente.id %}' },
             { label: 'Editar', url: '#' }
         ];
         

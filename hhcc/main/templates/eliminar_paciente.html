@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Eliminar Paciente - Dr. Omar Prieto{% endblock %}
+
+{% block extra_css %}
+<!-- Estilos adicionales específicos para esta página -->
+<style>
+  .confirm-container {
+    width: 95%;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  
+  /* Optimización para dispositivos móviles */
+  @media (max-width: 640px) {
+    .confirm-container {
+      width: 98%;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="confirm-container mt-8">
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="bg-red-600 px-4 py-3">
+            <h2 class="text-xl font-bold text-white">Confirmar Eliminación</h2>
+        </div>
+        
+        <div class="p-6">
+            <div class="mb-6">
+                <svg class="w-16 h-16 text-red-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                
+                <h3 class="text-lg font-semibold text-center mb-2">¿Está seguro que desea eliminar este paciente?</h3>
+                
+                <p class="text-center text-gray-600">
+                    Esta acción eliminará permanentemente al paciente <strong>{{ paciente.nombre }} {{ paciente.apellido }}</strong> del sistema.
+                </p>
+                
+                {% if historias %}
+                <div class="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700">
+                                No es posible eliminar este paciente porque tiene historias clínicas asociadas.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <a href="{% url 'detalle_paciente' paciente.id %}" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                    Cancelar
+                </a>
+                
+                {% if not historias %}
+                <form method="POST">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                        Confirmar Eliminación
+                    </button>
+                </form>
+                {% else %}
+                <button disabled class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-400 cursor-not-allowed opacity-70">
+                    Confirmar Eliminación
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Este script se ejecuta después de que la página carga
+    document.addEventListener('DOMContentLoaded', function() {
+        // Configurar breadcrumbs para Alpine
+        const breadcrumbs = [
+            { label: 'Inicio', url: '/' },
+            { label: 'Pacientes', url: '/pacientes/' },
+            { label: '{{ paciente.nombre }} {{ paciente.apellido }}', url: '{% url "detalle_paciente" paciente.id %}' },
+            { label: 'Eliminar', url: '#' }
+        ];
+        
+        // Si estamos en Alpine, configurar el componente
+        if (window.Alpine) {
+            Alpine.store('breadcrumbs', breadcrumbs);
+            
+            // Acceder al componente del header para actualizar sus breadcrumbs
+            const header = document.querySelector('[x-data="headerComponent"]');
+            if (header && header.__x) {
+                header.__x.$data.activeSection = 'pacientes';
+                header.__x.$data.breadcrumbs = breadcrumbs;
+            }
+        }
+    });
+</script>
+{% endblock %}
