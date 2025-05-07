@@ -41,12 +41,12 @@ class Paciente(models.Model):
     localidad = models.CharField(
         max_length=60, null=True, blank=True
     )  # Localidad opcional
-    obraSocial = models.CharField(max_length=50)  # Obra social
+    obraSocial = models.CharField(max_length=50, null=True, blank=True)  # Obra social
     plan = models.CharField(max_length=50, null=True, blank=True)  # Plan opcional
-    afiliado = models.CharField(max_length=50)  # Número de afiliado
-    telefono = models.CharField(max_length=50)  # Teléfono
-    celular = models.CharField(max_length=50)  # Celular
-    profesion = models.CharField(max_length=50)  # Profesión
+    afiliado = models.CharField(max_length=50, null=True, blank=True )  # Número de afiliado
+    telefono = models.CharField(max_length=50, null=True, blank=True )  # Teléfono
+    celular = models.CharField(max_length=50, null=True, blank=True )  # Celular
+    profesion = models.CharField(max_length=50, null=True, blank=True )  # Profesión
     referente = models.CharField(
         max_length=50, null=True, blank=True
     )  # Referente opcional
