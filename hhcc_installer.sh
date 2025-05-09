@@ -176,7 +176,35 @@ RUN chmod +x /app/wait-for-mysql.sh
 EXPOSE 8000
 
 # Comando para iniciar la aplicación
-CMD ["/app/wait-for-mysql.sh", "db", "3306", "python3", "manage.py", "runserver", "0.0.0.0:8000"]
+# Script para configurar la base de datos y ejecutar la aplicación
+RUN echo '#!/bin/bash\n\
+# Esperar a que la base de datos esté disponible\n\
+/app/wait-for-mysql.sh db 3306 echo "Base de datos lista"\n\
+\n\
+# Actualizar configuración de la base de datos en settings.py\n\
+SETTINGS_FILE="/app/hhcc/settings.py"\n\
+if [ -f "$SETTINGS_FILE" ]; then\n\
+    sed -i "s/'\''ENGINE'\'': '\''.*'\''/'\'ENGINE\': \'\''django.db.backends.mysql\'\''/" "$SETTINGS_FILE"\n\
+    sed -i "s/'\''NAME'\'': '\''.*'\''/'\'NAME\': \'\''$DB_NAME\'\''/" "$SETTINGS_FILE"\n\
+    sed -i "s/'\''USER'\'': '\''.*'\''/'\'USER\': \'\''$DB_USER\'\''/" "$SETTINGS_FILE"\n\
+    sed -i "s/'\''PASSWORD'\'': '\''.*'\''/'\'PASSWORD\': \'\''$DB_PASSWORD\'\''/" "$SETTINGS_FILE"\n\
+    sed -i "s/'\''HOST'\'': '\''.*'\''/'\'HOST\': \'\''$DB_HOST\'\''/" "$SETTINGS_FILE"\n\
+    sed -i "s/'\''PORT'\'': '\''.*'\''/'\'PORT\': \'\''$DB_PORT\'\''/" "$SETTINGS_FILE"\n\
+    echo "Configuración de la base de datos actualizada en settings.py"\n\
+else\n\
+    echo "ADVERTENCIA: No se encontró el archivo settings.py"\n\
+fi\n\
+\n\
+# Ejecutar migraciones\n\
+python3 manage.py migrate --noinput\n\
+\n\
+# Ejecutar el servidor de desarrollo\n\
+python3 manage.py runserver 0.0.0.0:8000\n\
+' > /app/start.sh
+
+RUN chmod +x /app/start.sh
+
+CMD ["/app/start.sh"]
 EOF
 
 # Configurar Docker Compose
@@ -186,19 +214,19 @@ version: '3'
 
 services:
   db:
-    image: mysql:8.0
-    container_name: hhcc_mysql
+    image: mariadb:10.5
+    container_name: hhcc_mariadb
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MYSQL_DATABASE}
+      MARIADB_USER: ${MYSQL_USER}
+      MARIADB_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3307:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
-    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      - mariadb_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     networks:
       - hhcc_network
 
@@ -220,6 +248,7 @@ services:
       - DB_NAME=${MYSQL_DATABASE}
       - DB_USER=${MYSQL_USER}
       - DB_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
     networks:
       - hhcc_network
 
@@ -228,7 +257,7 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data:
+  mariadb_data:
 EOF
 
 # Crear script para actualizar el settings.py
@@ -260,16 +289,16 @@ EOF
 
 chmod +x "$PROJECT_DIR/update_settings.sh"
 
-# Crear script para importar la base de datos después de que MySQL esté listo
+# Crear script para importar la base de datos después de que MariaDB esté listo
 log "Creando script para importar la base de datos..."
 cat > "$PROJECT_DIR/import_database.sh" << EOF
 #!/bin/bash
 
-echo "Esperando a que MySQL esté listo..."
+echo "Esperando a que MariaDB esté listo..."
 sleep 30
 
 echo "Restaurando la base de datos desde nuevo_cardioprieto.sql.gz..."
-gunzip -c /tmp/nuevo_cardioprieto.sql.gz | mysql -h db -u root -p${MYSQL_ROOT_PASSWORD} ${MYSQL_DATABASE}
+gunzip -c /tmp/nuevo_cardioprieto.sql.gz | mariadb -h db -u root -p${MYSQL_ROOT_PASSWORD} ${MYSQL_DATABASE}
 
 echo "Base de datos restaurada correctamente."
 EOF
@@ -279,7 +308,7 @@ chmod +x "$PROJECT_DIR/import_database.sh"
 # Crear un Dockerfile adicional para importar la base de datos
 log "Creando Dockerfile para importar la base de datos..."
 cat > "$PROJECT_DIR/Dockerfile.db-import" << EOF
-FROM mysql:8.0
+FROM mariadb:10.5
 
 RUN apt-get update && apt-get install -y \
     netcat \
@@ -330,10 +359,10 @@ log "==================================================="
 log "Instalación completada con éxito!"
 log "==================================================="
 log "URL de la aplicación: http://$(hostname -I | awk '{print $1}'):8000"
-log "MySQL está disponible en el puerto 3307"
+log "MariaDB está disponible en el puerto 3307"
 log "Directorio del proyecto: $PROJECT_DIR"
-log "Base de datos MySQL: $MYSQL_DATABASE"
-log "Usuario de MySQL: $MYSQL_USER"
+log "Base de datos MariaDB: $MYSQL_DATABASE"
+log "Usuario de MariaDB: $MYSQL_USER"
 log "==================================================="
 log "Para gestionar los contenedores:"
 log "  cd $PROJECT_DIR && docker-compose ps"
