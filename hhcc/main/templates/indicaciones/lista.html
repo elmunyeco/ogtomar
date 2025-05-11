@@ -16,14 +16,6 @@
         });
     },
 
-    init() {
-        this.$nextTick(() => {
-            this.$watch('comentario.comentarios', (value) => {
-                this.cambiosPendientes = value !== this.comentarioOriginal.comentarios;
-            });
-        });
-    },
-
     async eliminarIndicacion(id) {
         if (!confirm('¿Está seguro de eliminar esta indicación?')) return;
         
@@ -39,6 +31,7 @@
             const data = await response.json();
             if (response.ok) {
                 this.indicaciones = this.indicaciones.filter(i => i.id !== id);
+                this.successMessage = 'Indicación eliminada correctamente';
             } else {
                 this.errorMessage = data.message || 'Error al eliminar';
             }
@@ -53,10 +46,6 @@
                 comentarios: this.comentario.comentarios
             };
             console.log('Body a enviar:', bodyData);
-            console.log('Headers:', {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            });
             
             const response = await fetch('{% url 'guardar_comentarios_indicaciones' historia_id=historia.id %}', {
                 method: 'POST',
@@ -67,16 +56,22 @@
                 body: JSON.stringify(bodyData)
             });
             
-            console.log('Status:', response.status);
             const data = await response.json();
-            console.log('Respuesta:', data);
             
             if (response.ok) {
                 console.log('Guardado exitoso');
+                this.successMessage = 'Comentario guardado correctamente';
+                // Actualizar el comentario original para que coincida con el actual
+                this.comentarioOriginal.comentarios = this.comentario.comentarios;
+                // Resetear cambios pendientes
+                this.cambiosPendientes = false;
+            } else {
+                this.errorMessage = data.message || 'Error al guardar el comentario';
             }
         } catch (error) {
             console.error('Error completo:', error);
-        }b
+            this.errorMessage = 'Error de conexión al guardar';
+        }
     }
 }">
     <!-- Mensajes de error/éxito -->
@@ -134,6 +129,12 @@
                             </td>
                         </tr>
                     </template>
+                    <!-- Mensaje cuando no hay indicaciones -->
+                    <tr x-show="indicaciones.length === 0">
+                        <td colspan="7" class="p-3 border text-center text-gray-500">
+                            No hay indicaciones registradas
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -151,7 +152,7 @@
                         class="btn-hover-effect px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white">
                         Cancelar
                     </button>
-                    <button @click="guardarComentario"
+                    <button @click="guardarComentario()"
                         class="btn-hover-effect px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b]">
                         Guardar Comentario
                     </button>

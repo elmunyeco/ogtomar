@@ -100,7 +100,7 @@
                 </div>
 
                 <div class="flex items-center space-x-6">
-                    <button
+                    <button @click="window.location.href='{% url 'indicaciones' historia_id=historia.id %}'"
                         class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
                         <i class="fas fa-pills text-xl mb-1"></i>
                         <span class="text-xs">Medicación</span>
