@@ -1233,7 +1233,7 @@ def detalle_historia_con_historial(request, historia_id):
         "debug": settings.DEBUG,
     }
 
-    return render(request, "detalle_historia_con_historial.html", context)
+    return render(request, "detalle_historia_con_historial_2.html", context)
 
 
 def h1_html(request):
