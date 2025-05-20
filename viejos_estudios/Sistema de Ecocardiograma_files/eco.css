@@ -1,0 +1,167 @@
+/*@import url(//fonts.googleapis.com/css?family=Open+Sans:400);*/
+
+body{
+	width: 100%;
+	/*font: 15px "Open Sans", Arial, Helvetica, sans-serif;*/
+	color: #555;/*#7f7f7f*/
+}
+
+.analisisBidimensional h4, .analisisCopplerSpeckel h4, .analisisMotilidadSegmentaria h4, .conclusiones h4, .comentarioFinal h4, .conclusionesB h4{
+	font-weight: bold;
+}
+hr{
+	border-width: 5px;
+}
+.datosPaciente{
+	padding-bottom: 5px;
+}
+.header{
+	/*position: relative;*/
+	text-align: center;
+	top: 30px;
+}
+.tituloPrincipal{
+	text-decoration: underline;
+	margin: 30px auto;
+	text-align: center;
+	font-size: 20px; 
+}
+.help-block{
+	padding-top: 10px;
+	padding-left: 30px;
+}
+#formFinal .panel-body{
+	padding-top: 0;
+}
+#formConclB .panel-body{
+	padding-top: 0;
+}
+.boxInfoHeader{
+	font-weight: bold;
+	font-size:14px;
+	color: #7f7f7f;
+	float: right;
+}
+.datosPaciente .form-group{
+	margin-top: 0;
+	margin-bottom: 0;
+}
+.footer{
+	height: 50px;
+	width: 100%;
+	background: #eee;
+	margin-top: 50px; 
+}
+.divConclusiones{
+	margin-left: 50px;
+}
+.lblUnidad{
+	float: left;
+	text-align: left;
+	margin-left: -10px;
+	padding-top: 7px;
+	font-size: 12px;
+}
+.divConclusiones textarea.form-control{
+	resize: vertical;
+	min-height: 30px;
+	max-height: 200px;
+}   
+.divConclusiones h5{
+	margin-top: 0;
+}
+#comentarioFinal{
+	resize: vertical;
+	min-height: 30px;
+	height: 150px;
+	max-height: 300px;
+}
+#conclusionesB{
+	resize: vertical;
+	min-height: 100px;
+	height: 350px;
+	max-height: 600px;
+}
+.referencias{
+	overflow: hidden;
+}
+#informeFinal{
+	margin-top: 30px;
+}
+.boxConclusiones div{
+	margin-left: 50px;
+}
+.table-hover tr th, .table-hover tr td{
+	font-size: 14px;
+}
+.form-control{
+	font-size: 12px;
+}
+.datosPaciente .form-group input.form-control{
+	padding: 0 6px;
+	height: 25px;
+}
+.boxComentario{
+	display: none;
+}
+.modal-dialog {
+    margin-top: 20%;
+}
+.ondas{
+	margin-left: -60px;
+}
+.divBtnsPaciente{
+	margin-top: 20px;
+}
+#formPaciente{
+	margin: 0;
+}
+#loadPaciente, #loadEco{
+	width: 40px;
+	height: 40px;
+	display: none;
+}
+#msjPaciente, #msjBidimensional, #msjCoppler, #msjSegmentos, #msjConclusiones, #msjComFinal, #msjConclusionesB{
+	display: none;
+	margin: 10px 0;
+	padding: 15px;
+}
+.valoresSegmentos{
+	margin: 40px 0;
+}
+.valoresSegmentos span{
+	height: 20px; 
+	width: 40px; 
+	border: solid 1px #000;
+	opacity: 0.6;
+}
+#ldgGuardar, #ldgGuardarEco{
+	display: none;
+}
+.glyphicon-refresh-animate {
+    animation: spin .7s infinite linear;
+    -webkit-animation: spin .7s infinite linear;
+}
+.map{
+	margin: 0 auto;
+}
+.tabs .panel{
+	margin-top: 20px;
+}
+.form-horizontal .control-label, .form-control-static{
+	padding-top: 0px;
+}
+#imgLogo{
+	width: 260px;
+	height: 90px;
+	padding: 5px;
+}
+.referencias ol li {
+    position: relative;
+    left: 1em;
+    padding-right: 1em;    
+}
+.bottom{
+	position: absolute;
+	bottom: 0;
+}​
