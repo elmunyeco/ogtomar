@@ -1,0 +1,316 @@
+├── aaaaaaaaa.html
+├── acomoda_comentarios.psql
+├── acomoda_comentarios_v2.psql
+├── borrar_migrations.sh
+├── cardioprieto-20250213164625.sql
+├── color.rrggbb
+├── comentarios.sql
+├── condiciones_medicas_historia.sql
+├── consulta_full_text.sql
+├── consulta_fulltext.sql
+├── consulta_like.sql
+├── convertir_indicaciones.sql
+├── create_cardioprieto.sql
+├── create_table_historias_clinicas.sql
+├── create_table_pacientes.sql
+├── create_table_tipo_documento.sql
+├── estructura.sh
+├── extract_and_organize_css.py
+├── fey-gradiente.html
+├── .gitalgo
+├── .gitignore
+├── hhcc/
+│   ├── errores.log
+│   ├── hhcc/
+│   │   ├── asgi.py
+│   │   ├── __init__.py
+│   │   ├── __pycache__/
+│   │   │   ├── __init__.cpython-312.pyc
+│   │   │   ├── __init__.cpython-313.pyc
+│   │   │   ├── settings.cpython-312.pyc
+│   │   │   ├── settings.cpython-313.pyc
+│   │   │   ├── urls.cpython-312.pyc
+│   │   │   ├── urls.cpython-313.pyc
+│   │   │   ├── wsgi.cpython-312.pyc
+│   │   │   ├── wsgi.cpython-313.pyc
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   ├── wsgi.py
+├── hhcc_installer.sh
+│   ├── main/
+│   │   ├── admin.py
+│   │   ├── apps.py
+│   │   ├── context_processors/
+│   │   │   ├── menu_context.py
+│   │   ├── context_processors.py
+│   │   ├── forms.py
+│   │   ├── __init__.py
+│   │   ├── management/
+│   │   │   ├── commands/
+│   │   │   │   ├── asignar_condiciones.py
+│   │   │   │   ├── borrar_pacientes.py
+│   │   │   │   ├── poblar_condicionesmedicas.py
+│   │   │   │   ├── poblar_pacientes.py
+│   │   │   │   ├── poblar_signos_vitales.py
+│   │   │   │   ├── poblar_tipodocumento.py
+│   │   │   │   ├── sintetizar_pacientes.py
+│   │   ├── migrations/
+│   │   │   ├── 0001_initial.py
+│   │   │   ├── 0002_lcdtm.py
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__/
+│   │   │   │   ├── 0001_initial.cpython-312.pyc
+│   │   │   │   ├── 0001_initial.cpython-313.pyc
+│   │   │   │   ├── 0002_alter_comentariosvisitas_fecha.cpython-312.pyc
+│   │   │   │   ├── 0002_lcdtm.cpython-312.pyc
+│   │   │   │   ├── 0002_lcdtm.cpython-313.pyc
+│   │   │   │   ├── 0002_rename_indicacione_idhisto_248eeb_idx_indicacione_histori_e75187_idx_and_more.cpython-312.pyc
+│   │   │   │   ├── 0003_auto_20250213_1914.cpython-312.pyc
+│   │   │   │   ├── 0003_rename_indicacione_idhisto_248eeb_idx_indicacione_histori_e75187_idx_and_more.cpython-312.pyc
+│   │   │   │   ├── 0004_merge_20250213_1917.cpython-312.pyc
+│   │   │   │   ├── __init__.cpython-312.pyc
+│   │   │   │   ├── __init__.cpython-313.pyc
+│   │   ├── models.py
+│   │   ├── new_templates/
+│   │   │   ├── base.html
+│   │   │   ├── borrar_paciente.html
+│   │   │   ├── buscador.html
+│   │   │   ├── components/
+│   │   │   │   ├── header.html
+│   │   │   │   ├── japi.html
+│   │   │   ├── detalle_historia_con_historial.html
+│   │   │   ├── django-template-header.html
+│   │   │   ├── historial_medico/
+│   │   │   │   ├── base.html
+│   │   │   │   ├── historial_medico.html
+│   │   │   ├── index.html
+│   │   │   ├── indicaciones/
+│   │   │   │   ├── agregar.html
+│   │   │   │   ├── base.html
+│   │   │   │   ├── historial_medico/
+│   │   │   │   │   ├── base.html
+│   │   │   │   │   ├── historial_medico.html
+│   │   │   │   ├── lista.html
+│   │   │   ├── landing_page_dropdown.html
+│   │   │   ├── landing_page.html
+│   │   │   ├── listar_buscar_historias.html
+│   │   │   ├── listar_buscar_pacientes.html
+│   │   │   ├── O_M.html
+│   │   │   ├── ordenes_medicas.html
+│   │   │   ├── ordenes_pedicas.html
+│   │   ├── old_templates/
+│   │   │   ├── base.html
+│   │   │   ├── borrar_paciente.html
+│   │   │   ├── buscador.html
+│   │   │   ├── cargar_paciente.html.notinuse
+│   │   │   ├── components/
+│   │   │   │   ├── header2.html
+│   │   │   │   ├── header.html
+│   │   │   ├── detalle_bueno.html.notinuse
+│   │   │   ├── detalle_historia_con_historial.html
+│   │   │   ├── detalle_historia_mock.html.notinuse
+│   │   │   ├── detalle_historia_t2.html.notinuse
+│   │   │   ├── detalle_historia_t3.html.notinuse
+│   │   │   ├── detalle_historia_t4.html.notinuse
+│   │   │   ├── detalle_historia_t.back.notinuse
+│   │   │   ├── detalle_historia_t.html.notinuse
+│   │   │   ├── django-template-header.html
+│   │   │   ├── historia-clinica-combined.html.notinuse
+│   │   │   ├── historia-clinica-final.html.notinuse
+│   │   │   ├── historial_medico/
+│   │   │   │   ├── base.html
+│   │   │   │   ├── historial_medico.html
+│   │   │   ├── index.html
+│   │   │   ├── indicaciones/
+│   │   │   │   ├── agregar.html
+│   │   │   │   ├── base.html
+│   │   │   │   ├── historial_medico/
+│   │   │   │   │   ├── base.html
+│   │   │   │   │   ├── historial_medico.html
+│   │   │   ├── indicaciones.html.notinuse
+│   │   │   │   ├── lista.html
+│   │   │   ├── landing_page_dropdown.html
+│   │   │   ├── landing_page.html
+│   │   │   ├── listar_buscar_historias.html
+│   │   │   ├── listar_buscar_pacientes.html
+│   │   │   ├── mv_to_notinuse.sh
+│   │   │   ├── O_M.html
+│   │   │   ├── ordenes_medicas.html
+│   │   │   ├── ordenes_pedicas.html
+│   │   │   ├── paciente-borrar.html.notinuse
+│   │   │   ├── paciente-editar.html.notinuse
+│   │   │   ├── refactored_templates/
+│   │   │   │   ├── base.html
+│   │   │   │   ├── borrar_paciente.html
+│   │   │   │   ├── buscador.html
+│   │   │   │   ├── components/
+│   │   │   │   │   ├── header2.html
+│   │   │   │   │   ├── header.html
+│   │   │   │   ├── detalle_historia_con_historial.html
+│   │   │   │   ├── django-template-header.html
+│   │   │   │   ├── historial_medico/
+│   │   │   │   │   ├── base.html
+│   │   │   │   │   ├── historial_medico.html
+│   │   │   │   ├── index.html
+│   │   │   │   ├── indicaciones/
+│   │   │   │   │   ├── agregar.html
+│   │   │   │   │   ├── base.html
+│   │   │   │   │   ├── historial_medico/
+│   │   │   │   │   │   ├── base.html
+│   │   │   │   │   │   ├── historial_medico.html
+│   │   │   │   │   ├── lista.html
+│   │   │   │   ├── landing_page_dropdown.html
+│   │   │   │   ├── landing_page.html
+│   │   │   │   ├── listar_buscar_historias.html
+│   │   │   │   ├── listar_buscar_pacientes.html
+│   │   │   │   ├── O_M.html
+│   │   │   │   ├── ordenes_medicas.html
+│   │   │   │   ├── ordenes_pedicas.html
+│   │   │   ├── restore_notinuse.sh
+│   │   │   ├── simple_dropdown_menu.html.notinuse
+│   │   │   ├── test_ultimo_comentario_indicaciones.html.notinuse
+│   │   ├── __pycache__/
+│   │   │   ├── admin.cpython-312.pyc
+│   │   │   ├── admin.cpython-313.pyc
+│   │   │   ├── apps.cpython-312.pyc
+│   │   │   ├── apps.cpython-313.pyc
+│   │   │   ├── context_processors.cpython-313.pyc
+│   │   │   ├── forms.cpython-312.pyc
+│   │   │   ├── forms.cpython-313.pyc
+│   │   │   ├── __init__.cpython-312.pyc
+│   │   │   ├── __init__.cpython-313.pyc
+│   │   │   ├── models.cpython-312.pyc
+│   │   │   ├── models.cpython-313.pyc
+│   │   │   ├── signals.cpython-312.pyc
+│   │   │   ├── signals.cpython-313.pyc
+│   │   │   ├── urls.cpython-312.pyc
+│   │   │   ├── urls.cpython-313.pyc
+│   │   │   ├── utils.cpython-312.pyc
+│   │   │   ├── utils.cpython-313.pyc
+│   │   │   ├── views.cpython-312.pyc
+│   │   │   ├── views.cpython-313.pyc
+│   │   ├── signals.py
+│   │   ├── static/
+│   │   │   ├── main/
+│   │   │   │   ├── css/
+│   │   │   │   │   ├── style.css
+│   │   │   │   ├── images/
+│   │   │   │   │   ├── logomar_solid.png
+│   │   │   │   │   ├── logomar_watermark.svg
+│   │   │   │   │   ├── logo.png
+│   │   │   │   │   ├── logosolo copy.png
+│   │   │   │   │   ├── logosolo.png
+│   │   │   │   ├── js/
+│   │   │   │   │   ├── components/
+│   │   │   │   │   │   ├── header.js
+│   │   ├── templates/
+│   │   │   ├── base.html
+│   │   │   ├── borrar_paciente.html
+│   │   │   ├── buscador.html
+│   │   │   ├── components/
+│   │   │   │   ├── header.html
+│   │   │   ├── crear_paciente.html
+│   │   │   ├── detalle_historia_con_historial_2.html
+│   │   │   ├── detalle_historia_con_historial.html
+│   │   │   ├── detalle_paciente.html
+│   │   │   ├── dummy.html
+│   │   │   ├── editar_paciente.html
+│   │   │   ├── eliminar_paciente.html
+│   │   │   ├── historial_medico/
+│   │   │   │   ├── h1.html
+│   │   │   │   ├── h2.html
+│   │   │   │   ├── h3.html
+│   │   │   │   ├── historial_medico.html
+│   │   │   ├── index.html
+│   │   │   ├── indicaciones/
+│   │   │   │   ├── agregar.html
+│   │   │   │   ├── base.html
+│   │   │   │   ├── historial_medico/
+│   │   │   │   │   ├── base.html
+│   │   │   │   │   ├── historial_medico.html
+│   │   │   │   ├── lista.html
+│   │   │   ├── landing_page_dropdown.html
+│   │   │   ├── landing_page.html
+│   │   │   ├── listar_buscar_historias_2.html
+│   │   │   ├── listar_buscar_pacientes.html
+│   │   │   ├── O_M.html
+│   │   │   ├── ordenes_medicas.html
+│   │   │   ├── ordenes_pedicas.html
+│   │   │   ├── ver_estudios.html
+│   │   ├── tests.py
+│   │   ├── urls.py
+│   │   ├── utils.py
+│   │   ├── views.py
+│   ├── manage.py
+│   ├── sandbox/
+│   │   ├── funciones_historiaclinica_jquery.js
+├── historial_medico.html
+├── historias_clinicas.sql
+├── indicaciones.sql
+├── INSTALADOR.md
+├── latency_results/
+│   ├── latency_20241206.csv
+├── lib64
+├── lista_endpoints.urls
+├── muestra_comentarios.csv.gz
+├── muestra_comentarios_visitas.csv.gz
+├── nueva_db.sql.gz
+├── nuevo_cardioprieto_schema.sql
+├── nuevo_cardioprieto.sql.gz
+├── pacientes2.sql
+├── pacientes.sql
+├── page_obj.number
+├── post_migration_pacientes.py
+├── post_migration_pacientes.sql
+├── query_scoring.sql
+├── README.md
+├── refactored_templates/
+│   ├── base.html
+│   ├── borrar_paciente.html
+│   ├── buscador.html
+│   ├── components/
+│   │   ├── header2.html
+│   │   ├── header.html
+│   ├── detalle_historia_con_historial.html
+│   ├── django-template-header.html
+│   ├── historial_medico/
+│   │   ├── base.html
+│   │   ├── historial_medico.html
+│   ├── index.html
+│   ├── indicaciones/
+│   │   ├── agregar.html
+│   │   ├── base.html
+│   │   ├── historial_medico/
+│   │   │   ├── base.html
+│   │   │   ├── historial_medico.html
+│   │   ├── lista.html
+│   ├── landing_page_dropdown.html
+│   ├── landing_page.html
+│   ├── listar_buscar_historias.html
+│   ├── listar_buscar_pacientes.html
+│   ├── O_M.html
+│   ├── ordenes_medicas.html
+│   ├── ordenes_pedicas.html
+├── requirements.txt
+├── runmariadb.sh
+├── scaffolding_20250320203535
+├── scaffolding_main_py_20250320203535
+├── score_berg.sql
+├── scoring.sql
+├── signos_vitales.sql
+├── static/
+│   ├── main/
+│   │   ├── css/
+│   │   │   ├── style.css
+├── tailwind.config.js
+├── tipos_documentos.sql
+├── todo.txt
+├── tufte-style-chart-component.html
+├── update_templates.sh
+├── verifica_migracion_comentarios.psql
+├── ver_indices.sql
+├── versiones_mas_nuevas.sh
+├── viejo-cardioprieto-20250103204353.sql
+├── viejo_cardioprieto_schema.sql
+├── viejos_estudios/
+│   ├── Sistema de Ecocardiograma.min.html

@@ -102,3 +102,5 @@ Thumbs.db
 *.tgz
 *.rar
 *.log.*
+*.pyc
+__pycache__/
