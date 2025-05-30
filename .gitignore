@@ -102,3 +102,10 @@ Thumbs.db
 *.tgz
 *.rar
 *.log.*
+
+
+<<<<<<< Updated upstream
+*.pyc
+__pycache__/
+=======
+>>>>>>> Stashed changes
