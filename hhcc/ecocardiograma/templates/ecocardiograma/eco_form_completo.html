@@ -1,0 +1,1252 @@
+{# Archivo: ecocardiograma/templates/ecocardiograma/eco_form_optimizado.html #}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sistema de Ecocardiograma{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('ecocardiogramaSistema', () => ({
+        // Estado principal
+        historiaId: null,
+        guardando: false,
+        autoGuardando: false,
+        debounceTimer: null,
+        mensaje: { texto: '', tipo: '' },
+        
+        // Pestañas
+        activeTab: 'bidimensional',
+        tabs: [
+            { id: 'bidimensional', label: 'Análisis Bidimensional' },
+            { id: 'doppler', label: 'Análisis Doppler & Speckel' },
+            { id: 'segmentos', label: 'Motilidad Segmentaria' },
+            { id: 'conclusiones', label: 'Conclusiones' },
+            { id: 'conclusion_b', label: 'Conclusión B' },
+            { id: 'comentario_final', label: 'Comentario Final' }
+        ],
+        
+        // Datos del estudio
+        estudio: {
+            id: null,
+            peso: '',
+            talla: '',
+            presion_sistolica: '',
+            presion_diastolica: '',
+            auricula_izq_diametro: '',
+            area_auricula_izq: '',
+            plano_valvular_aortico: '',
+            septum_diastole: '',
+            pared_diastole: '',
+            vent_izq_diastolico: '',
+            vent_izq_sistolico: '',
+            diametro_tsvi: '',
+            fraccion_simpson: '',
+            tapse: '',
+            vent_derecho: '',
+            valvula_pulmonar: '',
+            valvula_aortica: '',
+            tracto_vent_izq: '',
+            onda_e_mitral: '',
+            onda_a_mitral: '',
+            onda_e_tricuspidea: '',
+            onda_a_tricuspidea: '',
+            strain_longitudinal: ''
+        },
+        
+        // Conclusiones
+        conclusiones: {
+            auricula_izq: [],
+            ventriculo_izq: [],
+            funcion_sistolica: '',
+            funcion_diastolica: '',
+            motilidad_segmentaria: '',
+            comentario_motilidad: '',
+            pericardio: '',
+            comentario_pericardio: '',
+            defectos_congenitos: '',
+            comentario_defectos: '',
+            conclusion_texto: '',
+            comentario_final: ''
+        },
+        
+        // Segmentos
+        segmentos: {},
+        
+        // Modal de segmentos
+        modalSegmento: {
+            abierto: false,
+            numero: null
+        },
+        
+        // Valores calculados
+        bmiCalculado: '',
+        fraccionAcortamiento: '',
+        gradientes: {
+            pulmonar: '',
+            aortica: '',
+            tracto: '',
+            mitral: '',
+            tricuspidea: ''
+        },
+        
+        // Opciones para conclusiones
+        opcionesAuriculaIzq: [
+            { valor: '1', texto: 'Normal' },
+            { valor: '2', texto: 'Ligeramente dilatada' },
+            { valor: '3', texto: 'Con dilatación de grado moderado' },
+            { valor: '4', texto: 'Con severa dilatación' },
+            { valor: '5', texto: 'Con presencia de imagen compatible con trombo en su interior' }
+        ],
+
+        opcionesVentriculoIzq: [
+            { valor: '1', texto: 'Con diámetros y espesores parietales conservados' },
+            { valor: '2', texto: 'Levemente dilatado' },
+            { valor: '3', texto: 'Moderadamente dilatado' },
+            { valor: '4', texto: 'Severamente dilatado' },
+            { valor: '5', texto: 'Hipertrofia concéntrica' },
+            { valor: '6', texto: 'Hipertrofia excéntrica' },
+            { valor: '7', texto: 'Con hipertrofia del septum interventricular' }
+        ],
+        
+        // Estados de segmentos
+        estadosSegmentos: {
+            '0': 'No evaluado',
+            '1': 'Normal',
+            '2': 'Hipoquinético',
+            '3': 'Aquinético',
+            '4': 'Disquinético'
+        },
+        
+        coloresSegmentos: {
+            '0': '#FFFFFF',
+            '1': '#FFFF00',
+            '2': '#FF7700',
+            '3': '#FF0000',
+            '4': '#0000FF'
+        },
+
+        // Coordenadas de los segmentos sobre la imagen
+        coordinadasSegmentos: {
+            1: [[66,62,67,76,86,75,112,76,113,62,66,62]],
+            2: [[13,70,15,85,33,81,51,78,66,77,65,62,48,62,32,66,13,70], [254,64,263,80,269,77,278,76,287,76,294,78,299,80,309,64,301,59,292,58,281,56,275,57,266,58,259,61,254,64]],
+            3: [[426,75,425,109,439,112,441,75,426,75]],
+            4: [[225,112,244,112,245,105,247,98,248,94,253,89,257,85,262,80,253,64,247,68,236,79,230,89,226,102,225,112], [427,43,426,75,442,75,443,43,443,43]],
+            5: [[427,16,427,43,443,43,444,34,446,27,452,20,457,19,457,7,447,8,439,10,427,16]],
+            6: [[581,86,581,102,585,125,600,122,600,113,600,98,600,86,581,86]],
+            7: [[225,112,225,120,230,136,235,145,240,151,248,158,253,161,263,144,261,142,263,136,263,132,258,131,248,131,246,123,245,117,244,112,225,112], [581,85,600,85,600,76,603,60,604,52,588,41,585,53,582,65,582,74,582,85]],
+            8: [[588,40,604,53,609,40,615,32,620,30,620,13,611,14,603,18,595,27,591,34,588,40]],
+            9: [[62,138,57,153,100,162,104,146,86,125,82,123,79,124,78,128,87,136,87,140,79,140,62,138]],
+            10: [[26,120,21,138,57,153,61,136,46,132,46,130,64,126,67,124,66,122,57,120,26,120], [262,144,253,160,260,165,266,167,274,168,288,169,295,167,301,165,309,161,299,145,292,148,287,149,275,148,267,146,262,144]],
+            11: [[497,75,497,89,497,103,497,115,512,119,518,97,518,84,515,72,497,75]],
+            12: [[318,113,318,118,316,124,313,131,304,131,300,131,299,133,299,138,300,144,310,161,317,156,325,147,331,139,334,131,336,122,337,112,318,113], [483,42,492,64,496,75,514,72,507,53,497,34,483,42]],
+            13: [[457,20,463,21,467,23,478,34,483,42,497,34,488,22,476,13,465,8,457,7,457,20]],
+            14: [[655,91,655,100,655,114,654,123,651,129,668,134,676,125,676,102,674,87,655,91]],
+            15: [[299,80,306,85,310,90,314,95,317,102,318,106,318,113,337,113,337,103,334,93,330,84,325,77,317,69,309,64,299,80], [645,56,649,68,653,81,655,91,674,88,671,70,665,52,661,45,645,56]],
+            16: [[620,13,620,31,629,33,640,45,645,56,662,45,654,34,642,21,632,16,624,14,620,13]]
+        },
+        
+        // Inicialización
+        inicializar(historiaId, estudioId, datosEstudio, datosConclusion, datosSegmentos) {
+            this.historiaId = historiaId;
+            
+            if (estudioId && estudioId !== '0') {
+                this.estudio.id = estudioId;
+            }
+            
+            if (datosEstudio && datosEstudio !== 'null') {
+                Object.assign(this.estudio, datosEstudio);
+            }
+            
+            if (datosConclusion && datosConclusion !== 'null') {
+                Object.assign(this.conclusiones, datosConclusion);
+                // Convertir strings de conclusiones múltiples a arrays
+                if (this.conclusiones.auricula_izq && typeof this.conclusiones.auricula_izq === 'string') {
+                    this.conclusiones.auricula_izq = this.conclusiones.auricula_izq.split(',');
+                } else if (!Array.isArray(this.conclusiones.auricula_izq)) {
+                    this.conclusiones.auricula_izq = [];
+                }
+                
+                if (this.conclusiones.ventriculo_izq && typeof this.conclusiones.ventriculo_izq === 'string') {
+                    this.conclusiones.ventriculo_izq = this.conclusiones.ventriculo_izq.split(',');
+                } else if (!Array.isArray(this.conclusiones.ventriculo_izq)) {
+                    this.conclusiones.ventriculo_izq = [];
+                }
+            }
+            
+            if (datosSegmentos && datosSegmentos !== '[]') {
+                datosSegmentos.forEach(seg => {
+                    this.segmentos[seg.numero_segmento] = seg.estado.toString();
+                });
+            }
+            
+            // Inicializar segmentos vacíos
+            for (let i = 1; i <= 16; i++) {
+                if (!this.segmentos[i]) {
+                    this.segmentos[i] = '0';
+                }
+            }
+            
+            // Realizar cálculos iniciales
+            this.$nextTick(() => {
+                this.calcularBMI();
+                this.calcularFraccionAcortamiento();
+                this.calcularGradiente('pulmonar');
+                this.calcularGradiente('aortica');
+                this.calcularGradiente('tracto');
+                this.calcularGradiente('mitral');
+                this.calcularGradiente('tricuspidea');
+            });
+        },
+
+        // Inicializar sistema de segmentos
+        inicializarSegmentos() {
+            this.$nextTick(() => {
+                this.dibujarSegmentos();
+            });
+        },
+        
+        // Cálculos automáticos
+        calcularBMI() {
+            const peso = parseFloat(this.estudio.peso) || 0;
+            const talla = parseFloat(this.estudio.talla) || 0;
+            
+            if (peso > 0 && talla > 0) {
+                this.bmiCalculado = Math.ceil(peso / (talla * talla));
+            } else {
+                this.bmiCalculado = '';
+            }
+        },
+        
+        calcularFraccionAcortamiento() {
+            const diastolico = parseFloat(this.estudio.vent_izq_diastolico) || 0;
+            const sistolico = parseFloat(this.estudio.vent_izq_sistolico) || 0;
+            
+            if (diastolico > 0 && sistolico > 0) {
+                this.fraccionAcortamiento = Math.ceil(((diastolico - sistolico) / diastolico) * 100);
+            } else {
+                this.fraccionAcortamiento = '';
+            }
+        },
+        
+        calcularGradiente(tipo) {
+            let valor = 0;
+            
+            switch (tipo) {
+                case 'pulmonar':
+                    valor = parseFloat(this.estudio.valvula_pulmonar) || 0;
+                    break;
+                case 'aortica':
+                    valor = parseFloat(this.estudio.valvula_aortica) || 0;
+                    break;
+                case 'tracto':
+                    valor = parseFloat(this.estudio.tracto_vent_izq) || 0;
+                    break;
+                case 'mitral':
+                    valor = parseFloat(this.estudio.onda_e_mitral) || 0;
+                    break;
+                case 'tricuspidea':
+                    valor = parseFloat(this.estudio.onda_e_tricuspidea) || 0;
+                    break;
+            }
+            
+            if (valor > 0) {
+                this.gradientes[tipo] = Math.ceil(valor * valor * 4) + ' mmHg';
+            } else {
+                this.gradientes[tipo] = '';
+            }
+        },
+        
+        // Manejo de segmentos
+        abrirModalSegmento(numero) {
+            this.modalSegmento.numero = numero;
+            this.modalSegmento.abierto = true;
+        },
+        
+        cerrarModalSegmento() {
+            this.modalSegmento.abierto = false;
+            this.modalSegmento.numero = null;
+        },
+        
+        seleccionarSegmento(valor) {
+            if (this.modalSegmento.numero) {
+                this.segmentos[this.modalSegmento.numero] = valor.toString();
+                this.dibujarSegmentos();
+                this.debouncedSave();
+            }
+            this.cerrarModalSegmento();
+        },
+        
+        marcarTodoNormal(normal) {
+            const valor = normal ? '1' : '0';
+            for (let i = 1; i <= 16; i++) {
+                this.segmentos[i] = valor;
+            }
+            this.dibujarSegmentos();
+            this.debouncedSave();
+        },
+        
+        dibujarSegmentos() {
+            const canvas = this.$refs.segmentosCanvas;
+            const imagen = this.$refs.segmentosImagen;
+            
+            if (!canvas || !imagen) return;
+            
+            // Ajustar el canvas al tamaño de la imagen
+            const rect = imagen.getBoundingClientRect();
+            canvas.width = imagen.naturalWidth;
+            canvas.height = imagen.naturalHeight;
+            canvas.style.width = imagen.offsetWidth + 'px';
+            canvas.style.height = imagen.offsetHeight + 'px';
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar cada segmento
+            for (let i = 1; i <= 16; i++) {
+                const estado = this.segmentos[i] || '0';
+                const color = this.coloresSegmentos[estado];
+                const coordenadas = this.coordinadasSegmentos[i];
+                
+                if (coordenadas && color && estado !== '0') {
+                    ctx.fillStyle = color;
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 1;
+                    ctx.globalAlpha = 0.6;
+                    
+                    // Dibujar todos los polígonos para este segmento
+                    coordenadas.forEach(coords => {
+                        ctx.beginPath();
+                        ctx.moveTo(coords[0], coords[1]);
+                        
+                        for (let j = 2; j < coords.length; j += 2) {
+                            ctx.lineTo(coords[j], coords[j + 1]);
+                        }
+                        
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                    });
+                    
+                    ctx.globalAlpha = 1;
+                }
+            }
+        },
+        
+        // Manejo de conclusiones
+        actualizarConclusionMultiple(campo, valor, checked) {
+            if (!Array.isArray(this.conclusiones[campo])) {
+                this.conclusiones[campo] = [];
+            }
+            
+            if (checked) {
+                if (!this.conclusiones[campo].includes(valor)) {
+                    this.conclusiones[campo].push(valor);
+                }
+            } else {
+                this.conclusiones[campo] = this.conclusiones[campo].filter(v => v !== valor);
+            }
+        },
+        
+        // Sistema de auto-guardado con debounce
+        debouncedSave() {
+            clearTimeout(this.debounceTimer);
+            this.debounceTimer = setTimeout(() => {
+                this.autoGuardar();
+            }, 2000); // Esperar 2 segundos después del último cambio
+        },
+        
+        // Guardado
+        async autoGuardar() {
+            // Guardado automático sin mostrar spinner
+            if (!this.estudio.id) {
+                // No hacer auto-guardado si no existe el estudio aún
+                return;
+            }
+            
+            this.autoGuardando = true;
+            try {
+                await this.guardarDatos(false);
+            } catch (error) {
+                console.error('Error en auto-guardado:', error);
+            } finally {
+                this.autoGuardando = false;
+            }
+        },
+        
+        async guardarCompleto() {
+            this.guardando = true;
+            try {
+                const resultado = await this.guardarDatos(true);
+                if (resultado.success) {
+                    this.mostrarMensaje('Estudio guardado correctamente', 'success');
+                    // Abrir ventana de impresión
+                    const url = `{% url 'ecocardiograma:imprimir_estudio' 0 %}`.replace('0', this.estudio.id);
+                    window.open(url, '_blank');
+                } else {
+                    this.mostrarMensaje('Error al guardar el estudio', 'error');
+                }
+            } catch (error) {
+                this.mostrarMensaje('Error al guardar el estudio', 'error');
+                console.error('Error:', error);
+            } finally {
+                this.guardando = false;
+            }
+        },
+        
+        async guardarDatos(completo = false) {
+            // Preparar datos para envío
+            const payload = {
+                historia_id: this.historiaId,
+                estudio: this.estudio,
+                conclusiones: {
+                    ...this.conclusiones,
+                    // Convertir arrays a strings separados por comas
+                    auricula_izq: Array.isArray(this.conclusiones.auricula_izq) 
+                        ? this.conclusiones.auricula_izq.join(',') 
+                        : this.conclusiones.auricula_izq,
+                    ventriculo_izq: Array.isArray(this.conclusiones.ventriculo_izq) 
+                        ? this.conclusiones.ventriculo_izq.join(',') 
+                        : this.conclusiones.ventriculo_izq
+                },
+                segmentos: this.segmentos,
+                completo: completo
+            };
+            
+            const response = await fetch('{% url "ecocardiograma:guardar_todo_ajax" 0 %}'.replace('0', this.historiaId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) {
+                throw new Error('Error en la respuesta del servidor');
+            }
+            
+            const resultado = await response.json();
+            
+            if (resultado.success && resultado.estudio_id) {
+                this.estudio.id = resultado.estudio_id;
+            }
+            
+            return resultado;
+        },
+        
+        mostrarMensaje(texto, tipo) {
+            this.mensaje = { texto, tipo };
+            setTimeout(() => {
+                this.mensaje = { texto: '', tipo: '' };
+            }, 5000);
+        }
+    }));
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos específicos manteniendo el canon estético original */
+    .analisisBidimensional h4, 
+    .analisisCopplerSpeckel h4, 
+    .analisisMotilidadSegmentaria h4, 
+    .conclusiones h4, 
+    .comentarioFinal h4, 
+    .conclusionesB h4 {
+        @apply font-bold;
+    }
+    
+    .tituloPrincipal {
+        @apply underline mx-auto my-8 text-center text-xl;
+    }
+    
+    .lblUnidad {
+        @apply text-sm text-gray-600 ml-2;
+    }
+    
+    .divConclusiones {
+        @apply ml-12;
+    }
+    
+    .form-input, .form-select, .form-textarea {
+        @apply w-full rounded border border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2;
+    }
+    
+    .segment-overlay {
+        position: absolute;
+        pointer-events: none;
+        top: 0;
+        left: 0;
+    }
+    
+    .segment-color-0 { background-color: #FFFFFF; border: 1px solid #000; opacity: 0.6; }
+    .segment-color-1 { background-color: #FFFF00; border: 1px solid #000; opacity: 0.6; }
+    .segment-color-2 { background-color: #FF7700; border: 1px solid #000; opacity: 0.6; }
+    .segment-color-3 { background-color: #FF0000; border: 1px solid #000; opacity: 0.6; }
+    .segment-color-4 { background-color: #0000FF; border: 1px solid #000; opacity: 0.6; }
+    
+    .referencias ol li {
+        position: relative;
+        left: 1em;
+        padding-right: 1em;    
+    }
+    
+    /* Transiciones suaves para mejor UX */
+    .tab-content {
+        transition: all 0.3s ease-in-out;
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Estilos para áreas de segmentos */
+    .segment-area {
+        position: absolute;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid transparent;
+        transition: all 0.2s ease;
+    }
+    
+    .segment-area:hover {
+        border-color: rgba(59, 130, 246, 0.8);
+        background: rgba(59, 130, 246, 0.1);
+    }
+
+    /* Auto-save indicator */
+    .auto-save-indicator {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div 
+    x-data="ecocardiogramaSistema" 
+    x-init="inicializar('{{ historia.id }}', '{{ estudio.id|default:'0' }}', {{ estudio|default:'null'|safe }}, {{ conclusion|default:'null'|safe }}, {{ segmentos|default:'[]'|safe }})"
+    class="mt-12"
+>
+    <!-- CSRF Token -->
+    {% csrf_token %}
+    
+    <!-- Auto-save indicator -->
+    <div x-show="autoGuardando" class="auto-save-indicator bg-blue-100 text-blue-800 px-4 py-2 rounded-lg shadow-lg">
+        <div class="flex items-center">
+            <svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            Auto-guardando...
+        </div>
+    </div>
+
+    <!-- Header con datos del paciente -->
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <div class="bg-gray-200 px-6 py-4 flex justify-between items-center">
+            <h4 class="text-left text-lg font-semibold">Datos del Paciente:</h4>
+            <div class="flex space-x-2">
+                <button @click="autoGuardar()" class="text-blue-600 hover:text-blue-800" title="Auto-guardar">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                    </svg>
+                </button>
+                <a :href="`{% url 'ecocardiograma:imprimir_estudio' 0 %}`.replace('0', estudio.id || 0)" 
+                   target="_blank" 
+                   class="text-blue-600 hover:text-blue-800" 
+                   title="Imprimir estudio"
+                   x-show="estudio.id">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                </a>
+            </div>
+        </div>
+        <div class="p-6">
+            <!-- Datos básicos del paciente -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label class="block font-medium text-gray-700">Paciente:</label>
+                    <p class="mt-1">{{ paciente.nombre }} {{ paciente.apellido }}</p>
+                </div>
+                <div>
+                    <label class="block font-medium text-gray-700">Historia Clínica:</label>
+                    <p class="mt-1">{{ historia.id|stringformat:"05d" }}</p>
+                </div>
+                <div>
+                    <label class="block font-medium text-gray-700">Fecha:</label>
+                    <p class="mt-1" x-text="new Date().toLocaleDateString('es-AR')"></p>
+                </div>
+            </div>
+            
+            <!-- Datos físicos y vitales -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Peso (Kg)</label>
+                    <input type="number" step="0.1" x-model="estudio.peso" @input="calcularBMI(); debouncedSave()" 
+                           class="form-input mt-1" placeholder="0.0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Talla (m)</label>
+                    <input type="number" step="0.01" x-model="estudio.talla" @input="calcularBMI(); debouncedSave()" 
+                           class="form-input mt-1" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">BMI</label>
+                    <div class="mt-1 p-2 bg-gray-50 rounded border" x-text="bmiCalculado || '-'"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">PAS (mmHg)</label>
+                    <input type="number" x-model="estudio.presion_sistolica" @input="debouncedSave()"
+                           class="form-input mt-1" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">PAD (mmHg)</label>
+                    <input type="number" x-model="estudio.presion_diastolica" @input="debouncedSave()"
+                           class="form-input mt-1" placeholder="0">
+                </div>
+            </div>
+            
+            <!-- Mensajes de estado -->
+            <div x-show="mensaje.texto" 
+                 :class="mensaje.tipo === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" 
+                 class="mt-4 p-3 rounded" 
+                 x-text="mensaje.texto"></div>
+        </div>
+    </div>
+
+    <h4 class="tituloPrincipal">Estudio ecocardiográfico doppler color con evaluación de deformación miocárdica</h4>
+
+    <!-- Sistema de pestañas -->
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex space-x-8">
+            <template x-for="tab in tabs" :key="tab.id">
+                <button @click="activeTab = tab.id" 
+                        :class="activeTab === tab.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                        class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
+                    <span x-text="tab.label"></span>
+                </button>
+            </template>
+        </nav>
+    </div>
+
+    <div class="mt-6">
+        <!-- TAB: Análisis Bidimensional -->
+        <div x-show="activeTab === 'bidimensional'" class="fade-in">
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <div class="bg-gray-200 px-6 py-4">
+                    <h4 class="text-center text-lg font-semibold">Análisis Bidimensional</h4>
+                </div>
+                
+                <div class="p-6">
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse border border-gray-300">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="border border-gray-300 px-4 py-2 text-left">#</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Campo</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">1</td>
+                                    <td class="border border-gray-300 px-4 py-2">Aurícula izquierda diámetro A-P</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.auricula_izq_diametro" @input="debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">mm</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">2</td>
+                                    <td class="border border-gray-300 px-4 py-2">Área aurícula izquierda</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.area_auricula_izq" @input="debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">cm²</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">3</td>
+                                    <td class="border border-gray-300 px-4 py-2">Plano valvular aórtico</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.plano_valvular_aortico" @input="debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">mm</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">4</td>
+                                    <td class="border border-gray-300 px-4 py-2">Septum interventricular en diástole</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.septum_diastole" @input="debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">mm</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">5</td>
+                                    <td class="border border-gray-300 px-4 py-2">Pared posterior en diástole</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.pared_diastole" @input="debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">mm</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">6</td>
+                                    <td class="border border-gray-300 px-4 py-2">Diámetro VI diastólico</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.vent_izq_diastolico" 
+                                                   @input="calcularFraccionAcortamiento(); debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">mm</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">7</td>
+                                    <td class="border border-gray-300 px-4 py-2">Diámetro VI sistólico</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.vent_izq_sistolico" 
+                                                   @input="calcularFraccionAcortamiento(); debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">mm</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">8</td>
+                                    <td class="border border-gray-300 px-4 py-2">Diámetro de TSVI</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.diametro_tsvi" @input="debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">mm</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">9</td>
+                                    <td class="border border-gray-300 px-4 py-2">Fracción de eyección por Simpson's</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.fraccion_simpson" @input="debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">10</td>
+                                    <td class="border border-gray-300 px-4 py-2">Fracción de acortamiento</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <span class="p-2 bg-gray-50 rounded border w-24" x-text="fraccionAcortamiento || '-'"></span>
+                                            <span class="lblUnidad">%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">11</td>
+                                    <td class="border border-gray-300 px-4 py-2">Tapse</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.tapse" @input="debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">mm</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">12</td>
+                                    <td class="border border-gray-300 px-4 py-2">Diámetro de ventrículo derecho</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.vent_derecho" @input="debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">mm</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Análisis Doppler -->
+        <div x-show="activeTab === 'doppler'" class="fade-in">
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <div class="bg-gray-200 px-6 py-4">
+                    <h4 class="text-center text-lg font-semibold">Análisis Doppler Color & Speckel Tracking</h4>
+                </div>
+                
+                <div class="p-6">
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse border border-gray-300">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="border border-gray-300 px-4 py-2 text-left">#</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Campo</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Velocidad</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Gradiente</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">1</td>
+                                    <td class="border border-gray-300 px-4 py-2">Válvula pulmonar</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.valvula_pulmonar" 
+                                                   @input="calcularGradiente('pulmonar'); debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">m/seg</span>
+                                        </div>
+                                    </td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <span x-text="gradientes.pulmonar || '-'"></span>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">2</td>
+                                    <td class="border border-gray-300 px-4 py-2">Válvula aórtica</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.valvula_aortica" 
+                                                   @input="calcularGradiente('aortica'); debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">m/seg</span>
+                                        </div>
+                                    </td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <span x-text="gradientes.aortica || '-'"></span>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">3</td>
+                                    <td class="border border-gray-300 px-4 py-2">Tracto de salida ventrículo izquierdo</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.tracto_vent_izq" 
+                                                   @input="calcularGradiente('tracto'); debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">m/seg</span>
+                                        </div>
+                                    </td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <span x-text="gradientes.tracto || '-'"></span>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">4</td>
+                                    <td class="border border-gray-300 px-4 py-2">Válvula mitral</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="space-y-2">
+                                            <div class="flex items-center">
+                                                <label class="w-16 text-sm">Onda E:</label>
+                                                <input type="number" step="0.1" x-model="estudio.onda_e_mitral" 
+                                                       @input="calcularGradiente('mitral'); debouncedSave()"
+                                                       class="form-input w-20" placeholder="0.0">
+                                                <span class="lblUnidad">m/seg</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <label class="w-16 text-sm">Onda A:</label>
+                                                <input type="number" step="0.1" x-model="estudio.onda_a_mitral" @input="debouncedSave()"
+                                                       class="form-input w-20" placeholder="0.0">
+                                                <span class="lblUnidad">m/seg</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <span x-text="gradientes.mitral || '-'"></span>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">5</td>
+                                    <td class="border border-gray-300 px-4 py-2">Válvula tricuspídea</td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <div class="space-y-2">
+                                            <div class="flex items-center">
+                                                <label class="w-16 text-sm">Onda E:</label>
+                                                <input type="number" step="0.1" x-model="estudio.onda_e_tricuspidea" 
+                                                       @input="calcularGradiente('tricuspidea'); debouncedSave()"
+                                                       class="form-input w-20" placeholder="0.0">
+                                                <span class="lblUnidad">m/seg</span>
+                                            </div>
+                                            <div class="flex items-center">
+                                                <label class="w-16 text-sm">Onda A:</label>
+                                                <input type="number" step="0.1" x-model="estudio.onda_a_tricuspidea" @input="debouncedSave()"
+                                                       class="form-input w-20" placeholder="0.0">
+                                                <span class="lblUnidad">m/seg</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="border border-gray-300 px-4 py-2">
+                                        <span x-text="gradientes.tricuspidea || '-'"></span>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">6</td>
+                                    <td class="border border-gray-300 px-4 py-2">Strain longitudinal global (3 camaras)</td>
+                                    <td class="border border-gray-300 px-4 py-2" colspan="2">
+                                        <div class="flex items-center">
+                                            <input type="number" step="0.1" x-model="estudio.strain_longitudinal" @input="debouncedSave()"
+                                                   class="form-input w-24" placeholder="0.0">
+                                            <span class="lblUnidad">%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Motilidad Segmentaria -->
+        <div x-show="activeTab === 'segmentos'" class="fade-in">
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <div class="bg-gray-200 px-6 py-4">
+                    <h4 class="text-center text-lg font-semibold">Análisis de Motilidad Segmentaria</h4>
+                </div>
+                
+                <div class="p-6 text-center">
+                    <div class="mb-4">
+                        <label class="inline-flex items-center">
+                            <input type="checkbox" @change="marcarTodoNormal($event.target.checked)" class="form-checkbox h-5 w-5 text-blue-600">
+                            <span class="ml-2 text-gray-700">Marcar todo como normal</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Contenedor de imagen con áreas clicables -->
+                    <div class="relative inline-block mx-auto" x-ref="segmentosContainer">
+                        <img src="{% static 'ecocardiograma/images/segmentos.png' %}" 
+                             alt="Segmentos Cardíacos" 
+                             class="max-w-full h-auto"
+                             @load="inicializarSegmentos()"
+                             x-ref="segmentosImagen">
+                        
+                        <!-- Canvas para dibujar los segmentos coloreados -->
+                        <canvas x-ref="segmentosCanvas" 
+                                class="absolute top-0 left-0 pointer-events-none"
+                                style="width: 100%; height: 100%;"></canvas>
+                        
+                        <!-- Áreas clicables definidas con coordenadas exactas -->
+                        <div class="segment-area" @click="abrirModalSegmento(1)" 
+                             style="left: 8.2%; top: 19.7%; width: 5.9%; height: 4.6%;" title="Segmento 1"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(2)" 
+                             style="left: 1.6%; top: 22.2%; width: 6.8%; height: 4.6%;" title="Segmento 2"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(3)" 
+                             style="left: 53.5%; top: 35.6%; width: 4.5%; height: 12.1%;" title="Segmento 3"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(4)" 
+                             style="left: 28.2%; top: 35.6%; width: 4.5%; height: 5.6%;" title="Segmento 4"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(5)" 
+                             style="left: 53.5%; top: 5.1%; width: 4.5%; height: 12.1%;" title="Segmento 5"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(6)" 
+                             style="left: 72.5%; top: 27.5%; width: 4.5%; height: 12.1%;" title="Segmento 6"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(7)" 
+                             style="left: 28.2%; top: 35.6%; width: 4.5%; height: 5.6%;" title="Segmento 7"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(8)" 
+                             style="left: 73.5%; top: 12.7%; width: 5.9%; height: 4.6%;" title="Segmento 8"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(9)" 
+                             style="left: 12.2%; top: 46.2%; width: 4.5%; height: 5.6%;" title="Segmento 9"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(10)" 
+                             style="left: 3.2%; top: 38.2%; width: 7.9%; height: 4.6%;" title="Segmento 10"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(11)" 
+                             style="left: 62.2%; top: 30.2%; width: 7.9%; height: 7.6%;" title="Segmento 11"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(12)" 
+                             style="left: 39.8%; top: 36.1%; width: 7.9%; height: 7.6%;" title="Segmento 12"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(13)" 
+                             style="left: 57.2%; top: 7.2%; width: 5.9%; height: 6.6%;" title="Segmento 13"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(14)" 
+                             style="left: 82.2%; top: 36.2%; width: 5.9%; height: 7.6%;" title="Segmento 14"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(15)" 
+                             style="left: 80.8%; top: 17.7%; width: 7.9%; height: 6.6%;" title="Segmento 15"></div>
+                        <div class="segment-area" @click="abrirModalSegmento(16)" 
+                             style="left: 77.7%; top: 4.1%; width: 7.9%; height: 6.6%;" title="Segmento 16"></div>
+                    </div>
+                    
+                    <!-- Leyenda de colores -->
+                    <div class="mt-6 flex flex-wrap justify-center gap-4">
+                        <div class="flex items-center" x-for="(descripcion, estado) in estadosSegmentos" :key="estado">
+                            <div class="w-8 h-4 mr-2 border border-black" :class="`segment-color-${estado}`"></div>
+                            <span class="text-sm" x-text="descripcion"></span>
+                        </div>
+                    </div>
+
+                    <!-- Referencias -->
+                    <div class="referencias mt-8">
+                        <h4 class="font-bold mb-4">Referencias:</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-left">
+                            <div>
+                                <ol class="list-decimal list-inside">
+                                    <li>Septum Anterior Basal - LAD</li>
+                                    <li>Septum Anterior Medio - LAD</li>
+                                    <li>Septum Basal - RAD</li>
+                                    <li>Septum Medio - RAD</li>
+                                </ol>
+                            </div>
+                            <div>
+                                <ol class="list-decimal list-inside" start="5">
+                                    <li>Septum Aplical - LAD</li>
+                                    <li>Inferior Basal - RAD</li>
+                                    <li>Inferior Medio - RAD</li>
+                                    <li>Inferior Aplical - LAD</li>
+                                </ol>
+                            </div>
+                            <div>
+                                <ol class="list-decimal list-inside" start="9">
+                                    <li>Posterior Basal - CRX</li>
+                                    <li>Posterior Medio - CRX</li>
+                                    <li>Lateral Basal - CRX</li>
+                                    <li>Lateral Medio - CRX</li>
+                                </ol>
+                            </div>
+                            <div>
+                                <ol class="list-decimal list-inside" start="13">
+                                    <li>Lateral Aplical - LAD</li>
+                                    <li>Anterior Basal - LAD</li>
+                                    <li>Anterior Medio - LAD</li>
+                                    <li>Anterior Aplical - LAD</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Conclusiones -->
+        <div x-show="activeTab === 'conclusiones'" class="fade-in">
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <div class="bg-gray-200 px-6 py-4">
+                    <h4 class="text-left text-lg font-semibold">Conclusiones:</h4>
+                </div>
+                <div class="p-6 space-y-6">
+                    <!-- Aurícula Izquierda -->
+                    <div class="divConclusiones">
+                        <label class="block font-medium text-gray-700 mb-2">Aurícula Izquierda:</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <template x-for="opcion in opcionesAuriculaIzq" :key="opcion.valor">
+                                <label class="flex items-center">
+                                    <input type="checkbox" 
+                                           :value="opcion.valor"
+                                           @change="actualizarConclusionMultiple('auricula_izq', opcion.valor, $event.target.checked); debouncedSave()"
+                                           :checked="conclusiones.auricula_izq.includes(opcion.valor)"
+                                           class="form-checkbox h-4 w-4 text-blue-600">
+                                    <span class="ml-2 text-sm" x-text="opcion.texto"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Ventrículo Izquierdo -->
+                    <div class="divConclusiones">
+                        <label class="block font-medium text-gray-700 mb-2">Ventrículo Izquierdo:</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <template x-for="opcion in opcionesVentriculoIzq" :key="opcion.valor">
+                                <label class="flex items-center">
+                                    <input type="checkbox" 
+                                           :value="opcion.valor"
+                                           @change="actualizarConclusionMultiple('ventriculo_izq', opcion.valor, $event.target.checked); debouncedSave()"
+                                           :checked="conclusiones.ventriculo_izq.includes(opcion.valor)"
+                                           class="form-checkbox h-4 w-4 text-blue-600">
+                                    <span class="ml-2 text-sm" x-text="opcion.texto"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+                    
+                    <!-- Función sistólica -->
+                    <div class="divConclusiones">
+                        <label class="block font-medium text-gray-700 mb-2">Función sistólica del ventrículo izquierdo:</label>
+                        <select x-model="conclusiones.funcion_sistolica" @change="debouncedSave()" class="form-select max-w-md">
+                            <option value="">:: Seleccionar ::</option>
+                            <option value="1">Conservada</option>
+                            <option value="2">Deterioro de grado leve</option>
+                            <option value="3">Deterioro de grado moderado</option>
+                            <option value="4">Deterioro de grado severo</option>
+                        </select>
+                    </div>
+
+                    <!-- Función diastólica -->
+                    <div class="divConclusiones">
+                        <label class="block font-medium text-gray-700 mb-2">Función diastólica del ventrículo izquierdo:</label>
+                        <select x-model="conclusiones.funcion_diastolica" @change="debouncedSave()" class="form-select max-w-md">
+                            <option value="">:: Seleccionar ::</option>
+                            <option value="1">Normal</option>
+                            <option value="2">Patrón de relajación prolongada</option>
+                            <option value="3">Patrón pseudonormalizado</option>
+                        </select>
+                    </div>
+
+                    <!-- Motilidad Segmentaria -->
+                    <div class="divConclusiones">
+                        <label class="block font-medium text-gray-700 mb-2">Motilidad Segmentaria:</label>
+                        <div class="space-y-2">
+                            <select x-model="conclusiones.motilidad_segmentaria" @change="debouncedSave()" class="form-select max-w-md">
+                                <option value="">:: Seleccionar ::</option>
+                                <option value="1">Normal</option>
+                                <option value="2">Anormal</option>
+                            </select>
+                            <div x-show="conclusiones.motilidad_segmentaria === '2'" class="mt-2">
+                                <textarea x-model="conclusiones.comentario_motilidad" @input="debouncedSave()" 
+                                          class="form-textarea w-full max-w-md" rows="3" 
+                                          placeholder="Descripción de la anomalía..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pericardio -->
+                    <div class="divConclusiones">
+                        <label class="block font-medium text-gray-700 mb-2">Pericardio:</label>
+                        <div class="space-y-2">
+                            <select x-model="conclusiones.pericardio" @change="debouncedSave()" class="form-select max-w-md">
+                                <option value="">:: Seleccionar ::</option>
+                                <option value="1">Libre</option>
+                                <option value="2">Derrame de grado leve</option>
+                                <option value="3">Derrame de grado moderado</option>
+                                <option value="4">Derrame de grado severo</option>
+                            </select>
+                            <div x-show="conclusiones.pericardio && conclusiones.pericardio !== '1'" class="mt-2">
+                                <textarea x-model="conclusiones.comentario_pericardio" @input="debouncedSave()" 
+                                          class="form-textarea w-full max-w-md" rows="3" 
+                                          placeholder="Comentario adicional..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Imágenes agregadas y/o defectos congénitos -->
+                    <div class="divConclusiones">
+                        <label class="block font-medium text-gray-700 mb-2">Imágenes agregadas y/o defectos congénitos:</label>
+                        <div class="space-y-2">
+                            <select x-model="conclusiones.defectos_congenitos" @change="debouncedSave()" class="form-select max-w-md">
+                                <option value="">:: Seleccionar ::</option>
+                                <option value="1">No</option>
+                                <option value="2">Sí</option>
+                            </select>
+                            <div x-show="conclusiones.defectos_congenitos === '2'" class="mt-2">
+                                <textarea x-model="conclusiones.comentario_defectos" @input="debouncedSave()" 
+                                          class="form-textarea w-full max-w-md" rows="3" 
+                                          placeholder="Descripción de los defectos..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Conclusión B -->
+        <div x-show="activeTab === 'conclusion_b'" class="fade-in">
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <div class="bg-gray-200 px-6 py-4">
+                    <h4 class="text-lg font-semibold">Conclusión B:</h4>
+                </div>
+                
+                <div class="p-6">
+                    <div class="mb-2 text-sm text-gray-600">
+                        <span x-text="1500 - (conclusiones.conclusion_texto || '').length">1500</span> caracteres restantes
+                    </div>
+                    <textarea x-model="conclusiones.conclusion_texto" @input="debouncedSave()"
+                              maxlength="1500" 
+                              rows="15" 
+                              class="form-textarea w-full"
+                              placeholder="Escriba aquí la conclusión detallada..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: Comentario Final -->
+        <div x-show="activeTab === 'comentario_final'" class="fade-in">
+            <div class="bg-white shadow-md rounded-lg overflow-hidden">
+                <div class="bg-gray-200 px-6 py-4">
+                    <h4 class="text-lg font-semibold">Comentario Final:</h4>
+                </div>
+                
+                <div class="p-6">
+                    <div class="mb-2 text-sm text-gray-600">
+                        <span x-text="700 - (conclusiones.comentario_final || '').length">700</span> caracteres restantes
+                    </div>
+                    <textarea x-model="conclusiones.comentario_final" @input="debouncedSave()"
+                              maxlength="700" 
+                              rows="8" 
+                              class="form-textarea w-full"
+                              placeholder="Escriba aquí el comentario final..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="text-center mt-8">
+        <button @click="guardarCompleto()" 
+                :disabled="guardando" 
+                class="bg-blue-500 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded inline-flex items-center">
+            <svg x-show="guardando" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span x-text="guardando ? 'Guardando...' : 'Guardar e Imprimir'"></span>
+        </button>
+        <a href="{% url 'historia_clinica:ver_historia' historia.id %}" 
+           class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded ml-4">Volver</a>
+    </div>
+
+    <!-- Modal para selección de segmentos -->
+    <div x-show="modalSegmento.abierto" 
+         class="fixed inset-0 z-50 overflow-y-auto" 
+         x-cloak>
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="fixed inset-0 bg-black opacity-50" @click="cerrarModalSegmento()"></div>
+            <div class="bg-white rounded-lg shadow-xl p-6 w-80 z-10 relative">
+                <h3 class="text-lg font-medium mb-4">Segmento <span x-text="modalSegmento.numero"></span></h3>
+                <div class="space-y-3">
+                    <template x-for="(descripcion, valor) in estadosSegmentos" :key="valor">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" 
+                                   :name="`segmento_${modalSegmento.numero}`"
+                                   :value="valor"
+                                   @change="seleccionarSegmento(valor)"
+                                   :checked="segmentos[modalSegmento.numero] == valor"
+                                   class="form-radio h-4 w-4 text-blue-600">
+                            <span class="ml-2" x-text="descripcion"></span>
+                        </label>
+                    </template>
+                </div>
+                <div class="mt-4 text-right">
+                    <button @click="cerrarModalSegmento()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
