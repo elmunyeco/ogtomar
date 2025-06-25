@@ -2,7 +2,6 @@ from django.db import models
 from django.utils import timezone
 
 
-# Modelo TipoDocumento
 class TipoDocumento(models.Model):
     nombre = models.CharField(max_length=50)
     descripcion = models.CharField(max_length=255)
@@ -17,67 +16,64 @@ class TipoDocumento(models.Model):
         return self.nombre
 
 
-# Modelo Paciente
 class Paciente(models.Model):
     SEXO_CHOICES = [
-        ("h", "Hombre"),
-        ("m", "Mujer"),
+        ("H", "Hombre"),
+        ("M", "Mujer"),
     ]
 
     idTipoDoc = models.ForeignKey(
-        TipoDocumento, on_delete=models.CASCADE, default=1
-    )  # Clave foránea hacia TipoDocumento
-    numDoc = models.CharField(max_length=50)  # Número de documento
-    nombre = models.CharField(max_length=50)  # Nombre del paciente
-    apellido = models.CharField(max_length=50)  # Apellido del paciente
-    fechaNac = models.DateField(null=True, blank=True)  # Fecha de nacimiento
+        TipoDocumento, 
+        on_delete=models.CASCADE, 
+        default=1,
+        db_column="idTipoDoc_id"
+    )    
+    numDoc = models.CharField(max_length=50)
+    nombre = models.CharField(max_length=50)
+    apellido = models.CharField(max_length=50)
+    fechaNac = models.DateField(null=True, blank=True)
     sexo = models.CharField(
-        max_length=1, choices=[("M", "Masculino"), ("F", "Femenino"), ("O", "Otro")]
-    )  # Sexo
-    mail = models.EmailField(max_length=50, null=True, blank=True)  # Email opcional
-    direccion = models.CharField(
-        max_length=100, null=True, blank=True
-    )  # Dirección opcional
-    localidad = models.CharField(
-        max_length=60, null=True, blank=True
-    )  # Localidad opcional
-    obraSocial = models.CharField(max_length=50, null=True, blank=True)  # Obra social
-    plan = models.CharField(max_length=50, null=True, blank=True)  # Plan opcional
-    afiliado = models.CharField(max_length=50, null=True, blank=True )  # Número de afiliado
-    telefono = models.CharField(max_length=50, null=True, blank=True )  # Teléfono
-    celular = models.CharField(max_length=50, null=True, blank=True )  # Celular
-    profesion = models.CharField(max_length=50, null=True, blank=True )  # Profesión
-    referente = models.CharField(
-        max_length=50, null=True, blank=True
-    )  # Referente opcional
-    fechaAlta = models.DateField(default=timezone.now)  # Fecha de alta
-    deBaja = models.BooleanField(default=False)  # Dado de baja (lógica)
+        max_length=1, 
+        choices=SEXO_CHOICES,
+        verbose_name="Sexo"
+    )
+    mail = models.EmailField(max_length=50, null=True, blank=True)
+    direccion = models.CharField(max_length=100, null=True, blank=True)
+    localidad = models.CharField(max_length=60, null=True, blank=True)
+    obraSocial = models.CharField(max_length=50, null=True, blank=True)
+    plan = models.CharField(max_length=50, null=True, blank=True)
+    afiliado = models.CharField(max_length=50, null=True, blank=True)
+    telefono = models.CharField(max_length=50, null=True, blank=True)
+    celular = models.CharField(max_length=50, null=True, blank=True)
+    profesion = models.CharField(max_length=50, null=True, blank=True)
+    referente = models.CharField(max_length=50, null=True, blank=True)
+    fechaAlta = models.DateField(default=timezone.now)
+    deBaja = models.BooleanField(default=False)
     """ 
     idTipoDoc_temp = models.IntegerField(
         null=True, blank=True
     )  # Campo temporal para migrar 
     """
-
     class Meta:
         db_table = "pacientes"
         unique_together = (
             "idTipoDoc",
             "numDoc",
-        )  # Combinación única de tipo de documento y número
+        )
         ordering = ['-fechaAlta']
         indexes = [
             models.Index(fields=["nombre"], name="nombre_paciente_idx"),
             models.Index(fields=["apellido"], name="apellido_paciente_idx"),
             models.Index(fields=["fechaAlta"], name="paciente_fechaAlta_idx"),
+            models.Index(fields=["idTipoDoc"], name="pacientes_tipo_doc_idx"),
         ]
-
-    # Método personalizado para obtener la identificación
+       # Método personalizado para obtener la identificación
     @property
     def identificacion(self):
         return f"{self.idTipoDoc.nombre} {self.numDoc}"
 
     def __str__(self):
-        return f"{self.nombre} {self.apellido}"
+        return f"{self.nombre} {self.apellido} ({self.identificacion})"
 
 
 class CondicionMedica(models.Model):
@@ -94,32 +90,30 @@ class CondicionMedica(models.Model):
 
 class HistoriaClinica(models.Model):
 
-    # Fecha de alta de la historia clínica
     fechaAlta = models.DateField(default=timezone.now)
 
-    # Clave foránea a Paciente
     paciente = models.ForeignKey(
-        "Paciente", on_delete=models.RESTRICT, related_name="historias_clinicas"
+        Paciente,
+        on_delete=models.RESTRICT, 
+        related_name="historias_clinicas"
     )
 
     condiciones = models.ManyToManyField(
-        CondicionMedica, through="CondicionMedicaHistoria"
+        CondicionMedica, 
+        through="CondicionMedicaHistoria"
     )
 
     class Meta:
-        db_table = "historias_clinicas"  # Nombre de la tabla en MySQL
+        db_table = "historias_clinicas"
         indexes = [
-            models.Index(
-                fields=["fechaAlta"], name="historia_fechaAlta_idx"
-            ),  # Índice en fechaAlta
-            models.Index(
-                fields=["paciente"], name="idPaciente_idx"
-            ),  # Índice en idPaciente (ForeignKey)
+            # ✅ Este índice ya está bien
+            models.Index(fields=["fechaAlta"], name="historia_fechaAlta_idx"),
+            models.Index(fields=["paciente"], name="historia_paciente_idx"),
         ]
 
     def __str__(self):
         if self.paciente:
-            return f"Historia Clínica #{self.id} del paciente {self.paciente.nombre} {self.paciente.apellido}"
+            return f"Historia Clínica de {self.paciente.nombre} {self.paciente.apellido} - {self.fechaAlta.strftime('%Y-%m-%d')}"
 
 
 class CondicionMedicaHistoria(models.Model):
@@ -131,7 +125,7 @@ class CondicionMedicaHistoria(models.Model):
         unique_together = ["historia", "condicion"]
 
     def __str__(self):
-        return f"{self.condicion.nombre} - {self.historia.paciente}"
+        return f"Condición {self.condicion.nombre} en Historia {self.historia.id}"
 
 
 """ class Visita(models.Model):
@@ -152,10 +146,14 @@ class SignosVitales(models.Model):
 
     class Meta:
         db_table = "signos_vitales"
-        ordering = ["-fecha"]
-
+        ordering = ["-fecha"]        
+        indexes = [
+        
+            models.Index(fields=["historia"], name="signos_vitales_historia_idx"),
+            models.Index(fields=["fecha"], name="signos_vitales_fecha_idx"),
+        ]
     def __str__(self):
-        return f"Signos Vitales de la visita {self.visita.id} para HC {self.visita.historia_clinica.id}"
+        return f"Signos Vitales - Historia {self.historia_id} - {self.fecha.strftime('%Y-%m-%d')}"
 
 
 class ComentariosVisitas(models.Model):
@@ -185,11 +183,16 @@ class ComentariosVisitas(models.Model):
             models.Index(fields=["historia_clinica"]),
             models.Index(fields=["fecha", "historia_clinica"]),
         ]
+    
+    def __str__(self):
+        return f"Comentario - Historia {self.historia_clinica_id} - {self.fecha.strftime('%Y-%m-%d %H:%M:%S')}"
 
 
 class IndicacionesVisitas(models.Model):
     historia_clinica = models.ForeignKey(
-        "HistoriaClinica", on_delete=models.CASCADE, db_column="historia_clinica_id"
+        "HistoriaClinica", 
+        on_delete=models.CASCADE, 
+        db_column="historia_clinica_id"
     )
 
     medicamento = models.TextField()
@@ -215,8 +218,12 @@ class IndicacionesVisitas(models.Model):
 
     class Meta:
         db_table = "indicaciones_visitas"
+
         indexes = [
-            models.Index(fields=["fecha"]),
-            models.Index(fields=["historia_clinica"]),
-            models.Index(fields=["historia_clinica", "fecha"]),
+            models.Index(fields=["fecha"], name="indicaciones_fecha_idx"),
+            models.Index(fields=["historia_clinica"], name="indicaciones_historia_idx"),
+            models.Index(fields=["historia_clinica", "fecha"], name="ind_hist_fecha_idx"),
         ]
+    
+    def __str__(self):
+        return f"Indicaciones - Historia {self.historia_clinica_id} - {self.fecha.strftime('%Y-%m-%d')}"
