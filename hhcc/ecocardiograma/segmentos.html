@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Segmentos Cardíacos - Imagen Base + SVG Paths</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f5f5f5;
+        }
+        
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .panel {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            margin-bottom: 20px;
+        }
+        
+        .panel-heading {
+            background: #f5f5f5;
+            padding: 10px 15px;
+            border-bottom: 1px solid #ddd;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .panel-heading h4 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .panel-body {
+            padding: 15px;
+        }
+        
+        /* Container híbrido: imagen + SVG */
+        .hybrid-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #fafafa;
+            border-radius: 8px;
+        }
+        
+        .hybrid-viewer {
+            position: relative;
+            width: 694px;
+            height: 227px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+        
+        /* Layer 0: Imagen base */
+        .base-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 694px;
+            height: 227px;
+            z-index: 1;
+        }
+        
+        /* Layer 1: SVG paths interactivos */
+        .interactive-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 694px;
+            height: 227px;
+            z-index: 2;
+        }
+        
+        /* Segmentos interactivos */
+        .segment {
+            fill: rgba(255,255,255,0);
+            stroke: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        /* Hover solo para segmentos no evaluados */
+        .segment.estado-0:hover {
+            fill: rgba(128,128,128,0.4);
+            stroke: #666;
+            stroke-width: 1;
+        }
+        
+        /* Estados de colores con stroke visible */
+        .segment.estado-0 { 
+            fill: rgba(255,255,255,0); 
+        }
+        
+        .segment.estado-1 { 
+            fill: #FFFF00; 
+            opacity: 0.7; 
+            stroke: #000; 
+            stroke-width: 1; 
+        }
+        
+        .segment.estado-2 { 
+            fill: #FF7700; 
+            opacity: 0.7; 
+            stroke: #000; 
+            stroke-width: 1; 
+        }
+        
+        .segment.estado-3 { 
+            fill: #FF0000; 
+            opacity: 0.7; 
+            stroke: #000; 
+            stroke-width: 1; 
+        }
+        
+        .segment.estado-4 { 
+            fill: #0000FF; 
+            opacity: 0.7; 
+            stroke: #000; 
+            stroke-width: 1; 
+        }
+        
+        .valoresSegmentos {
+            margin: 30px 0;
+        }
+        
+        .valoresSegmentos ul {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .valoresSegmentos li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        
+        .valoresSegmentos span {
+            height: 20px;
+            width: 40px;
+            border: solid 1px #000;
+            display: inline-block;
+        }
+        
+        .referencias {
+            margin: 30px 20px;
+            clear: both;
+        }
+        
+        .referencias h4 {
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .referencias-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+        }
+        
+        .referencias ol {
+            flex: 1;
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .referencias li {
+            text-align: left;
+            margin-bottom: 3px;
+            font-size: 10px;
+            line-height: 1.3;
+        }
+        
+        .controls { 
+            margin: 30px 0; 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 15px;
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .control-item { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
+            font-size: 14px;
+            background-color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .control-item label { 
+            font-weight: bold;
+            min-width: 50px;
+            color: #555;
+        }
+        
+        .control-item select { 
+            flex: 1;
+            padding: 5px 8px;
+            font-size: 13px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            background-color: white;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        .btn-success {
+            background-color: #5cb85c;
+            color: white;
+        }
+        
+        .btn-danger {
+            background-color: #d9534f;
+            color: white;
+        }
+        
+        .btn-info {
+            background-color: #5bc0de;
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        .botones-control {
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>Análisis de Motilidad Segmentaria</h4>
+            </div>
+            
+            <div class="panel-body">
+                <!-- Botones de control -->
+                <div class="botones-control">
+                    <button class="btn btn-success" onclick="marcarTodosNormales()">Marcar Todos Normales</button>
+                    <button class="btn btn-danger" onclick="limpiarTodos()">Limpiar Todos</button>
+                </div>
+                
+                <!-- Viewer híbrido: imagen base + SVG paths -->
+                <div class="hybrid-container">
+                    <div class="hybrid-viewer">
+                        <!-- Layer 0: SVG base completo embebido -->
+                        <svg class="base-image" viewBox="0 0 694 227" xmlns="http://www.w3.org/2000/svg">
+                            <g transform="translate(0,227) scale(0.1,-0.1)" fill="#000000" stroke="none">
+                                <path d="M4450 2186 c-234 -53 -469 -255 -579 -498 -85 -186 -99 -325 -82 -783 12 -325 22 -391 69 -460 42 -61 101 -87 187 -82 96 5 165 34 312 127 20 13 25 12 51 -14 34 -31 55 -72 72 -133 10 -38 14 -43 40 -43 16 0 32 5 35 10 4 6 -3 43 -15 83 -19 63 -29 80 -83 132 l-61 60 -4 157 c-4 140 -2 164 18 230 29 94 66 132 147 148 104 19 118 25 118 44 0 40 -28 41 -142 9 -59 -17 -114 -28 -120 -26 -23 9 -24 66 -8 238 9 94 20 256 24 360 6 160 11 197 28 237 43 95 130 104 230 22 60 -49 114 -133 172 -266 85 -197 93 -231 99 -423 5 -210 4 -212 -92 -176 -81 31 -121 33 -121 6 0 -16 18 -27 93 -55 157 -59 167 -83 157 -375 -7 -224 -4 -239 53 -237 49 1 53 7 46 75 -4 41 0 92 11 152 13 69 15 115 10 197 -6 100 -5 114 24 215 67 236 62 324 -26 533 -91 214 -159 324 -251 412 -126 120 -256 159 -412 124z m100 -54 c0 -46 -1 -48 -42 -67 -50 -24 -75 -67 -90 -157 l-11 -63 -66 5 -66 5 -1 85 c-2 150 1 159 60 186 59 27 149 52 189 53 26 1 27 -1 27 -47z m167 8 c68 -31 147 -99 199 -170 l32 -44 -61 -34 c-37 -21 -63 -30 -65 -23 -2 6 -24 38 -48 71 -48 65 -106 113 -160 130 -33 11 -34 13 -34 62 l0 50 38 -6 c20 -4 65 -20 99 -36z m-471 -165 c-2 -7 -17 -15 -34 -18 -19 -4 -55 -34 -109 -91 -137 -144 -206 -315 -206 -511 0 -169 19 -203 80 -143 43 42 42 25 -1 -30 -41 -51 -90 -164 -112 -259 -30 -126 -16 -362 26 -430 39 -65 182 -99 270 -64 90 36 120 95 140 277 19 168 -12 309 -89 396 -34 39 -39 50 -17 42 8 -3 22 -2 31 4 11 5 43 4 88 -4 104 -19 132 -17 229 12 50 15 94 24 105 20 26 -10 4 -20 -77 -36 -84 -16 -115 -32 -145 -78 -40 -61 -55 -141 -54 -287 1 -182 6 -209 49 -240 19 -14 47 -44 62 -67 30 -44 61 -135 52 -150 -10 -16 -34 13 -34 42 0 32 -65 129 -101 149 -24 13 -30 11 -110 -37 -129 -79 -244 -110 -320 -87 -38 11 -87 53 -106 88 -35 68 -43 134 -54 429 -20 535 8 692 162 920 49 71 154 178 222 223 l52 35 3 -46 c2 -26 1 -52 -2 -59z m-1 -269 c-18 -527 -19 -540 -37 -544 -9 -2 -37 15 -61 37 -42 39 -77 53 -77 32 0 -6 20 -29 45 -52 149 -140 192 -274 161 -508 -19 -140 -37 -177 -102 -211 -89 -46 -223 -25 -266 42 -40 62 -53 301 -23 423 22 89 71 197 118 258 63 83 44 123 -27 57 -42 -39 -45 -40 -51 -19 -4 12 -7 69 -8 128 0 128 24 227 85 343 59 114 210 271 241 251 7 -4 7 -89 2 -237z m769 107 c46 -94 102 -219 108 -242 2 -10 -15 -18 -62 -27 -99 -19 -96 -20 -116 39 -9 28 -37 97 -61 151 -24 55 -41 101 -38 104 12 12 101 61 112 61 7 1 33 -38 57 -86z m-631 7 c26 0 27 -1 27 -58 0 -33 -3 -100 -6 -150 l-7 -91 -36 4 c-20 2 -51 4 -68 4 l-33 1 5 58 c2 31 5 95 6 142 1 47 4 89 6 93 3 5 21 6 42 3 20 -3 48 -5 64 -6z m761 -306 c18 -48 25 -147 15 -219 -14 -101 -47 -208 -62 -202 -7 2 -36 10 -64 17 l-53 14 0 140 c0 78 -3 164 -6 192 l-6 51 63 10 c94 15 106 15 113 -3z m-755 -20 c2 -2 -1 -69 -9 -147 -7 -79 -9 -154 -5 -167 7 -22 6 -22 -41 -16 -87 13 -81 3 -83 134 0 64 2 138 5 163 l6 45 62 -4 c33 -2 63 -6 65 -8z m459 -370 c36 -14 73 -23 84 -21 10 3 33 1 51 -3 17 -5 50 -13 72 -19 l40 -11 2 -142 c2 -100 -2 -167 -13 -223 -11 -51 -14 -103 -11 -142 4 -35 5 -63 2 -63 -2 0 -10 -3 -18 -6 -8 -3 -22 3 -31 12 -16 15 -17 36 -11 218 8 228 2 271 -48 321 -20 19 -58 40 -98 54 -61 20 -117 50 -95 51 5 0 38 -12 74 -26z"/>
+                                <path d="M6086 2124 c-136 -43 -240 -237 -277 -519 -19 -147 -6 -452 26 -605 24 -117 26 -136 20 -295 l-7 -170 29 -55 c51 -99 161 -158 314 -167 106 -7 209 10 271 44 67 37 173 150 206 220 23 49 27 70 26 138 -1 44 -5 99 -9 123 -10 58 -1 85 42 133 33 36 38 48 41 104 10 151 -33 421 -95 599 -57 163 -111 254 -207 344 -107 101 -261 144 -380 106z m94 -83 c0 -76 -1 -79 -25 -85 -33 -8 -81 -75 -102 -142 -9 -30 -19 -54 -23 -54 -5 0 -120 80 -139 97 -10 8 60 134 96 173 48 54 112 87 171 89 21 1 22 -2 22 -78z m112 59 c24 -7 50 -18 59 -26 9 -8 18 -11 22 -8 3 3 45 -33 93 -80 47 -48 84 -89 81 -93 -4 -3 5 -19 18 -35 34 -40 31 -55 -8 -49 -4 0 -6 -5 -5 -11 2 -7 -2 -12 -8 -11 -6 1 -24 -11 -39 -27 -37 -39 -57 -38 -78 3 -58 115 -108 169 -174 189 l-43 12 0 72 c0 73 5 88 26 80 7 -3 32 -10 56 -16z m-35 -171 c24 -11 58 -39 77 -61 34 -39 34 -40 15 -59 -21 -21 -23 -28 -10 -48 11 -17 41 -7 41 13 0 8 -8 20 -17 25 -17 10 -17 10 -1 11 11 0 26 -17 39 -41 20 -40 89 -213 89 -224 0 -3 -11 -5 -25 -5 -16 0 -25 -6 -25 -15 0 -8 7 -15 15 -15 21 0 19 -30 -2 -31 -12 0 -13 -2 -5 -6 17 -7 42 15 36 32 -3 8 -13 16 -22 19 -10 2 -6 4 8 3 23 -2 26 -8 42 -92 23 -124 34 -285 19 -285 -6 0 -11 9 -11 20 0 25 -16 26 -30 1 -13 -26 -13 -31 5 -31 8 0 15 -6 15 -12 0 -9 4 -8 11 2 17 24 3 -83 -16 -119 l-15 -30 -82 39 c-45 22 -92 40 -105 40 -14 0 -23 6 -23 15 0 8 -10 19 -21 26 -18 9 -39 5 -120 -26 -54 -20 -105 -35 -113 -32 -21 8 -30 152 -22 329 15 325 77 538 166 571 27 10 43 7 87 -14z m-292 -156 l61 -44 -18 -102 c-9 -56 -17 -126 -18 -154 l0 -53 -87 0 -86 0 6 103 c5 98 28 232 48 284 10 28 9 28 94 -34z m405 2 c0 -8 -4 -15 -10 -15 -5 0 -10 7 -10 15 0 8 5 15 10 15 6 0 10 -7 10 -15z m258 -37 c23 -55 56 -156 57 -173 0 -5 3 -14 7 -20 13 -21 31 -136 22 -144 -9 -8 -127 -31 -157 -31 -11 0 -18 19 -27 73 -7 39 -25 112 -41 161 -16 49 -28 90 -27 91 36 28 134 95 138 95 4 0 16 -24 28 -52z m-658 -347 c13 -1 15 -28 16 -171 l1 -169 -56 -11 c-31 -6 -61 -13 -68 -15 -20 -6 -42 145 -43 288 l0 87 68 -4 c37 -2 74 -5 82 -5z m761 -38 c0 -10 2 -27 5 -38 2 -11 7 -74 10 -140 7 -130 4 -145 -49 -208 l-24 -29 -73 21 c-40 11 -74 22 -76 24 -2 1 4 25 12 52 11 34 16 90 15 177 l0 127 52 10 c29 5 61 12 72 14 41 9 55 7 56 -10z m-221 -193 c0 -5 -5 -10 -11 -10 -5 0 -7 5 -4 10 3 6 8 10 11 10 2 0 4 -4 4 -10z m-256 -79 c8 -12 -19 -21 -62 -20 l-37 1 35 13 c43 16 57 18 64 6z m26 -60 c17 -17 62 -40 107 -56 94 -34 135 -70 157 -137 22 -69 21 -191 -3 -243 -37 -83 -152 -157 -275 -178 -118 -20 -217 20 -268 108 -21 36 -23 52 -22 155 0 128 17 188 77 277 43 63 78 86 140 94 29 3 53 7 55 8 2 0 17 -12 32 -28z m108 -15 c37 -19 113 -46 170 -61 l102 -28 0 -52 c0 -29 7 -69 16 -90 53 -128 -109 -371 -285 -425 -44 -14 -92 -20 -156 -20 -154 0 -265 47 -330 139 l-30 43 3 181 c1 100 -3 208 -9 241 -8 45 -8 61 2 67 17 10 92 21 160 24 l56 2 -35 -46 c-73 -96 -108 -216 -100 -348 8 -127 64 -206 170 -238 65 -19 108 -19 183 0 90 24 144 53 201 110 62 62 79 118 71 234 -8 130 -50 197 -141 227 -55 18 -146 61 -146 69 0 13 37 2 98 -29z"/>
+                                <path d="M6088 1823 c-2 -4 -3 -19 -3 -33 0 -18 5 -25 20 -25 16 0 20 7 20 30 0 20 -6 31 -17 33 -9 2 -18 -1 -20 -5z m32 -13 c0 -5 -4 -10 -10 -10 -5 0 -10 5 -10 10 0 6 5 10 10 10 6 0 10 -4 10 -10z m0 -30 c0 -5 -4 -10 -10 -10 -5 0 -10 5 -10 10 0 6 5 10 10 10 6 0 10 -4 10 -10z"/>
+                                <path d="M6291 1820 c-2 -3 -3 -20 -4 -38 -2 -26 2 -32 18 -32 12 0 16 3 8 8 -6 4 -13 21 -16 37 -2 17 -5 28 -6 25z"/>
+                                <path d="M6043 1563 c20 -5 21 -8 6 -35 -6 -11 -8 -22 -6 -25 5 -4 37 49 37 62 0 3 -12 4 -27 4 -17 -1 -21 -3 -10 -6z"/>
+                                <path d="M6389 1538 c0 -2 -1 -18 -2 -36 -2 -23 2 -32 13 -32 12 0 15 8 12 35 -2 19 -8 35 -13 35 -5 0 -9 -1 -10 -2z"/>
+                                <path d="M6020 1245 c-16 -19 -9 -49 13 -53 24 -5 34 28 13 43 -13 10 -14 14 -4 18 8 3 8 6 2 6 -6 1 -17 -6 -24 -14z m20 -31 c0 -8 -4 -12 -10 -9 -5 3 -10 10 -10 16 0 5 5 9 10 9 6 0 10 -7 10 -16z"/>
+                                <path d="M6431 1190 c-2 -3 -3 -20 -4 -38 -2 -26 2 -32 18 -32 12 0 16 3 8 8 -6 4 -13 21 -16 37 -2 17 -5 28 -6 25z"/>
+                                <path d="M4480 1965 c0 -8 7 -15 15 -15 21 0 19 -28 -2 -33 -17 -4 -17 -5 0 -6 25 -1 34 29 13 45 -16 12 -16 13 1 17 14 4 14 5 -4 6 -14 1 -23 -5 -23 -14z"/>
+                                <path d="M4619 1978 c0 -2 -1 -18 -2 -36 -2 -23 2 -32 13 -32 12 0 15 8 12 35 -2 19 -8 35 -13 35 -5 0 -9 -1 -10 -2z"/>
+                                <path d="M4683 1973 c20 -5 22 -19 5 -26 -10 -4 -10 -6 0 -6 18 -1 15 -19 -5 -24 -14 -4 -13 -5 4 -6 29 -1 35 11 23 43 -5 15 -17 26 -27 25 -17 -1 -17 -2 0 -6z"/>
+                                <path d="M2419 1857 c-210 -64 -381 -291 -420 -556 -40 -281 69 -472 285 -497 52 -6 61 -12 119 -68 65 -63 143 -110 237 -142 84 -29 263 -26 350 5 410 145 518 676 198 966 -54 48 -166 115 -194 115 -6 0 -44 25 -85 56 -173 132 -329 171 -490 121z m294 -27 c52 -20 207 -114 207 -126 0 -8 -33 3 -135 44 -76 30 -105 36 -191 40 -86 4 -111 1 -168 -18 -123 -41 -242 -149 -303 -276 -109 -228 -34 -573 134 -616 25 -6 48 -20 58 -34 15 -23 14 -24 -7 -24 -12 0 -48 7 -80 16 -79 23 -145 82 -184 166 -27 59 -29 71 -29 188 0 149 16 215 81 347 74 149 193 258 332 304 76 25 203 20 285 -11z m42 -90 l60 -24 -61 -7 c-143 -17 -256 -71 -355 -169 -152 -151 -205 -376 -136 -580 13 -39 20 -70 15 -70 -40 0 -118 75 -146 140 -82 193 -43 436 93 579 68 71 114 105 192 137 52 22 69 24 168 21 87 -3 123 -9 170 -27z m188 -66 c34 -8 76 -23 94 -32 l33 -17 -42 -73 c-36 -62 -46 -72 -63 -67 -123 39 -213 42 -297 8 -21 -8 -40 -14 -42 -12 -20 22 -84 135 -79 142 6 11 43 26 113 48 72 22 205 23 283 3z m-367 -161 c27 -50 28 -55 11 -64 -29 -17 -88 -82 -113 -126 -14 -23 -31 -70 -38 -105 l-13 -63 -86 -3 -87 -3 0 28 c0 44 39 173 68 227 32 59 102 139 157 178 l39 29 17 -22 c9 -12 29 -46 45 -76z m628 6 c82 -89 128 -188 151 -330 l5 -36 -84 -1 c-93 -1 -90 -3 -101 72 -4 25 -11 49 -16 52 -5 3 -9 12 -9 20 0 18 -10 32 -82 106 -60 64 -61 69 -24 123 12 17 21 32 21 35 1 3 7 15 15 27 14 21 15 21 43 5 16 -9 52 -42 81 -73z m-304 -35 c88 -26 169 -88 213 -163 l18 -31 -25 0 c-16 0 -26 -6 -26 -15 0 -8 7 -15 15 -15 21 0 19 -28 -2 -33 -13 -4 -12 -5 5 -6 30 -1 41 28 17 45 -18 13 -18 14 2 14 46 0 57 -194 17 -276 l-19 -38 -73 -1 c-49 -1 -69 2 -62 9 19 19 12 46 -12 45 -17 -1 -19 -2 -5 -6 21 -6 22 -17 2 -33 -18 -15 -19 -30 -2 -30 7 0 12 -14 12 -37 0 -21 4 -48 8 -59 6 -18 1 -24 -40 -42 -27 -11 -69 -23 -94 -27 -81 -12 -236 32 -224 63 3 8 8 31 11 52 5 33 3 40 -19 55 -18 11 -38 14 -70 11 -51 -7 -59 0 -82 65 -18 48 -22 135 -10 189 18 84 83 175 158 221 91 56 192 71 287 43z m-470 -382 c0 -15 9 -56 21 -89 22 -65 37 -77 90 -66 16 3 40 2 55 -1 24 -7 26 -10 19 -44 -4 -20 -8 -48 -10 -62 -3 -23 -65 -143 -84 -163 -8 -8 -88 51 -133 99 -67 72 -138 241 -138 327 l0 27 90 0 90 0 0 -28z m924 -14 c-19 -134 -71 -244 -159 -334 -95 -97 -96 -97 -145 -15 -23 39 -43 80 -45 93 -2 13 -7 42 -11 65 -6 39 -5 42 20 49 15 3 40 4 57 0 17 -3 39 -1 49 4 22 12 60 108 60 150 l0 30 90 0 90 0 -6 -42z m-604 -318 c56 -10 121 -2 216 25 18 6 27 -4 63 -66 32 -55 39 -74 29 -81 -7 -4 -50 -20 -96 -34 -73 -24 -94 -26 -180 -22 -69 4 -117 13 -165 31 -38 14 -71 27 -73 30 -3 3 14 39 38 80 l43 75 33 -14 c18 -7 59 -18 92 -24z"/>
+                                <path d="M2803 1473 c21 -6 22 -17 2 -33 -23 -19 -18 -30 13 -29 23 0 24 2 8 8 -14 5 -16 10 -8 15 7 4 12 16 12 27 0 13 -6 19 -22 18 -17 -1 -19 -2 -5 -6z"/>
+                                <path d="M2505 1288 c-12 -18 -12 -24 -3 -27 7 -2 16 -9 21 -15 11 -17 25 11 19 40 -5 30 -16 31 -37 2z"/>
+                                <path d="M3029 1288 c0 -2 -1 -18 -2 -36 -2 -23 2 -32 13 -32 12 0 15 8 12 35 -2 19 -8 35 -13 35 -5 0 -9 -1 -10 -2z"/>
+                                <path d="M2623 1043 c11 -3 16 -10 13 -19 -3 -8 -9 -21 -12 -29 -3 -8 -2 -15 4 -15 5 0 12 8 15 18 2 9 8 25 12 35 6 14 2 17 -21 16 -19 -1 -22 -3 -11 -6z"/>
+                                <path d="M2899 1018 c0 -2 -1 -18 -2 -36 -2 -23 2 -32 13 -32 12 0 15 8 12 35 -2 19 -8 35 -13 35 -5 0 -9 -1 -10 -2z"/>
+                                <path d="M2779 868 c0 -2 -1 -18 -2 -36 -2 -23 2 -32 13 -32 12 0 15 8 12 35 -2 19 -8 35 -13 35 -5 0 -9 -1 -10 -2z"/>
+                                <path d="M2834 856 c-10 -26 0 -51 21 -51 16 0 20 7 20 30 0 33 -30 49 -41 21z m26 -23 c0 -20 -3 -24 -11 -16 -7 7 -9 19 -6 27 10 24 17 19 17 -11z"/>
+                                <path d="M898 1825 c-2 -1 -43 -5 -91 -9 -233 -16 -455 -86 -612 -192 -95 -64 -89 -53 -72 -132 12 -62 12 -70 -2 -80 -26 -18 2 -15 124 13 108 24 252 47 410 63 44 5 172 10 285 11 l204 2 51 -55 52 -56 -25 -22 c-13 -13 -35 -45 -49 -73 -47 -94 -88 -121 -260 -174 -98 -30 -134 -55 -119 -80 3 -5 -1 -11 -9 -15 -26 -10 -16 -41 32 -97 l46 -54 -38 -3 c-70 -6 -344 60 -348 83 -1 6 37 20 84 31 98 24 109 29 109 50 0 28 -55 37 -260 42 -124 2 -221 9 -247 17 -24 7 -45 9 -48 4 -5 -7 16 -15 98 -35 19 -4 26 -11 23 -23 -3 -9 -13 -46 -22 -83 l-16 -67 -39 26 c-22 14 -43 23 -47 19 -11 -12 24 -34 143 -91 108 -52 110 -53 110 -86 0 -27 4 -34 20 -34 14 0 21 8 23 27 l3 26 72 -24 c107 -36 378 -101 492 -118 130 -19 351 -15 420 7 136 44 217 191 232 420 4 72 10 97 20 97 7 0 13 5 13 10 0 11 -11 13 -34 4 -13 -5 -16 -22 -16 -81 0 -206 -92 -391 -217 -432 -48 -16 -251 -26 -328 -16 -63 7 -60 -2 -34 97 l10 37 57 -29 c143 -72 276 -52 370 56 75 84 111 234 75 304 -23 44 -94 70 -205 76 -99 4 -186 -19 -338 -91 -109 -52 -171 -67 -185 -45 -8 13 34 33 151 68 130 40 172 72 219 161 37 70 73 105 102 99 13 -2 7 -14 -25 -51 -75 -87 -50 -117 99 -117 103 0 279 20 279 32 0 6 -26 6 -67 1 -100 -12 -320 -10 -333 3 -8 8 1 25 34 64 26 30 46 56 46 59 0 29 -27 81 -65 125 -44 52 -45 54 -23 60 13 3 92 9 176 13 84 3 156 11 159 16 4 7 -47 8 -153 4 -176 -8 -213 -13 -221 -33 -3 -7 19 -41 48 -74 39 -45 50 -63 41 -72 -8 -8 -26 4 -70 50 -33 34 -65 62 -71 62 -7 0 -11 21 -11 55 l0 55 115 0 c135 0 315 19 315 33 0 6 -19 6 -52 1 -29 -5 -262 -9 -518 -9 -256 0 -481 -4 -500 -8 -19 -3 -53 -9 -75 -12 l-40 -4 37 19 c82 44 284 84 487 96 63 4 111 11 111 17 0 10 -166 4 -250 -9 -188 -27 -285 -53 -390 -102 -72 -33 -170 -65 -178 -58 -5 6 110 74 173 101 132 59 321 97 548 111 112 7 150 25 47 23 -32 -1 -61 -3 -62 -4z m-268 -187 c0 -2 3 -33 6 -69 l6 -65 -49 -3 c-58 -3 -327 -48 -367 -61 -62 -21 -73 -15 -82 43 -5 28 -8 56 -9 61 0 12 69 33 185 55 73 14 109 19 205 27 44 3 82 8 84 10 5 4 21 6 21 2z m411 -6 l56 -2 7 -47 c3 -26 3 -50 -1 -54 -5 -4 -106 -9 -225 -11 l-218 -4 0 61 0 62 163 -2 c89 -1 187 -2 218 -3z m393 -478 c88 -24 101 -40 101 -122 -1 -91 -40 -176 -108 -238 -84 -75 -185 -88 -297 -38 -78 35 -114 66 -176 150 -30 41 -64 83 -76 94 -15 14 -17 20 -8 20 8 0 68 25 133 56 192 92 304 112 431 78z m-799 -111 c19 -11 19 -12 -5 -21 -14 -5 -55 -15 -92 -22 -120 -22 -127 -54 -19 -87 31 -9 59 -19 63 -23 6 -5 -17 -114 -28 -132 -6 -9 -172 48 -268 91 -61 28 -68 34 -62 54 3 12 14 53 23 91 l17 68 175 -4 c107 -2 184 -8 196 -15z m281 -121 c32 -43 67 -88 80 -102 22 -25 22 -26 8 -90 -9 -35 -17 -67 -19 -71 -8 -11 -385 69 -404 87 -2 2 5 33 14 69 19 70 23 73 85 55 19 -5 66 -13 105 -16 58 -5 73 -3 84 10 15 18 7 33 -48 95 -44 48 -40 67 10 49 18 -6 49 -38 85 -86z m-526 -167 c0 -14 -4 -25 -10 -25 -5 0 -10 11 -10 25 0 14 5 25 10 25 6 0 10 -11 10 -25z"/>
+                                <path d="M4467 1704 c-3 -3 -3 -12 0 -20 3 -8 0 -14 -7 -14 -7 0 -5 -7 5 -17 21 -20 34 -4 27 33 -4 24 -13 30 -25 18z"/>
+                                <path d="M4769 1708 c0 -2 -1 -18 -2 -36 -2 -23 2 -32 13 -32 12 0 15 8 12 35 -2 19 -8 35 -13 35 -5 0 -9 -1 -10 -2z"/>
+                                <path d="M4840 1700 c12 -8 12 -11 -3 -28 -24 -26 -21 -32 11 -31 15 0 21 3 15 6 -10 3 -10 10 -2 24 12 23 4 39 -19 39 -14 0 -15 -2 -2 -10z"/>
+                                <path d="M820 1470 c-10 -6 -11 -10 -2 -10 6 0 12 -9 12 -19 0 -11 -6 -22 -12 -24 -7 -3 -4 -6 7 -6 18 -1 20 4 17 34 -2 19 -5 35 -6 35 0 0 -8 -5 -16 -10z"/>
+                                <path d="M373 1423 c21 -6 22 -17 2 -33 -23 -19 -18 -30 13 -29 17 1 21 3 9 6 -14 4 -16 8 -6 19 15 18 4 44 -18 43 -17 -1 -17 -2 0 -6z"/>
+                                <path d="M4861 1330 c-2 -3 -3 -20 -4 -38 -2 -26 2 -32 18 -32 12 0 16 3 8 8 -6 4 -13 21 -16 37 -2 17 -5 28 -6 25z"/>
+                                <path d="M4919 1328 c0 -2 -1 -18 -2 -36 -2 -23 2 -32 13 -32 12 0 15 8 12 35 -2 19 -8 35 -13 35 -5 0 -9 -1 -10 -2z"/>
+                                <path d="M4440 1311 c13 -10 13 -12 0 -21 -10 -6 -11 -10 -2 -10 18 0 15 -18 -5 -24 -11 -3 -7 -4 7 -3 21 2 25 7 25 32 -1 22 -6 31 -20 33 -17 3 -17 1 -5 -7z"/>
+                                <path d="M309 788 c0 -2 -1 -18 -2 -36 -2 -23 2 -32 13 -32 12 0 15 8 12 35 -2 19 -8 35 -13 35 -5 0 -9 -1 -10 -2z"/>
+                                <path d="M673 659 c-15 -15 -5 -39 16 -40 12 0 12 -2 -4 -9 -17 -7 -17 -9 -3 -9 23 -1 39 30 27 52 -12 20 -21 21 -36 6z m27 -14 c0 -8 -4 -15 -10 -15 -5 0 -10 7 -10 15 0 8 5 15 10 15 6 0 10 -7 10 -15z"/>
+                                <path d="M4742 440 c-95 -20 -155 -75 -156 -144 -1 -40 0 -41 37 -44 34 -3 43 2 80 41 73 78 150 100 272 77 58 -11 69 -11 82 3 8 8 12 20 9 26 -20 32 -236 60 -324 41z m204 -21 c34 -6 71 -17 81 -25 16 -14 13 -14 -32 -7 -143 23 -247 -3 -307 -78 -23 -29 -39 -39 -60 -39 -33 0 -37 23 -14 69 40 76 172 108 332 80z"/>
+                                <path d="M750 150 l0 -50 38 1 c30 2 32 3 10 6 -26 4 -28 8 -28 49 0 24 -4 44 -10 44 -5 0 -10 -22 -10 -50z"/>
+                                <path d="M847 153 c-18 -49 -14 -70 7 -40 16 21 46 23 46 2 0 -8 7 -15 15 -15 19 0 19 -1 -5 54 -10 25 -25 46 -32 46 -8 0 -21 -21 -31 -47z m43 -4 c0 -5 -4 -9 -10 -9 -5 0 -10 7 -10 16 0 8 5 12 10 9 6 -3 10 -10 10 -16z"/>
+                                <path d="M956 175 c15 -23 15 -27 0 -50 -19 -29 -1 -36 20 -7 12 16 14 16 28 -3 20 -27 32 -12 12 16 -14 21 -14 24 1 41 9 10 13 21 9 26 -4 4 -14 -2 -22 -13 -14 -19 -16 -19 -25 -2 -6 9 -17 17 -25 17 -12 0 -12 -4 2 -25z"/>
+                                <path d="M2552 188 c-20 -20 -14 -35 19 -47 37 -13 29 -35 -10 -27 -22 5 -23 5 -8 -5 26 -15 67 -3 67 20 0 12 -11 23 -31 30 -37 13 -29 35 10 27 19 -5 22 -4 11 4 -20 13 -43 13 -58 -2z"/>
+                                <path d="M2649 154 c-20 -48 -17 -72 5 -41 17 22 35 22 52 0 21 -30 24 -10 6 40 -9 26 -23 47 -30 47 -7 0 -22 -21 -33 -46z m41 1 c0 -8 -4 -15 -10 -15 -5 0 -10 7 -10 15 0 8 5 15 10 15 6 0 10 -7 10 -15z"/>
+                                <path d="M2756 175 c15 -23 15 -27 0 -50 -14 -21 -14 -25 -2 -25 8 0 20 8 26 18 10 16 10 16 20 0 6 -10 17 -18 25 -18 11 0 11 5 -3 29 -16 28 -15 31 2 50 17 18 17 21 3 21 -9 0 -21 -8 -27 -17 -10 -17 -10 -17 -20 0 -6 9 -18 17 -26 17 -12 0 -12 -4 2 -25z"/>
+                                <path d="M4360 175 c-6 -14 -14 -36 -20 -50 -7 -20 -6 -25 5 -25 8 0 15 7 15 15 0 21 30 19 46 -2 22 -31 27 -6 9 41 -20 51 -40 59 -55 21z m26 -32 c-10 -10 -19 5 -10 18 6 11 8 11 12 0 2 -7 1 -15 -2 -18z"/>
+                                <path d="M4471 171 c-27 -37 -26 -41 4 -41 16 0 25 -6 25 -15 0 -21 18 -19 22 3 6 32 -4 82 -17 82 -8 0 -23 -13 -34 -29z m29 -16 c0 -8 -7 -15 -15 -15 -16 0 -20 12 -8 23 11 12 23 8 23 -8z"/>
+                                <path d="M4566 187 c-28 -20 -18 -69 17 -81 18 -7 31 -6 38 1 7 7 3 9 -14 6 -19 -4 -27 0 -32 16 -11 36 4 64 31 58 13 -2 21 0 18 4 -8 13 -38 11 -58 -4z"/>
+                                <path d="M6160 175 c-6 -14 -14 -36 -20 -50 -7 -20 -6 -25 5 -25 8 0 15 7 15 15 0 21 30 19 46 -2 22 -31 27 -6 9 41 -20 51 -40 59 -55 21z m26 -32 c-10 -10 -19 5 -10 18 6 11 8 11 12 0 2 -7 1 -15 -2 -18z"/>
+                                <path d="M6260 192 c0 -6 9 -8 20 -5 30 8 26 -25 -7 -59 l-27 -28 45 1 c24 1 34 4 21 6 -22 4 -23 6 -7 23 25 28 16 64 -17 68 -16 2 -28 -1 -28 -6z"/>
+                                <path d="M6366 187 c-28 -20 -18 -69 17 -81 18 -7 31 -6 38 1 7 7 3 9 -14 6 -19 -4 -27 0 -32 16 -11 36 4 64 31 58 13 -2 21 0 18 4 -8 13 -38 11 -58 -4z"/>
+                            </g>
+                        </svg>
+                        
+                        <!-- Layer 1: SVG paths interactivos -->
+                        <svg class="interactive-svg" viewBox="0 0 694 227" xmlns="http://www.w3.org/2000/svg">
+                            <!-- IMAGEN 1 - LAX -->
+                            <path id="segment-1" class="segment" data-segmento="1" 
+                                  d="M 66,62 L 67,76 L 86,75 L 112,76 L 113,62 Z" 
+                                  onclick="cambiarEstado(1)"/>
+                            
+                            <path id="segment-2-lax" class="segment" data-segmento="2" 
+                                  d="M 13,70 L 15,85 L 33,81 L 51,78 L 66,77 L 65,62 L 48,62 L 32,66 Z" 
+                                  onclick="cambiarEstado(2)"/>
+                            
+                            <path id="segment-10-lax" class="segment" data-segmento="10" 
+                                  d="M 26,120 L 21,138 L 57,153 L 61,136 L 46,132 L 46,130 L 64,126 L 67,124 L 66,122 L 57,120 Z" 
+                                  onclick="cambiarEstado(10)"/>
+                            
+                            <path id="segment-9" class="segment" data-segmento="9" 
+                                  d="M 62,138 L 57,153 L 100,162 L 104,146 L 86,125 L 82,123 L 79,124 L 78,128 L 87,136 L 87,140 L 79,140 Z" 
+                                  onclick="cambiarEstado(9)"/>
+                            
+                            <!-- IMAGEN 2 - SAX -->
+                            <path id="segment-4" class="segment" data-segmento="4" 
+                                  d="M 225,112 L 244,112 L 245,105 L 247,98 L 248,94 L 253,89 L 257,85 L 262,80 L 253,64 L 247,68 L 236,79 L 230,89 L 226,102 Z" 
+                                  onclick="cambiarEstado(4)"/>
+                            
+                            <path id="segment-2-sax" class="segment" data-segmento="2" 
+                                  d="M 254,64 L 263,80 L 269,77 L 278,76 L 287,76 L 294,78 L 299,80 L 309,64 L 301,59 L 292,58 L 281,56 L 275,57 L 266,58 L 259,61 Z" 
+                                  onclick="cambiarEstado(2)"/>
+                            
+                            <path id="segment-15" class="segment" data-segmento="15" 
+                                  d="M 299,80 L 306,85 L 310,90 L 314,95 L 317,102 L 318,106 L 318,113 L 337,113 L 337,103 L 334,93 L 330,84 L 325,77 L 317,69 L 309,64 Z" 
+                                  onclick="cambiarEstado(15)"/>
+                            
+                            <path id="segment-12" class="segment" data-segmento="12" 
+                                  d="M 318,113 L 318,118 L 316,124 L 313,131 L 304,131 L 300,131 L 299,133 L 299,138 L 300,144 L 310,161 L 317,156 L 325,147 L 331,139 L 334,131 L 336,122 L 337,112 Z" 
+                                  onclick="cambiarEstado(12)"/>
+                            
+                            <path id="segment-10-sax" class="segment" data-segmento="10" 
+                                  d="M 262,144 L 253,160 L 260,165 L 266,167 L 274,168 L 288,169 L 295,167 L 301,165 L 309,161 L 299,145 L 292,148 L 287,149 L 275,148 L 267,146 Z" 
+                                  onclick="cambiarEstado(10)"/>
+                            
+                            <path id="segment-7" class="segment" data-segmento="7" 
+                                  d="M 225,112 L 225,120 L 230,136 L 235,145 L 240,151 L 248,158 L 253,161 L 263,144 L 261,142 L 263,136 L 263,132 L 258,131 L 248,131 L 246,123 L 245,117 L 244,112 Z" 
+                                  onclick="cambiarEstado(7)"/>
+                            
+                            <!-- IMAGEN 3 - A4C -->
+                            <path id="segment-5" class="segment" data-segmento="5" 
+                                  d="M 427,16 L 427,43 L 443,43 L 444,34 L 446,27 L 452,20 L 457,19 L 457,7 L 447,8 L 439,10 Z" 
+                                  onclick="cambiarEstado(5)"/>
+                            
+                            <path id="segment-4-a4c" class="segment" data-segmento="4" 
+                                  d="M 427,43 L 426,75 L 442,75 L 443,43 Z" 
+                                  onclick="cambiarEstado(4)"/>
+                            
+                            <path id="segment-3" class="segment" data-segmento="3" 
+                                  d="M 426,75 L 425,109 L 439,112 L 441,75 Z" 
+                                  onclick="cambiarEstado(3)"/>
+                            
+                            <path id="segment-13" class="segment" data-segmento="13" 
+                                  d="M 457,20 L 463,21 L 467,23 L 478,34 L 483,42 L 497,34 L 488,22 L 476,13 L 465,8 L 457,7 Z" 
+                                  onclick="cambiarEstado(13)"/>
+                            
+                            <path id="segment-12-a4c" class="segment" data-segmento="12" 
+                                  d="M 483,42 L 492,64 L 496,75 L 514,72 L 507,53 L 497,34 Z" 
+                                  onclick="cambiarEstado(12)"/>
+                            
+                            <path id="segment-11" class="segment" data-segmento="11" 
+                                  d="M 497,75 L 497,89 L 497,103 L 497,115 L 512,119 L 518,97 L 518,84 L 515,72 Z" 
+                                  onclick="cambiarEstado(11)"/>
+                            
+                            <!-- IMAGEN 4 - A2C -->
+                            <path id="segment-6" class="segment" data-segmento="6" 
+                                  d="M 581,86 L 581,102 L 585,125 L 600,122 L 600,113 L 600,98 L 600,86 Z" 
+                                  onclick="cambiarEstado(6)"/>
+                            
+                            <path id="segment-7-a2c" class="segment" data-segmento="7" 
+                                  d="M 581,85 L 600,85 L 600,76 L 603,60 L 604,52 L 588,41 L 585,53 L 582,65 L 582,74 L 582,85 Z" 
+                                  onclick="cambiarEstado(7)"/>
+                            
+                            <path id="segment-8" class="segment" data-segmento="8" 
+                                  d="M 588,40 L 604,53 L 609,40 L 615,32 L 620,30 L 620,13 L 611,14 L 603,18 L 595,27 L 591,34 Z" 
+                                  onclick="cambiarEstado(8)"/>
+                            
+                            <path id="segment-16" class="segment" data-segmento="16" 
+                                  d="M 620,13 L 620,31 L 629,33 L 640,45 L 645,56 L 662,45 L 654,34 L 642,21 L 632,16 L 624,14 Z" 
+                                  onclick="cambiarEstado(16)"/>
+                            
+                            <path id="segment-15-a2c" class="segment" data-segmento="15" 
+                                  d="M 645,56 L 649,68 L 653,81 L 655,91 L 674,88 L 671,70 L 665,52 L 661,45 Z" 
+                                  onclick="cambiarEstado(15)"/>
+                            
+                            <path id="segment-14" class="segment" data-segmento="14" 
+                                  d="M 655,91 L 655,100 L 655,114 L 654,123 L 651,129 L 668,134 L 676,125 L 676,102 L 674,87 Z" 
+                                  onclick="cambiarEstado(14)"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <!-- Leyenda de valores -->
+                <div class="valoresSegmentos">
+                    <ul>
+                        <li><span style="background: rgba(255,255,255,0); border: 2px solid #ccc;"></span> No evaluado</li>
+                        <li><span style="background: #FFFF00;"></span> Normal</li>
+                        <li><span style="background: #FF7700;"></span> Hipoquinético</li>
+                        <li><span style="background: #FF0000;"></span> Aquinético</li>
+                        <li><span style="background: #0000FF;"></span> Disquinético</li>
+                    </ul>
+                </div>
+                
+                <!-- Referencias -->
+                <div class="referencias">
+                    <h4>Referencias</h4>
+                    <div class="referencias-container">
+                        <ol>
+                            <li>Septum Anterior Basal - LAD</li>
+                            <li>Septum Anterior Medio - LAD</li>
+                            <li>Septum Basal - RCA</li>
+                            <li>Septum Medio - RCA</li>
+                        </ol>
+                        <ol start="5">
+                            <li>Septum Apical - LAD</li>
+                            <li>Inferior Basal - RCA</li>
+                            <li>Inferior Medio - RCA</li>
+                            <li>Inferior Apical - LAD</li>
+                        </ol>
+                        <ol start="9">
+                            <li>Posterior Basal - CX</li>
+                            <li>Posterior Medio - CX</li>
+                            <li>Lateral Basal - CX</li>
+                            <li>Lateral Medio - CX</li>
+                        </ol>
+                        <ol start="13">
+                            <li>Lateral Apical - LAD</li>
+                            <li>Anterior Basal - LAD</li>
+                            <li>Anterior Medio - LAD</li>
+                            <li>Anterior Apical - LAD</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estados de los segmentos
+        let estados = {};
+        for(let i = 1; i <= 16; i++) {
+            estados[i] = 0;
+        }
+
+        function cambiarEstado(segmento) {
+            // Ciclar estados: 0 -> 1 -> 2 -> 3 -> 4 -> 0
+            let estadoActual = estados[segmento];
+            let nuevoEstado = (estadoActual + 1) % 5;
+            
+            actualizarSegmento(segmento, nuevoEstado);
+        }
+
+        function actualizarSegmento(segmento, nuevoEstado) {
+            estados[segmento] = nuevoEstado;
+            
+            // Actualizar visualización SVG
+            actualizarVisualizacionSVG(segmento, nuevoEstado);
+            
+            console.log(`Segmento ${segmento}: Estado ${nuevoEstado}`);
+        }
+
+        function actualizarVisualizacionSVG(segmento, estado) {
+            // Buscar todos los paths de este segmento
+            let paths = document.querySelectorAll(`[data-segmento="${segmento}"]`);
+            
+            paths.forEach(path => {
+                // Remover clases de estado anteriores
+                path.classList.remove('estado-0', 'estado-1', 'estado-2', 'estado-3', 'estado-4');
+                
+                // Agregar nueva clase de estado
+                path.classList.add(`estado-${estado}`);
+            });
+        }
+
+        function marcarTodosNormales() {
+            for(let i = 1; i <= 16; i++) {
+                actualizarSegmento(i, 1);
+            }
+        }
+
+        function limpiarTodos() {
+            for(let i = 1; i <= 16; i++) {
+                actualizarSegmento(i, 0);
+            }
+        }
+
+        // Función para obtener datos (para integración)
+        function obtenerDatosSegmentos() {
+            return estados;
+        }
+
+        // Función para cargar estados
+        function cargarEstados(datosSegmentos) {
+            for(let segmento in datosSegmentos) {
+                actualizarSegmento(parseInt(segmento), parseInt(datosSegmentos[segmento]));
+            }
+        }
+
+        // Función para exportar estado como JSON
+        function exportarEstados() {
+            return JSON.stringify(estados, null, 2);
+        }
+
+        // Función para importar estados desde JSON
+        function importarEstados(jsonString) {
+            try {
+                let estadosImportados = JSON.parse(jsonString);
+                cargarEstados(estadosImportados);
+                console.log('Estados importados correctamente');
+            } catch (error) {
+                console.error('Error al importar estados:', error);
+            }
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Sistema híbrido imagen + SVG paths inicializado');
+            console.log('16 segmentos - Interacción solo con mouse');
+            
+            // Inicializar todos los segmentos en estado 0
+            for(let i = 1; i <= 16; i++) {
+                actualizarVisualizacionSVG(i, 0);
+            }
+        });
+    </script>
+</body>
+</html>
