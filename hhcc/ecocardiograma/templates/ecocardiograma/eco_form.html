@@ -148,6 +148,18 @@ document.addEventListener('alpine:init', () => {
         
         // Inicialización
         inicializar(historiaId, estudioId, datosEstudio, datosConclusion, datosSegmentos) {
+            // 🎯 MODO DEMO: Cargar datos mock
+            if (new URLSearchParams(window.location.search).get('demo') === 'true') {
+                this.historiaId = 999;
+                this.estudio.id = 1001;
+                // Pre-cargar algunos valores de ejemplo
+                this.estudio.peso = '70.5';
+                this.estudio.talla = '1.75';
+                this.calcularBMI();
+                return;
+            }            
+
+            // MODO NORMAL: Cargar datos reales
             this.historiaId = historiaId;
             
             if (estudioId && estudioId !== '0') {
@@ -395,6 +407,19 @@ document.addEventListener('alpine:init', () => {
         },
         
         async guardarDatos(completo = false) {
+            // 🎯 MODO DEMO: No hacer llamadas reales
+            if (new URLSearchParams(window.location.search).get('demo') === 'true') {
+                // Simular delay del servidor
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Simular respuesta exitosa
+                return { 
+                    success: true, 
+                    estudio_id: Math.floor(Math.random() * 1000) + 1000 
+                };
+            } // 🎯 FIN MODO DEMO
+
+            // MODO NORMAL: Hacer llamada real al servidor
             // Preparar datos para envío
             const payload = {
                 historia_id: this.historiaId,

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'main',
     'ecocardiograma',
+    'earthbox',
 ]
 
 MIDDLEWARE = [

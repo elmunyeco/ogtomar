@@ -20,4 +20,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('main.urls')),
     path('ecocardiograma/', include('ecocardiograma.urls')),
+    path('earthbox/', include('earthbox.urls')),
 ]
