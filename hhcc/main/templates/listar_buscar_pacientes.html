@@ -79,7 +79,7 @@
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-2 border border-gray-300">{{ paciente.nombre }}</td>
                     <td class="px-4 py-2 border border-gray-300">{{ paciente.apellido }}</td>
-                    <td class="px-4 py-2 border border-gray-300">DNI {{ paciente.dni }}</td>
+                    <td class="px-4 py-2 border border-gray-300">DNI {{ paciente.numDoc }}</td>
                     <td class="px-4 py-2 border border-gray-300">
                         <div class="flex justify-center space-x-4">
                             <!-- Botón Editar con icono -->
@@ -147,27 +147,4 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    // Este script se ejecuta después de que la página carga
-    document.addEventListener('DOMContentLoaded', function() {
-        // Configurar breadcrumbs para Alpine
-        const breadcrumbs = [
-            { label: 'Inicio', url: '/' },
-            { label: 'Buscar Pacientes', url: '/pacientes/' }
-        ];
-        
-        // Si estamos en Alpine, configurar el componente
-        if (window.Alpine) {
-            Alpine.store('breadcrumbs', breadcrumbs);
-            
-            // Acceder al componente del header para actualizar sus breadcrumbs
-            const header = document.querySelector('[x-data="headerComponent"]');
-            if (header && header.__x) {
-                header.__x.$data.activeSection = 'pacientes';
-                header.__x.$data.breadcrumbs = breadcrumbs;
-            }
-        }
-    });
-</script>
-{% endblock %}
+{% block extra_js %}{% endblock %}

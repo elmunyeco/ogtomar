@@ -150,27 +150,4 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    // Este script se ejecuta después de que la página carga
-    document.addEventListener('DOMContentLoaded', function() {
-        // Configurar breadcrumbs para Alpine
-        const breadcrumbs = [
-            { label: 'Inicio', url: '/' },
-            { label: 'Buscar Historias', url: '/historias/' }
-        ];
-        
-        // Si estamos en Alpine, configurar el componente
-        if (window.Alpine) {
-            Alpine.store('breadcrumbs', breadcrumbs);
-            
-            // Acceder al componente del header para actualizar sus breadcrumbs
-            const header = document.querySelector('[x-data="headerComponent"]');
-            if (header && header.__x) {
-                header.__x.$data.activeSection = 'historias';
-                header.__x.$data.breadcrumbs = breadcrumbs;
-            }
-        }
-    });
-</script>
-{% endblock %}
+{% block extra_js %}{% endblock %}

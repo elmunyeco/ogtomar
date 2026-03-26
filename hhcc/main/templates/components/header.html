@@ -55,21 +55,5 @@ templates/components/header.html
             </li>
         </ul>
         
-        <div class="current-path">
-            {% if breadcrumbs %}
-                {% for crumb in breadcrumbs %}
-                    {% if forloop.counter0 > 0 %}
-                        <span class="breadcrumb-separator">›</span>
-                    {% endif %}
-                    <span class="breadcrumb-item">
-                        {% if not forloop.last and crumb.url %}
-                            <a href="{{ crumb.url }}">{{ crumb.label }}</a>
-                        {% else %}
-                            <span>{{ crumb.label }}</span>
-                        {% endif %}
-                    </span>
-                {% endfor %}
-            {% endif %}
-        </div>
     </nav>
 </header>

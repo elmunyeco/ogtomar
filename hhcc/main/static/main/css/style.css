@@ -200,37 +200,6 @@
             color: #b25a55;
         }
         
-        .current-path {
-            display: flex;
-            align-items: center;
-            margin-left: auto;
-            font-size: 0.85rem;
-            color: #6c757d;
-        }
-        
-        .breadcrumb-item {
-            color: #6c757d;
-        }
-        
-        .breadcrumb-item a {
-            color: #b25a55;
-            text-decoration: none;
-        }
-        
-        .breadcrumb-item a:hover {
-            text-decoration: underline;
-        }
-        
-        .breadcrumb-separator {
-            color: #ced4da;
-            margin: 0 5px;
-        }
-        
-        .breadcrumb-item:last-child {
-            color: #495057;
-            font-weight: 500;
-        }
-        
         /* Estilos adicionales para el contenido principal */
         body {
             background-color: #f8f9fa;
@@ -956,4 +925,3 @@
             background-color: rgb(249, 250, 251);
             border-radius: 0.25rem;
         }
-

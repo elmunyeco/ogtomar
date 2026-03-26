@@ -206,20 +206,20 @@
                 <!-- Sexo -->
                 <div class="form-field">
                     <label class="field-label">Sexo</label>
-                    <div class="radio-group">
-                        <label class="radio-option">
-                            <input type="radio" name="{{ form.sexo.html_name }}" value="M" 
-                                {% if form.sexo.value == "M" %}checked{% endif %}
-                                {% if form.sexo.field.required %}required{% endif %}>
-                            <span>Hombre</span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="{{ form.sexo.html_name }}" value="F" 
-                                {% if form.sexo.value == "F" %}checked{% endif %}
-                                {% if form.sexo.field.required %}required{% endif %}>
-                            <span>Mujer</span>
-                        </label>
-                    </div>
+                <div class="radio-group">
+                    <label class="radio-option">
+                        <input type="radio" name="{{ form.sexo.html_name }}" value="H" 
+                            {% if form.sexo.value == "H" %}checked{% endif %}
+                            {% if form.sexo.field.required %}required{% endif %}>
+                        <span>Hombre</span>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="{{ form.sexo.html_name }}" value="M" 
+                            {% if form.sexo.value == "M" %}checked{% endif %}
+                            {% if form.sexo.field.required %}required{% endif %}>
+                        <span>Mujer</span>
+                    </label>
+                </div>
                     {% if form.sexo.errors %}
                     <p class="form-error">{{ form.sexo.errors.0 }}</p>
                     {% endif %}
@@ -430,23 +430,6 @@
             });
         });
         
-        // Configurar breadcrumbs para Alpine
-        const breadcrumbs = [
-            { label: 'Inicio', url: '/' },
-            { label: 'Pacientes', url: '/pacientes/' },
-            { label: '{{ paciente.nombre }} {{ paciente.apellido }}', url: '{% url "editar_paciente" paciente.id %}' },
-            { label: 'Editar', url: '#' }
-        ];
-        
-        // Si estamos en Alpine, configurar el componente
-        if (window.Alpine) {
-            // Acceder al componente del header para actualizar sus breadcrumbs
-            const header = document.querySelector('[x-data="headerComponent"]');
-            if (header && header.__x) {
-                header.__x.$data.activeSection = 'pacientes';
-                header.__x.$data.breadcrumbs = breadcrumbs;
-            }
-        }
     });
 </script>
 {% endblock %}

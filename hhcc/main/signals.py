@@ -9,9 +9,8 @@ def crear_historia_clinica(sender, instance, created, **kwargs):
     if created:
         try:                                                                                        
             with transaction.atomic():
-                HistoriaClinica.objects.create(paciente=instance, fechaalta=instance.fechaalta)
+                HistoriaClinica.objects.create(paciente=instance, fechaAlta=instance.fechaAlta)
         except Exception as e:
             print(f"Error al crear Historia Clínica: {e}")
             instance.delete()
             raise e
-

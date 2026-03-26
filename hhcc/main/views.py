@@ -174,7 +174,7 @@ def crear_paciente(request):
         if form.is_valid():
             paciente = form.save()
             messages.success(request, f'Paciente {paciente.nombre} {paciente.apellido} creado exitosamente.')
-            return redirect('detalle_paciente', pk=paciente.pk)
+            return redirect('editar_paciente', pk=paciente.pk)
     else:
         form = PacienteForm()
     
@@ -219,14 +219,19 @@ def eliminar_paciente(request, pk):
     Vista para eliminar un paciente
     """
     paciente = get_object_or_404(Paciente, pk=pk)
+    tiene_historias = paciente.historias_clinicas.exists()
     
     if request.method == 'POST':
-        nombre_completo = f"{paciente.nombre} {paciente.apellido}"
-        paciente.delete()
-        messages.success(request, f'Paciente {nombre_completo} eliminado exitosamente.')
-        return redirect('listar_buscar_pacientes')
+        if tiene_historias:
+            messages.error(request, "No es posible eliminar este paciente porque tiene historias clínicas asociadas.")
+            return redirect('eliminar_paciente', pk=paciente.pk)
+        else:
+            nombre_completo = f"{paciente.nombre} {paciente.apellido}"
+            paciente.delete()
+            messages.success(request, f'Paciente {nombre_completo} eliminado exitosamente.')
+            return redirect('listar_buscar_pacientes')
     
-    return render(request, 'eliminar_paciente.html', {'paciente': paciente})
+    return render(request, 'eliminar_paciente.html', {'paciente': paciente, 'historias': tiene_historias})
 
 
 def detalle_historia(request, historia_id):
@@ -690,16 +695,23 @@ def detalle_historia_viejo(request, historia_id):
 
 def detalle_historia(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
-    today = timezone.now().date()
+    now = timezone.now()
+    local_now = timezone.localtime(now)
+    start_local = datetime.combine(local_now.date(), time.min).replace(tzinfo=local_now.tzinfo)
+    start_utc = start_local.astimezone(dt_timezone.utc)
+    end_utc = start_utc + timedelta(days=1)
 
     # Obtener última visita (para cargar signos vitales y condiciones)
     signos_vitales = SignosVitales.objects.filter(
-        historia=historia, fecha=today
+        historia=historia, fecha=local_now.date()
     ).first()
 
     # Obtener comentarios del día si existen
     comentarios_hoy = ComentariosVisitas.objects.filter(
-        historia_clinica=historia, fecha=today, tipo="EVOL"
+        historia_clinica=historia,
+        fecha__gte=start_utc,
+        fecha__lt=end_utc,
+        tipo="EVOL",
     ).first()
 
     condiciones_paciente = CondicionMedicaHistoria.objects.filter(historia=historia)
@@ -812,6 +824,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from datetime import datetime, time, timedelta, timezone as dt_timezone
 import json
 from .utils import process_signos_vitales
 
@@ -820,12 +833,16 @@ def guardar_historia(request, historia_id):
     try:
         historia = get_object_or_404(HistoriaClinica, pk=historia_id)
         data = json.loads(request.body)
-        today = timezone.now().date()
+        now = timezone.now()
+        local_now = timezone.localtime(now)
+        start_local = datetime.combine(local_now.date(), time.min).replace(tzinfo=local_now.tzinfo)
+        start_utc = start_local.astimezone(dt_timezone.utc)
+        end_utc = start_utc + timedelta(days=1)
 
         # Guardar signos vitales
         signos_vitales = process_signos_vitales(data)
         if any(v is not None for v in signos_vitales.values()):
-            fecha_visita = data.get("fecha_visita", today)  # Permitir fecha específica
+            fecha_visita = data.get("fecha_visita", local_now.date())  # Permitir fecha específica
             signos_existentes = SignosVitales.objects.filter(
                 historia=historia, fecha=fecha_visita
             ).first()
@@ -852,12 +869,21 @@ def guardar_historia(request, historia_id):
         # Guardar/actualizar comentario
 
         if comentarios := data.get("comentarios"):
-            ComentariosVisitas.objects.update_or_create(
+            existente = ComentariosVisitas.objects.filter(
                 historia_clinica=historia,
-                fecha=today,
                 tipo="EVOL",
-                defaults={"comentarios": comentarios},
-            )
+                fecha__gte=start_utc,
+                fecha__lt=end_utc,
+            ).first()
+            if existente:
+                existente.comentarios = comentarios
+                existente.save()
+            else:
+                ComentariosVisitas.objects.create(
+                    historia_clinica=historia,
+                    tipo="EVOL",
+                    comentarios=comentarios,
+                )
         return JsonResponse({"status": "success"})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
@@ -1114,16 +1140,23 @@ def eliminar_comentario(request):
 def detalle_historia_con_historial(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
     paciente = historia.paciente
-    today = timezone.now().date()
+    now = timezone.now()
+    local_now = timezone.localtime(now)
+    start_local = datetime.combine(local_now.date(), time.min).replace(tzinfo=local_now.tzinfo)
+    start_utc = start_local.astimezone(dt_timezone.utc)
+    end_utc = start_utc + timedelta(days=1)
 
     # Obtener última visita (para cargar signos vitales y condiciones)
     signos_vitales = SignosVitales.objects.filter(
-        historia=historia, fecha=today
+        historia=historia, fecha=local_now.date()
     ).first()
 
     # Obtener comentarios del día si existen
     comentarios_hoy = ComentariosVisitas.objects.filter(
-        historia_clinica=historia, fecha=today, tipo="EVOL"
+        historia_clinica=historia,
+        fecha__gte=start_utc,
+        fecha__lt=end_utc,
+        tipo="EVOL",
     ).first()
 
     condiciones_paciente = CondicionMedicaHistoria.objects.filter(historia=historia)
