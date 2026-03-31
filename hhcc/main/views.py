@@ -1045,7 +1045,7 @@ def historial_medico(request, id_historia):
         fecha_str = fecha.strftime("%Y-%m-%d")
 
         # Buscar datos para esta fecha
-        coms_fecha = comentarios.filter(fecha=fecha)
+        coms_fecha = comentarios.filter(fecha__date=fecha)
         signos_fecha = signos_vitales.filter(fecha=fecha).first()
         meds_fecha = indicaciones.filter(fecha=fecha)
 
@@ -1193,7 +1193,7 @@ def detalle_historia_con_historial(request, historia_id):
         fecha_str = fecha.strftime("%Y-%m-%d")
 
         # Buscar datos para esta fecha
-        coms_fecha = comentarios.filter(fecha=fecha)
+        coms_fecha = comentarios.filter(fecha__date=fecha)
         signos_fecha = signos_vitales_historial.filter(fecha=fecha).first()
         meds_fecha = indicaciones.filter(fecha=fecha)
 
