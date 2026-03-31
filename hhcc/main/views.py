@@ -583,14 +583,6 @@ def get_nombre_estudio(codigo, tipo):
     return estudios.get(tipo, {}).get(codigo, "Estudio no encontrado")
 
 
-def ordenes_pedicas(request, paciente_id):
-    paciente = get_object_or_404(Paciente, id=paciente_id)
-    context = {
-        "paciente": paciente,
-    }
-    return render(request, "ordenes_pedicas.html", context)
-
-
 from django.template.loader import render_to_string
 from django.http import FileResponse
 from weasyprint import HTML

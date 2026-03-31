@@ -47,8 +47,6 @@ def menu_context(request):
         
         # Subpáginas de ordenes
         if 'ordenes_medicas' in current_path:
-            breadcrumbs.append({'label': 'Órdenes Médicas', 'url': None})
-        elif 'ordenes_pedicas' in current_path:
             breadcrumbs.append({'label': 'Solicitudes', 'url': None})
     
     return {

@@ -49,8 +49,7 @@ templates/components/header.html
             <li class="menu-item {% if active_section == 'ordenes' %}active{% endif %}" data-menu="ordenes">
                 <a href="#" class="menu-link menu-toggle">Órdenes</a>
                 <div class="submenu-items hidden">  <!-- Añadido 'hidden' aquí -->
-                    <a href="{% url 'ordenes_medicas' 0 %}" class="submenu-link">Órdenes Médicas</a>
-                    <a href="{% url 'ordenes_pedicas' 0 %}" class="submenu-link">Solicitudes</a>
+                    <a href="{% url 'ordenes_medicas' 0 %}" class="submenu-link">Solicitudes</a>
                 </div>
             </li>
         </ul>

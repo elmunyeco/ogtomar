@@ -16,26 +16,25 @@
 
 <body class="bg-gray-100">
     <div x-data="{
-       pacienteId: {{ paciente.id }},
-       showError: false,
-       diagnostico: '',
-       otrosEstudios: '',
-       seleccionados: {},
-       haySeleccionados() {
-           return Object.values(this.seleccionados).some(val => val) || this.otrosEstudios.trim() !== '';
-       },
-       imprimirOrdenes() {
-           if (!this.haySeleccionados()) {
-               this.showError = true;
-               return;
-           }
-
-           let grupos = {
-               lab: [],
-               cardio: [],
-               clinicos: []
-           };
-           for (let i = 1; i <= 87; i++) {
+        pacienteId: {{ paciente.id }},
+        showError: false,
+        diagnostico: '',
+        otrosEstudios: '',
+        seleccionados: {},
+        haySeleccionados() {
+            return Object.values(this.seleccionados).some(val => val) || this.otrosEstudios.trim() !== '';
+        },
+        imprimirOrdenes() {
+            if (!this.haySeleccionados()) {
+                this.showError = true;
+                return;
+            }
+            let grupos = {
+                lab: [],
+                cardio: [],
+                clinicos: []
+            };
+            for (let i = 1; i <= 87; i++) {
                 let id = 's' + i.toString().padStart(3, '0');
                 if (this.seleccionados[id]) {
                     grupos.lab.push(id);
@@ -53,13 +52,12 @@
                     grupos.clinicos.push(id);
                 }
             }
-
             let diagnosticoParam = this.diagnostico.trim() || '-';
             diagnosticoParam = encodeURIComponent(diagnosticoParam);
             
             for (let grupo in grupos) {
                 if (grupos[grupo].length > 0) {
-                    let url = `/generar_pdf_orden/${this.pacienteId}/${diagnosticoParam}/${grupos[grupo].join('|')}/${grupo}/`;
+                    let url = `/descargarPDFSolicitudes/${this.pacienteId}/${diagnosticoParam}/${grupos[grupo].join('|')}/${grupo}/`;
                     let windowName = `pdf_${grupo}_${Date.now()}`;  // Nombre único para cada ventana
                     window.open(url, windowName, 'height=800,width=600');
                 }
@@ -72,13 +70,12 @@
                     .map(estudio => encodeURIComponent(estudio));
                 
                 otrosEstudiosFormatted.forEach(estudio => {
-                    let url = `/generar_pdf_orden/${this.pacienteId}/${diagnosticoParam}/${estudio}/otros/`;
                     let windowName = `pdf_otros_${Date.now()}`;
                     window.open(url, windowName, 'height=800,width=600');
                 });
             }
             this.showError = false;
-       }
+        }
     }" class="container mx-auto p-6 max-w-6xl">
 
         <!-- Mensaje de error -->
