@@ -6,6 +6,8 @@ from . import views
 urlpatterns = [
     path("login/", auth_views.LoginView.as_view(template_name="login.html"), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("password/", auth_views.PasswordChangeView.as_view(template_name="password_change_form.html"), name="password_change"),
+    path("password/done/", auth_views.PasswordChangeDoneView.as_view(template_name="password_change_done.html"), name="password_change_done"),
     path("", login_required(views.index), name="index"),
     path("landing/", login_required(views.landing_page), name="landing"),
     path("landing_dropdown/", login_required(views.landing_page_dropdown), name="landing_dropdown"),
