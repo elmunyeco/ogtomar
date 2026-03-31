@@ -78,6 +78,10 @@ TEMPLATES = [
     },
 ]
 
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/login/"
+
 
 CORS_ALLOWED_ORIGINS = [
         "http://localhost:8080",
