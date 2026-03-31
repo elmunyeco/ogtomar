@@ -825,6 +825,7 @@ from django.utils import timezone
 from datetime import datetime, time, timedelta, timezone as dt_timezone
 import json
 from .utils import process_signos_vitales
+from django.contrib.auth.decorators import login_required
 
 
 def guardar_historia(request, historia_id):
@@ -885,6 +886,19 @@ def guardar_historia(request, historia_id):
         return JsonResponse({"status": "success"})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
+
+
+@login_required
+def cambiar_nombre(request):
+    mensaje = None
+    if request.method == "POST":
+        first_name = request.POST.get("first_name", "").strip()
+        last_name = request.POST.get("last_name", "").strip()
+        request.user.first_name = first_name
+        request.user.last_name = last_name
+        request.user.save()
+        mensaje = "Nombre actualizado correctamente."
+    return render(request, "account_name_form.html", {"mensaje": mensaje})
 
 
 from django.views.decorators.csrf import csrf_protect
