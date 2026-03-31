@@ -603,11 +603,17 @@ def generar_pdf_orden(request, paciente_id, diagnostico, estudios, tipo=None):
         else settings.STATIC_ROOT
     )
 
+    estudios_list = [s for s in estudios.split("|") if s]
+    if tipo == "otros":
+        estudios_nombres = estudios_list
+    else:
+        estudios_nombres = [get_nombre_estudio(codigo, tipo) for codigo in estudios_list]
+
     context = {
         "paciente": paciente,
         "diagnostico": diagnostico,
         "fecha_solicitud": datetime.now().strftime("%d/%m/%Y"),
-        "estudios": estudios.split("|"),
+        "estudios": estudios_nombres,
         "STATIC_ROOT": static_root,  # Pasar la ruta estática al template
     }
 
