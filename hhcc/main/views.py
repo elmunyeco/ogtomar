@@ -4,11 +4,19 @@ from .models import Paciente, HistoriaClinica, TipoDocumento, IndicacionesVisita
 from .forms import PacienteForm
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout as auth_logout
+from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 
 
 def index(request):
     return render(request, "index.html")
+
+
+@require_http_methods(["GET", "POST"])
+def logout_view(request):
+    auth_logout(request)
+    return redirect("login")
 
 
 def landing_page(request):

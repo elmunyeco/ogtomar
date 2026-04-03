@@ -7,7 +7,9 @@ templates/components/header.html
 <header class="header-container">
     <div class="header-main">
         <div class="logo-section">
-            <img src="{% static 'main/images/logo.png' %}" alt="Logo Dr. Omar Prieto">
+            <a href="{% url 'cambiar_nombre' %}" class="logo-link" aria-label="Editar perfil">
+                <img src="{% static 'main/images/logo.png' %}" alt="Logo Dr. Omar Prieto">
+            </a>
             <div class="doctor-title">
                 <span class="doctor-name">Dr. Omar Prieto</span>
                 <span class="doctor-specialty">CARDIOLOGÍA INTEGRAL</span>
@@ -17,9 +19,7 @@ templates/components/header.html
             <div class="user-info">
                 <span>{{ user.get_full_name|default:user.username }}</span>
             </div>
-            <a href="{% url 'cambiar_nombre' %}" class="logout-btn">Cambiar nombre</a>
-            <a href="{% url 'password_change' %}" class="logout-btn">Cambiar contraseña</a>
-            <button id="logout-button" class="logout-btn">Cerrar Sesión</button>
+            <a href="{% url 'logout' %}" class="logout-btn">Cerrar Sesión</a>
         </div>
     </div>
     
