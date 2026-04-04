@@ -1,5 +1,4 @@
 from django.db import models
-from django.core.validators import MaxLengthValidator
 from django.utils import timezone
 from main.models import HistoriaClinica
 
@@ -120,13 +119,13 @@ class ConclusiónEcocardiograma(models.Model):
     
     # Conclusiones específicas
     situs = models.IntegerField(choices=SITUS_CHOICES, null=True, blank=True)
-    comentario_situs = models.TextField(blank=True, null=True, validators=[MaxLengthValidator(512)])
+    comentario_situs = models.TextField(blank=True, null=True)
     
     vasos_normoimplantados = models.IntegerField(choices=SI_NO_CHOICES, null=True, blank=True)
-    comentario_vasos = models.TextField(blank=True, null=True, validators=[MaxLengthValidator(512)])
+    comentario_vasos = models.TextField(blank=True, null=True)
     
     concordancia_atrioventricular = models.IntegerField(choices=SI_NO_CHOICES, null=True, blank=True)
-    comentario_concordancia = models.TextField(blank=True, null=True, validators=[MaxLengthValidator(512)])
+    comentario_concordancia = models.TextField(blank=True, null=True)
     
     auricula_izq = models.CharField(max_length=100, blank=True)  # Almacena valores seleccionados como string separado por comas
     
@@ -137,29 +136,29 @@ class ConclusiónEcocardiograma(models.Model):
     funcion_diastolica = models.IntegerField(choices=FUNCION_DIASTOLICA_CHOICES, null=True, blank=True)
     
     motilidad_segmentaria = models.IntegerField(choices=MOTILIDAD_CHOICES, null=True, blank=True)
-    comentario_motilidad = models.TextField(blank=True, null=True, validators=[MaxLengthValidator(512)])
+    comentario_motilidad = models.TextField(blank=True, null=True)
     
     valvula_aortica = models.CharField(max_length=50, blank=True)  # Para almacenar múltiples selecciones
-    comentario_valvula_aortica = models.TextField(blank=True, null=True, validators=[MaxLengthValidator(512)])
+    comentario_valvula_aortica = models.TextField(blank=True, null=True)
     
     valvula_mitral = models.CharField(max_length=50, blank=True)
-    comentario_valvula_mitral = models.TextField(blank=True, null=True, validators=[MaxLengthValidator(512)])
+    comentario_valvula_mitral = models.TextField(blank=True, null=True)
     
     valvula_tricuspide = models.CharField(max_length=50, blank=True)
-    comentario_valvula_tricuspide = models.TextField(blank=True, null=True, validators=[MaxLengthValidator(512)])
+    comentario_valvula_tricuspide = models.TextField(blank=True, null=True)
     
     valvula_pulmonar = models.CharField(max_length=50, blank=True)
-    comentario_valvula_pulmonar = models.TextField(blank=True, null=True, validators=[MaxLengthValidator(512)])
+    comentario_valvula_pulmonar = models.TextField(blank=True, null=True)
     
     pericardio = models.IntegerField(choices=PERICARDIO_CHOICES, null=True, blank=True)
-    comentario_pericardio = models.TextField(blank=True, null=True, validators=[MaxLengthValidator(512)])
+    comentario_pericardio = models.TextField(blank=True, null=True)
     
     defectos_congenitos = models.IntegerField(choices=SI_NO_CHOICES, null=True, blank=True)
-    comentario_defectos = models.TextField(blank=True, null=True, validators=[MaxLengthValidator(512)])
+    comentario_defectos = models.TextField(blank=True, null=True)
     
     # Conclusión textual
-    conclusion_texto = models.TextField(blank=True, validators=[MaxLengthValidator(8000)])
-    comentario_final = models.TextField(blank=True, validators=[MaxLengthValidator(8000)])
+    conclusion_texto = models.TextField(blank=True)
+    comentario_final = models.TextField(blank=True)
     
     def __str__(self):
         return f"Conclusión para estudio {self.estudio.id}"

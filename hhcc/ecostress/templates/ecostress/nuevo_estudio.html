@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Ecostrés cardíaco{% endblock %}
+
+{% block content %}
+<div
+  x-data="ecostressForm({
+    hasEstudio: {{ estudio|yesno:"true,false" }},
+    indicacionEstudio: '{{ form.indicacion_estudio.value|default_if_none:""|escapejs }}',
+    tipoApremio: '{{ form.tipo_apremio.value|default_if_none:""|escapejs }}',
+    medicacionMomentoEstudio: '{{ form.medicacion_momento_estudio.value|default_if_none:""|escapejs }}',
+    medicoSolicitante: '{{ form.medico_solicitante.value|default_if_none:""|escapejs }}',
+    frecuenciaCardiacaBasal: '{{ form.frecuencia_cardiaca_basal.value|default_if_none:""|escapejs }}',
+    frecuenciaCardiacaMaxima: '{{ form.frecuencia_cardiaca_maxima.value|default_if_none:""|escapejs }}',
+    presionArterialBasalInicial: '{{ form.presion_arterial_basal_inicial.value|default_if_none:""|escapejs }}',
+    presionArterialBasalFinal: '{{ form.presion_arterial_basal_final.value|default_if_none:""|escapejs }}',
+    presionArterialMaximaInicial: '{{ form.presion_arterial_maxima_inicial.value|default_if_none:""|escapejs }}',
+    presionArterialMaximaFinal: '{{ form.presion_arterial_maxima_final.value|default_if_none:""|escapejs }}',
+    informeErgometria: '{{ form.informe_ergometria.value|default_if_none:""|escapejs }}',
+    datosEcocardiograficosBasales: '{{ form.datos_ecocardiograficos_basales.value|default_if_none:""|escapejs }}',
+    datosEcocardiograficosPostEsfuerzoInmediato: '{{ form.datos_ecocardiograficos_post_esfuerzo_inmediato.value|default_if_none:""|escapejs }}',
+    conclusion: '{{ form.conclusion.value|default_if_none:""|escapejs }}',
+    defaultInforme: '{{ default_informe|escapejs }}',
+    defaultDatosEco: '{{ default_datos_eco|escapejs }}',
+    defaultConclusion: '{{ default_conclusion|escapejs }}'
+  })"
+  x-init="applyDefaults()"
+  class="space-y-6"
+>
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-900">Ecostrés cardíaco</h1>
+    </div>
+    <div class="text-right text-sm text-slate-600">
+      <div>Paciente: <span class="font-medium text-slate-900">{{ paciente.apellido }}, {{ paciente.nombre }}</span></div>
+      <div>Historia clínica: <span class="font-medium text-slate-900">{{ historia.id }}</span></div>
+      <div>Fecha de estudio: <span class="font-medium text-slate-900">{% now "d/m/Y" %}</span></div>
+    </div>
+  </div>
+
+  <div id="ecostress-success" class="hidden px-4 py-2 text-sm rounded" style="background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;"></div>
+  <div id="ecostress-error" class="hidden px-4 py-2 text-sm rounded" style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;"></div>
+  {% if messages %}
+    <div class="space-y-2">
+      {% for message in messages %}
+        <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form id="ecostress-form" method="post" class="space-y-6" @submit.prevent="submitForm($event)">
+    {% csrf_token %}
+    {{ form.historia }}
+
+    <section class="rounded-lg border border-slate-200 bg-white p-4">
+      <h2 class="text-lg font-semibold text-slate-900">Datos del estudio</h2>
+      <div class="mt-4 grid gap-4 lg:grid-cols-2">
+        <div>
+          <label class="text-sm font-medium text-slate-700">Indicacion del estudio</label>
+          <input
+            type="text"
+            name="indicacion_estudio"
+            x-model="indicacionEstudio"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Tipo de apremio</label>
+          <select
+            name="tipo_apremio"
+            x-model="tipoApremio"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="Físico">Físico</option>
+            <option value="Farmacológico">Farmacológico</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Medicacion al momento del estudio</label>
+          <input
+            type="text"
+            name="medicacion_momento_estudio"
+            x-model="medicacionMomentoEstudio"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Medico solicitante</label>
+          <input
+            type="text"
+            name="medico_solicitante"
+            x-model="medicoSolicitante"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-slate-200 bg-white p-4">
+      <h2 class="text-lg font-semibold text-slate-900">Prueba ergometrica</h2>
+      <div class="mt-4 grid gap-4 lg:grid-cols-2">
+        <div>
+          <label class="text-sm font-medium text-slate-700">Frecuencia cardiaca basal</label>
+          <input
+            type="text"
+            name="frecuencia_cardiaca_basal"
+            x-model="frecuenciaCardiacaBasal"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            inputmode="numeric"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Frecuencia cardíaca máxima alcanzada</label>
+          <input
+            type="text"
+            name="frecuencia_cardiaca_maxima"
+            x-model="frecuenciaCardiacaMaxima"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            inputmode="numeric"
+          />
+        </div>
+      </div>
+      <div class="mt-4 grid gap-4 lg:grid-cols-2">
+        <div class="rounded-md border border-slate-200 p-3">
+          <div class="text-sm font-medium text-slate-700">Presión arterial basal (mmHg)</div>
+          <div class="mt-2 grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
+            <input
+              type="text"
+              name="presion_arterial_basal_inicial"
+              x-model="presionArterialBasalInicial"
+              class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              inputmode="numeric"
+              aria-label="Presion arterial basal izquierda"
+            />
+            <div class="text-center text-lg font-semibold text-slate-500">/</div>
+            <input
+              type="text"
+              name="presion_arterial_basal_final"
+              x-model="presionArterialBasalFinal"
+              class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              inputmode="numeric"
+              aria-label="Presion arterial basal derecha"
+            />
+          </div>
+        </div>
+        <div class="rounded-md border border-slate-200 p-3">
+          <div class="text-sm font-medium text-slate-700">Presión arterial máxima alcanzada (mmHg)</div>
+          <div class="mt-2 grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr]">
+            <input
+              type="text"
+              name="presion_arterial_maxima_inicial"
+              x-model="presionArterialMaximaInicial"
+              class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              inputmode="numeric"
+              aria-label="Presion arterial maxima izquierda"
+            />
+            <div class="text-center text-lg font-semibold text-slate-500">/</div>
+            <input
+              type="text"
+              name="presion_arterial_maxima_final"
+              x-model="presionArterialMaximaFinal"
+              class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              inputmode="numeric"
+              aria-label="Presion arterial maxima derecha"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-slate-200 bg-white p-4">
+      <h2 class="text-lg font-semibold text-slate-900">Informe clinico</h2>
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="text-sm font-medium text-slate-700">Informe ergometria</label>
+          <textarea
+            name="informe_ergometria"
+            x-model="informeErgometria"
+            rows="4"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Datos ecocardiograficos basales</label>
+          <textarea
+            name="datos_ecocardiograficos_basales"
+            x-model="datosEcocardiograficosBasales"
+            rows="4"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Datos ecocardiograficos post esfuerzo inmediato</label>
+          <textarea
+            name="datos_ecocardiograficos_post_esfuerzo_inmediato"
+            x-model="datosEcocardiograficosPostEsfuerzoInmediato"
+            rows="4"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Conclusion</label>
+          <textarea
+            name="conclusion"
+            x-model="conclusion"
+            rows="4"
+            maxlength="8000"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+      </div>
+    </section>
+
+    <div class="flex flex-wrap items-center justify-center gap-4">
+      <label class="flex items-center gap-2 text-sm text-slate-600">
+        <input type="checkbox" x-model="firmar" class="rounded border-slate-300 text-red-600">
+        Firmar PDF
+      </label>
+      <button
+        type="submit"
+        class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+        :disabled="guardando"
+      >
+        <span x-show="!guardando">Guardar</span>
+        <span x-show="guardando">Guardando...</span>
+      </button>
+      <a href="{% url 'listar_buscar_historias' %}" class="text-sm text-slate-500 hover:text-slate-700">Volver</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('ecostressForm', (defaults) => ({
+      hasEstudio: !!defaults.hasEstudio,
+      guardando: false,
+      firmar: false,
+      indicacionEstudio: defaults.indicacionEstudio || '',
+      tipoApremio: defaults.tipoApremio || '',
+      medicacionMomentoEstudio: defaults.medicacionMomentoEstudio || '',
+      medicoSolicitante: defaults.medicoSolicitante || '',
+      frecuenciaCardiacaBasal: defaults.frecuenciaCardiacaBasal || '',
+      frecuenciaCardiacaMaxima: defaults.frecuenciaCardiacaMaxima || '',
+      presionArterialBasalInicial: defaults.presionArterialBasalInicial || '',
+      presionArterialBasalFinal: defaults.presionArterialBasalFinal || '',
+      presionArterialMaximaInicial: defaults.presionArterialMaximaInicial || '',
+      presionArterialMaximaFinal: defaults.presionArterialMaximaFinal || '',
+      informeErgometria: defaults.informeErgometria || '',
+      datosEcocardiograficosBasales: defaults.datosEcocardiograficosBasales || '',
+      datosEcocardiograficosPostEsfuerzoInmediato: defaults.datosEcocardiograficosPostEsfuerzoInmediato || '',
+      conclusion: defaults.conclusion || '',
+      defaultInforme: defaults.defaultInforme || '',
+      defaultDatosEco: defaults.defaultDatosEco || '',
+      defaultConclusion: defaults.defaultConclusion || '',
+      applyDefaults() {
+        if (this.hasEstudio) return;
+        if (!this.informeErgometria && this.defaultInforme) {
+          this.informeErgometria = this.defaultInforme;
+        }
+        if (!this.datosEcocardiograficosBasales && this.defaultDatosEco) {
+          this.datosEcocardiograficosBasales = this.defaultDatosEco;
+        }
+        if (!this.datosEcocardiograficosPostEsfuerzoInmediato && this.defaultDatosEco) {
+          this.datosEcocardiograficosPostEsfuerzoInmediato = this.defaultDatosEco;
+        }
+        if (!this.conclusion && this.defaultConclusion) {
+          this.conclusion = this.defaultConclusion;
+        }
+        if (!this.tipoApremio) {
+          this.tipoApremio = 'Físico';
+        }
+      },
+      async submitForm(event) {
+        event.preventDefault();
+        if (this.guardando) return;
+        this.guardando = true;
+        const popup = window.open('', '_blank');
+        const form = event.target;
+        const formData = new FormData(form);
+        try {
+          const response = await fetch(form.action || window.location.href, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+          });
+          const data = await response.json();
+          if (response.ok && data.success) {
+            const msg = document.getElementById('ecostress-success');
+            const err = document.getElementById('ecostress-error');
+            if (msg) {
+              msg.textContent = 'Estudio de ecostrés cardíaco guardado';
+              msg.classList.remove('hidden');
+            }
+            if (err) {
+              err.classList.add('hidden');
+            }
+            let url = `{% url 'ecostress:ecostress_imprimir' 0 0 %}`
+              .replace('/0/0/', `/${data.estudio_id}/${data.historia_id}/`);
+            if (this.firmar) {
+              url += '?firma=1';
+            }
+            if (popup) {
+              popup.location = url;
+            } else {
+              window.open(url, '_blank');
+            }
+          } else {
+            const err = document.getElementById('ecostress-error');
+            if (err) {
+              err.textContent = 'Estudio de ecostrés cardíaco no se pudo guardar por error';
+              err.classList.remove('hidden');
+              setTimeout(() => err.classList.add('hidden'), 15000);
+            }
+          }
+        } catch (e) {
+          const err = document.getElementById('ecostress-error');
+          if (err) {
+            err.textContent = 'Estudio de ecostrés cardíaco no se pudo guardar por error';
+            err.classList.remove('hidden');
+            setTimeout(() => err.classList.add('hidden'), 15000);
+          }
+        } finally {
+          this.guardando = false;
+        }
+      }
+    }))
+  });
+</script>
+<script src="{% static 'main/js/char_counter.js' %}"></script>
+{% endblock %}

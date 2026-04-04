@@ -1,45 +1,33 @@
-{% extends 'base.html' %}
+{% extends 'print_base.html' %}
+{% load ecocardiograma_tags %}
 
 {% block title %}Estudio de Ecocardiograma - {{ paciente.nombre }} {{ paciente.apellido }}{% endblock %}
 
 {% block extra_css %}
 <style>
-    @media print {
-        body { font-size: 12pt; line-height: 1.3; }
-        .no-print { display: none !important; }
-        .page-break { page-break-after: always; }
-        .container { width: 100%; max-width: 100%; padding: 0; margin: 0; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 5px; border: 1px solid #ddd; }
-    }
-    
-    .informe-header { text-align: center; margin-bottom: 20px; }
-    .informe-header h1 { font-size: 20px; font-weight: bold; text-decoration: underline; margin: 20px 0; }
-    .datos-paciente { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-    .dato { margin-bottom: 5px; }
-    .dato-etiqueta { font-weight: bold; }
-    .informe-tabla { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    .informe-tabla th, .informe-tabla td { padding: 8px; text-align: left; border: 1px solid #e5e7eb; }
-    .informe-tabla th { background-color: #f9fafb; font-weight: bold; }
-    .firma { margin-top: 50px; text-align: center; }
-    .firma-linea { display: inline-block; width: 200px; border-bottom: 1px solid #000; margin-bottom: 5px; }
+  .informe-tabla th { background-color: #f9fafb; font-weight: bold; }
+  .segmentos-wrap { max-width: 520px; margin: 0 auto; }
+  .segmentos-tabla { border-collapse: collapse; table-layout: fixed; width: 100%; margin: 4px auto 0; }
+  .segmentos-tabla td { width: 25%; vertical-align: top; border: 0; padding: 1px 4px; }
+  .seg-name { font-size: 8.5px; line-height: 1.1; font-weight: 600; }
+  .seg-estado { font-size: 8px; line-height: 1.1; }
 </style>
 {% endblock %}
 
+{% block meta %}
+  <div>Nombre y apellido: {{ paciente.nombre }} {{ paciente.apellido }}</div>
+  <div>Fecha del estudio: {{ estudio.fecha|date:"j \d\e F \d\e Y" }}</div>
+  <div>Historia Clínica: {{ estudio.historia.id }}</div>
+{% endblock %}
+
+{% block titles %}
+  <h1>Estudio ecocardiográfico doppler color con evaluación de deformación miocárdica</h1>
+{% endblock %}
+
 {% block content %}
-<div class="p-4">
-    <div class="flex justify-end no-print">
-        <button onclick="window.print()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-            🖨️ Imprimir
-        </button>
-    </div>
-    
-    <div class="informe-header">
-        <h1>ESTUDIO ECOCARDIOGRÁFICO DOPPLER COLOR</h1>
-    </div>
-    
-    <div class="informe-seccion">
-        <h2>DATOS DEL PACIENTE</h2>
+<div class="container">
+    <div class="section">
+        <h3>DATOS DEL PACIENTE</h3>
         <div class="datos-paciente">
             <div class="dato">
                 <span class="dato-etiqueta">Nombre y Apellido:</span>
@@ -47,91 +35,148 @@
             </div>
             <div class="dato">
                 <span class="dato-etiqueta">Historia Clínica:</span>
-                <span>{{ estudio.historia.id|stringformat:"05d" }}</span>
+                <span>{{ estudio.historia.id }}</span>
             </div>
             <div class="dato">
                 <span class="dato-etiqueta">Fecha de Estudio:</span>
-                <span>{{ estudio.fecha|date:"d/m/Y" }}</span>
+                <span>{{ estudio.fecha|date:"j \d\e F \d\e Y" }}</span>
             </div>
+            {% if show_peso %}
             <div class="dato">
                 <span class="dato-etiqueta">Peso:</span>
-                <span>{{ estudio.peso|default:'-' }} Kg.</span>
+                <span>{{ estudio.peso }} Kg.</span>
             </div>
+            {% endif %}
+            {% if show_talla %}
             <div class="dato">
                 <span class="dato-etiqueta">Talla:</span>
-                <span>{{ estudio.talla|default:'-' }} Mts.</span>
+                <span>{{ estudio.talla }} Mts.</span>
             </div>
+            {% endif %}
+            {% if show_pas %}
             <div class="dato">
                 <span class="dato-etiqueta">PAS:</span>
-                <span>{{ estudio.presion_sistolica|default:'-' }} mm Hg.</span>
+                <span>{{ estudio.presion_sistolica }} mm Hg.</span>
             </div>
+            {% endif %}
+            {% if show_pad %}
             <div class="dato">
                 <span class="dato-etiqueta">PAD:</span>
-                <span>{{ estudio.presion_diastolica|default:'-' }} mm Hg.</span>
+                <span>{{ estudio.presion_diastolica }} mm Hg.</span>
             </div>
+            {% endif %}
         </div>
     </div>
-    
-    <div class="informe-seccion">
-        <h2>ANÁLISIS BIDIMENSIONAL</h2>
-        <table class="informe-tabla">
+
+    {% if bidimensional_rows %}
+    <div class="section">
+        <h3>ANÁLISIS BIDIMENSIONAL</h3>
+        <table class="informe-tabla segmentos-tabla">
             <tr><th>Parámetro</th><th>Valor</th></tr>
-            <tr><td>Aurícula izquierda diámetro A-P</td><td>{{ estudio.auricula_izq_diametro|default:'-' }} mm</td></tr>
-            <tr><td>Área aurícula izquierda</td><td>{{ estudio.area_auricula_izq|default:'-' }} cm²</td></tr>
-            <tr><td>Plano valvular aórtico</td><td>{{ estudio.plano_valvular_aortico|default:'-' }} mm</td></tr>
-            <tr><td>Septum interventricular en diástole</td><td>{{ estudio.septum_diastole|default:'-' }} mm</td></tr>
-            <tr><td>Pared posterior en diástole</td><td>{{ estudio.pared_diastole|default:'-' }} mm</td></tr>
-            <tr><td>Diámetro de ventrículo izquierdo diastólico</td><td>{{ estudio.vent_izq_diastolico|default:'-' }} mm</td></tr>
-            <tr><td>Diámetro ventricular izquierdo sistólico</td><td>{{ estudio.vent_izq_sistolico|default:'-' }} mm</td></tr>
-            <tr><td>Fracción de eyección por Simpson's</td><td>{{ estudio.fraccion_simpson|default:'-' }} %</td></tr>
-            <tr><td>Fracción de acortamiento</td><td>{{ estudio.fraccion_acortamiento|default:'-' }} %</td></tr>
-            <tr><td>TAPSE</td><td>{{ estudio.tapse|default:'-' }} mm</td></tr>
+            {% for label, value, unit in bidimensional_rows %}
+            <tr>
+                <td>{{ label }}</td>
+                <td>{{ value|floatformat:1 }} {% if unit %}{{ unit }}{% endif %}</td>
+            </tr>
+            {% endfor %}
         </table>
     </div>
-    
-    <div class="informe-seccion">
-        <h2>ANÁLISIS DOPPLER</h2>
+    {% endif %}
+
+    {% if doppler_rows %}
+    <div class="section">
+        <h3>ANÁLISIS DOPPLER</h3>
         <table class="informe-tabla">
             <tr><th>Parámetro</th><th>Velocidad</th><th>Gradiente</th></tr>
+            {% for label, value, gradiente in doppler_rows %}
             <tr>
-                <td>Válvula pulmonar</td>
-                <td>{{ estudio.valvula_pulmonar|default:'-' }} m/seg</td>
-                <td>{% if estudio.valvula_pulmonar %}{{ estudio.valvula_pulmonar|floatformat:1|mul:estudio.valvula_pulmonar|mul:4|floatformat:0 }} mmHg{% else %}-{% endif %}</td>
+                <td>{{ label }}</td>
+                <td>{{ value }}</td>
+                <td>{% if gradiente %}{{ gradiente }} mmHg{% else %}-{% endif %}</td>
             </tr>
-            <tr>
-                <td>Válvula aórtica</td>
-                <td>{{ estudio.valvula_aortica|default:'-' }} m/seg</td>
-                <td>{% if estudio.valvula_aortica %}{{ estudio.valvula_aortica|floatformat:1|mul:estudio.valvula_aortica|mul:4|floatformat:0 }} mmHg{% else %}-{% endif %}</td>
-            </tr>
-            <tr>
-                <td>Strain longitudinal global</td>
-                <td colspan="2">{{ estudio.strain_longitudinal|default:'-' }} %</td>
-            </tr>
+            {% endfor %}
         </table>
     </div>
+    {% endif %}
 
-    {% if conclusion %}
-    <div class="informe-seccion">
-        <h2>CONCLUSIONES</h2>
+    <div class="section">
+        <h3>MOTILIDAD SEGMENTARIA</h3>
+        {% if segmentos_all_normal %}
+            <p>Motilidad segmentaria: Normoquinetico.</p>
+        {% endif %}
+        <div class="segmentos-wrap">
+        {% if print_segmentos_path %}
+            <div style="text-align:center; margin: 8px 0 6px;">
+                <svg viewBox="0 0 694 227" xmlns="http://www.w3.org/2000/svg" style="max-width: 520px; width: 100%; height: auto;">
+                    <image href="{{ print_segmentos_path }}" x="0" y="0" width="694" height="227" />
+                    <path d="M 66,62 L 67,76 L 86,75 L 112,76 L 113,62 Z" fill="{{ segmentos_colores.1 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 13,70 L 15,85 L 33,81 L 51,78 L 66,77 L 65,62 L 48,62 L 32,66 Z" fill="{{ segmentos_colores.2 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 26,120 L 21,138 L 57,153 L 61,136 L 46,132 L 46,130 L 64,126 L 67,124 L 66,122 L 57,120 Z" fill="{{ segmentos_colores.10 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 62,138 L 57,153 L 100,162 L 104,146 L 86,125 L 82,123 L 79,124 L 78,128 L 87,136 L 87,140 L 79,140 Z" fill="{{ segmentos_colores.9 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 225,112 L 244,112 L 245,105 L 247,98 L 248,94 L 253,89 L 257,85 L 262,80 L 253,64 L 247,68 L 236,79 L 230,89 L 226,102 Z" fill="{{ segmentos_colores.4 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 254,64 L 263,80 L 269,77 L 278,76 L 287,76 L 294,78 L 299,80 L 309,64 L 301,59 L 292,58 L 281,56 L 275,57 L 266,58 L 259,61 Z" fill="{{ segmentos_colores.2 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 299,80 L 306,85 L 310,90 L 314,95 L 317,102 L 318,106 L 318,113 L 337,113 L 337,103 L 334,93 L 330,84 L 325,77 L 317,69 L 309,64 Z" fill="{{ segmentos_colores.15 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 318,113 L 318,118 L 316,124 L 313,131 L 304,131 L 300,131 L 299,133 L 299,138 L 300,144 L 310,161 L 317,156 L 325,147 L 331,139 L 334,131 L 336,122 L 337,112 Z" fill="{{ segmentos_colores.12 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 262,144 L 253,160 L 260,165 L 266,167 L 274,168 L 288,169 L 295,167 L 301,165 L 309,161 L 299,145 L 292,148 L 287,149 L 275,148 L 267,146 Z" fill="{{ segmentos_colores.10 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 225,112 L 225,120 L 230,136 L 235,145 L 240,151 L 248,158 L 253,161 L 263,144 L 261,142 L 263,136 L 263,132 L 258,131 L 248,131 L 246,123 L 245,117 L 244,112 Z" fill="{{ segmentos_colores.7 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 427,16 L 427,43 L 443,43 L 444,34 L 446,27 L 452,20 L 457,19 L 457,7 L 447,8 L 439,10 Z" fill="{{ segmentos_colores.5 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 427,43 L 426,75 L 442,75 L 443,43 Z" fill="{{ segmentos_colores.4 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 426,75 L 425,109 L 439,112 L 441,75 Z" fill="{{ segmentos_colores.3 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 457,20 L 463,21 L 467,23 L 478,34 L 483,42 L 497,34 L 488,22 L 476,13 L 465,8 L 457,7 Z" fill="{{ segmentos_colores.13 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 483,42 L 492,64 L 496,75 L 514,72 L 507,53 L 497,34 Z" fill="{{ segmentos_colores.12 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 497,75 L 497,89 L 497,103 L 497,115 L 512,119 L 518,97 L 518,84 L 515,72 Z" fill="{{ segmentos_colores.11 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 581,86 L 581,102 L 585,125 L 600,122 L 600,113 L 600,98 L 600,86 Z" fill="{{ segmentos_colores.6 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 581,85 L 600,85 L 600,76 L 603,60 L 604,52 L 588,41 L 585,53 L 582,65 L 582,74 L 582,85 Z" fill="{{ segmentos_colores.7 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 588,40 L 604,53 L 609,40 L 615,32 L 620,30 L 620,13 L 611,14 L 603,18 L 595,27 L 591,34 Z" fill="{{ segmentos_colores.8 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 620,13 L 620,31 L 629,33 L 640,45 L 645,56 L 662,45 L 654,34 L 642,21 L 632,16 L 624,14 Z" fill="{{ segmentos_colores.16 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 645,56 L 649,68 L 653,81 L 655,91 L 674,88 L 671,70 L 665,52 L 661,45 Z" fill="{{ segmentos_colores.15 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                    <path d="M 655,91 L 655,100 L 655,114 L 654,123 L 651,129 L 668,134 L 676,125 L 676,102 L 674,87 Z" fill="{{ segmentos_colores.14 }}" fill-opacity="0.7" stroke="#000" stroke-width="1"/>
+                </svg>
+            </div>
+        {% endif %}
+        <table class="informe-tabla segmentos-tabla">
+            {% for seg in segmentos %}
+                {% if forloop.counter0|divisibleby:4 %}<tr>{% endif %}
+                <td>
+                    <div class="seg-name">{{ seg.numero }}. {{ seg.nombre }}</div>
+                    <div class="seg-estado">{{ seg.estado }}</div>
+                </td>
+                {% if forloop.counter|divisibleby:4 %}</tr>{% endif %}
+            {% endfor %}
+        </table>
+        </div>
+    </div>
+
+    {% if conclusion_lines %}
+    <div class="section">
+        <h3>CONCLUSIONES</h3>
         <div class="p-4">
-            {% if conclusion.conclusion_texto %}
-                {{ conclusion.conclusion_texto|linebreaks }}
-            {% endif %}
-            
-            {% if conclusion.comentario_final %}
-                <div class="mt-4">
-                    <strong>Comentario Final:</strong><br>
-                    {{ conclusion.comentario_final|linebreaks }}
-                </div>
-            {% endif %}
+            <ul>
+                {% for line in conclusion_lines %}
+                <li>{{ line }}</li>
+                {% endfor %}
+            </ul>
         </div>
     </div>
     {% endif %}
-    
-    <div class="firma">
-        <div class="firma-linea"></div>
-        <p>Dr. Omar Prieto</p>
-        <p>Cardiólogo</p>
+
+    {% if conclusion and conclusion.conclusion_texto %}
+    <div class="section">
+        <h3>CONCLUSIÓN B</h3>
+        <div class="p-4">
+            {{ conclusion.conclusion_texto|linebreaks }}
+        </div>
     </div>
+    {% endif %}
+
+    {% if conclusion and conclusion.comentario_final %}
+    <div class="section">
+        <h3>COMENTARIO FINAL</h3>
+        <div class="p-4">
+            {{ conclusion.comentario_final|linebreaks }}
+        </div>
+    </div>
+    {% endif %}
+
 </div>
 {% endblock %}

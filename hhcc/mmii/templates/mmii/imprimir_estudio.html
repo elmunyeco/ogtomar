@@ -1,0 +1,40 @@
+{% extends "print_base.html" %}
+
+{% block title %}Doppler color arterial de miembros inferiores{% endblock %}
+
+{% block meta %}
+  <div>Nombre y apellido: {{ paciente.nombre }} {{ paciente.apellido }}</div>
+  <div>Fecha del estudio: {{ fecha_estudio|date:"j \d\e F \d\e Y" }}</div>
+  <div>Historia Clínica: {{ historia.id|stringformat:"05d" }}</div>
+{% endblock %}
+
+{% block titles %}
+  <h1>Doppler color arterial de miembros inferiores</h1>
+{% endblock %}
+
+{% block content %}
+  {% if derecho_items %}
+  <div class="section">
+    <h3>Sistema arterial derecho</h3>
+    {% for label, value in derecho_items %}
+      <div class="item"><span>{{ label }}:</span> {{ value|linebreaksbr }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if izquierdo_items %}
+  <div class="section">
+    <h3>Sistema arterial izquierdo</h3>
+    {% for label, value in izquierdo_items %}
+      <div class="item"><span>{{ label }}:</span> {{ value|linebreaksbr }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if conclusion %}
+  <div class="section">
+    <h3>Conclusiones</h3>
+    <div class="item">{{ conclusion|linebreaksbr }}</div>
+  </div>
+  {% endif %}
+{% endblock %}

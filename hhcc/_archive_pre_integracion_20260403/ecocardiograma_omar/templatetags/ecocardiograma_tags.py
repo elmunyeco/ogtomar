@@ -13,7 +13,7 @@ def to_json(value):
     """
     if value is None:
         return 'null'
-    return json.dumps(value, default=str)
+    return json.dumps(value)
 
 @register.filter
 def get_item(dictionary, key):

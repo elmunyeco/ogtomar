@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle Estudio de Carótidas{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-900">Detalle de estudio de carótidas</h1>
+      <p class="text-sm text-slate-600">Historia clínica #{{ historia.id }}</p>
+    </div>
+    <div class="text-right text-sm text-slate-600">
+      <div>Paciente: <span class="font-medium text-slate-900">{{ paciente.apellido }}, {{ paciente.nombre }}</span></div>
+      <div>Estudio: <span class="font-medium text-slate-900">#{{ estudio.id }}</span></div>
+    </div>
+  </div>
+
+  <div class="rounded-lg border border-slate-200 bg-white p-4">
+    <h2 class="text-lg font-semibold text-slate-900">Informe</h2>
+    <div class="mt-4 space-y-2 text-sm text-slate-700">
+      <div><span class="font-semibold">Carótida común derecha:</span> {{ estudio.com_der_texto }} {{ estudio.com_derecha|default_if_none:"" }}</div>
+      <div><span class="font-semibold">Carótida común izquierda:</span> {{ estudio.com_izq_texto }} {{ estudio.com_izquierda|default_if_none:"" }}</div>
+      <div><span class="font-semibold">Carótida interna derecha:</span> {{ estudio.int_derecha|default_if_none:"" }}</div>
+      <div><span class="font-semibold">Carótida externa derecha:</span> {{ estudio.ext_derecha|default_if_none:"" }}</div>
+      <div><span class="font-semibold">Carótida interna izquierda:</span> {{ estudio.int_izquierda|default_if_none:"" }}</div>
+      <div><span class="font-semibold">Carótida externa izquierda:</span> {{ estudio.ext_izquierda|default_if_none:"" }}</div>
+      <div><span class="font-semibold">Arterias vertebrales:</span> {{ estudio.art_vertebrales|default_if_none:"" }}</div>
+      <div><span class="font-semibold">Sugerencias:</span> {{ estudio.sugerencias|default_if_none:"" }}</div>
+      <div><span class="font-semibold">Espesor íntima-media derecha:</span> {{ estudio.esp_int_med_der|default_if_none:"" }} mm</div>
+      <div><span class="font-semibold">Espesor íntima-media izquierda:</span> {{ estudio.esp_int_med_izq|default_if_none:"" }} mm</div>
+    </div>
+  </div>
+
+  <div>
+    <a href="{% url 'carotidas:carotidas_nuevo' historia.id %}" class="text-sm text-slate-600 hover:text-slate-800">Editar estudio</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,614 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Nuevo Estudio de Carótidas{% endblock %}
+
+{% block content %}
+<div
+  x-data="carotidasForm({
+    comDerId: '{{ form.id_com_der.value|default_if_none:"0" }}',
+    comIzqId: '{{ form.id_com_izq.value|default_if_none:"0" }}',
+    comDerComentario: '{{ form.com_derecha.value|default_if_none:""|escapejs }}',
+    comIzqComentario: '{{ form.com_izquierda.value|default_if_none:""|escapejs }}',
+    intDerText: '{{ form.int_derecha.value|default_if_none:""|escapejs }}',
+    extDerText: '{{ form.ext_derecha.value|default_if_none:""|escapejs }}',
+    intIzqText: '{{ form.int_izquierda.value|default_if_none:""|escapejs }}',
+    extIzqText: '{{ form.ext_izquierda.value|default_if_none:""|escapejs }}',
+    artVertebrales: '{{ form.art_vertebrales.value|default_if_none:""|escapejs }}',
+    sugerencias: '{{ form.sugerencias.value|default_if_none:""|escapejs }}',
+    firmar: false
+  })"
+  x-init="syncAll()"
+  class="space-y-6"
+>
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-900">Doppler color de vasos del cuello</h1>
+      <p class="text-sm text-slate-600">Análisis de espesor íntima-media (QIMT)</p>
+      <p class="text-sm text-slate-600">Quality Intima Media Thikness Analisys </p>
+    </div>
+    <div class="text-right text-sm text-slate-600">
+      <div>Paciente: <span class="font-medium text-slate-900">{{ paciente.apellido }}, {{ paciente.nombre }}</span></div>
+      <div>Historia clínica: <span class="font-medium text-slate-900">{{ historia.id }}</span></div>
+      <div>Fecha de estudio: <span class="font-medium text-slate-900">{% now "d/m/Y" %}</span></div>
+    </div>
+  </div>
+
+  <div id="carotidas-success" class="hidden px-4 py-2 text-sm rounded" style="background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;"></div>
+  <div id="carotidas-error" class="hidden px-4 py-2 text-sm rounded" style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;"></div>
+  {% if messages %}
+    <div class="space-y-2">
+      {% for message in messages %}
+        <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form id="carotidas-form" method="post" class="grid gap-6 lg:grid-cols-[2fr,1fr]" @submit.prevent="submitForm($event)">
+    {% csrf_token %}
+    {{ form.historia }}
+
+    <div class="space-y-6">
+      <section class="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 class="text-lg font-semibold text-slate-900">Carótidas comunes</h2>
+        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-700">Carótida común derecha</label>
+            <select name="id_com_der" x-model="comDerId" @change="syncComDerText($event)" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+              <option value="0">:: Seleccionar ::</option>
+              <option value="1">Dentro de límites normales. Sin lesiones que impresionen patológicas.</option>
+              <option value="2">Presenta múltiples lesiones sin compromiso hemodinámico anterógrado.</option>
+              <option value="3">Presenta incremento del espesor íntima media.</option>
+              <option value="4">Presenta recorrido tortuoso que genera flujo turbulento.</option>
+              <option value="99">Otras.</option>
+            </select>
+            <div x-show="comDerId === '99'" class="space-y-2">
+              <label class="text-xs font-semibold uppercase text-slate-500">Comentario</label>
+              <textarea
+                name="com_derecha"
+                x-model="comDerComentario"
+                rows="2"
+                maxlength="512"
+                placeholder="Detalle si seleccionaste Otras"
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              ></textarea>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-700">Carótida común izquierda</label>
+            <select name="id_com_izq" x-model="comIzqId" @change="syncComIzqText($event)" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm">
+              <option value="0">:: Seleccionar ::</option>
+              <option value="1">Dentro de límites normales. Sin lesiones que impresionen patológicas.</option>
+              <option value="2">Presenta múltiples lesiones sin compromiso hemodinámico anterógrado.</option>
+              <option value="3">Presenta incremento del espesor íntima media.</option>
+              <option value="4">Presenta recorrido tortuoso que genera flujo turbulento.</option>
+              <option value="99">Otras.</option>
+            </select>
+            <div x-show="comIzqId === '99'" class="space-y-2">
+              <label class="text-xs font-semibold uppercase text-slate-500">Comentario</label>
+              <textarea
+                name="com_izquierda"
+                x-model="comIzqComentario"
+                rows="2"
+                maxlength="512"
+                placeholder="Detalle si seleccionaste Otras"
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 class="text-lg font-semibold text-slate-900">Espesor íntima-media (mm)</h2>
+        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+          <div>
+            <label class="text-sm font-medium text-slate-700">Derecha</label>
+            <input
+              type="text"
+              name="esp_int_med_der"
+              x-model="espIntMedDer"
+              @blur="validateEspesor('der')"
+              placeholder="mm"
+              class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              inputmode="decimal"
+            />
+          </div>
+          <div>
+            <label class="text-sm font-medium text-slate-700">Izquierda</label>
+            <input
+              type="text"
+              name="esp_int_med_izq"
+              x-model="espIntMedIzq"
+              @blur="validateEspesor('izq')"
+              placeholder="mm"
+              class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              inputmode="decimal"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 class="text-lg font-semibold text-slate-900">Carótida interna</h2>
+        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+          <div class="space-y-3">
+            <div class="text-sm font-medium text-slate-700">Derecha</div>
+            <div class="space-y-2">
+              <label class="flex items-center gap-2 text-sm">
+                <input type="radio" value="normal" x-model="intDerModo" @change="syncIntDer()" class="text-red-600">
+                Se presenta libre de lesiones visibles y hemodinámicamente mesurables.
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input type="radio" value="lesion" x-model="intDerModo" @change="syncIntDer()" class="text-red-600">
+                Se observa lesión
+              </label>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" @click="clearIntDer()" class="text-xs text-slate-500 hover:text-slate-700">Limpiar</button>
+            </div>
+            <div x-show="intDerModo === 'lesion'" class="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div>
+                <div class="text-xs font-semibold uppercase text-slate-600">Estabilidad</div>
+                <div class="mt-1 flex gap-3 text-sm">
+                  <label class="flex items-center gap-2"><input type="radio" value="Estable" x-model="intDerEstabilidad" @change="syncIntDer()">Estable</label>
+                  <label class="flex items-center gap-2"><input type="radio" value="Inestable" x-model="intDerEstabilidad" @change="syncIntDer()">Inestable</label>
+                </div>
+              </div>
+              <div>
+                <div class="text-xs font-semibold uppercase text-slate-600">Localización</div>
+                <div class="mt-1 grid gap-2 text-sm">
+                  <label class="flex items-center gap-2"><input type="radio" value="Localizada próxima a la bifurcación carotidea" x-model="intDerLocalizacion" @change="syncIntDer()">Próxima a la bifurcación carotidea</label>
+                  <label class="flex items-center gap-2"><input type="radio" value="Localizada en segmento medio" x-model="intDerLocalizacion" @change="syncIntDer()">Segmento medio</label>
+                  <label class="flex items-center gap-2"><input type="radio" value="Localizada en segmento distal" x-model="intDerLocalizacion" @change="syncIntDer()">Segmento distal</label>
+                </div>
+              </div>
+              <div>
+                <div class="text-xs font-semibold uppercase text-slate-600">Estenosis</div>
+                <div class="mt-1 grid gap-2 text-sm">
+                  <label class="flex items-center gap-2"><input type="radio" value="Estenosis < 25%" x-model="intDerEstenosis" @change="syncIntDer()">&lt; 25%</label>
+                  <label class="flex items-center gap-2"><input type="radio" value="Estenosis 25-50 %" x-model="intDerEstenosis" @change="syncIntDer()">25-50%</label>
+                  <label class="flex items-center gap-2"><input type="radio" value="Estenosis > 60%" x-model="intDerEstenosis" @change="syncIntDer()">&gt; 60%</label>
+                </div>
+              </div>
+            </div>
+            <textarea name="int_derecha" x-model="intDerText" rows="2" maxlength="512" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="Texto libre del informe"></textarea>
+          </div>
+
+          <div class="space-y-3">
+            <div class="text-sm font-medium text-slate-700">Izquierda</div>
+            <div class="space-y-2">
+              <label class="flex items-center gap-2 text-sm">
+                <input type="radio" value="normal" x-model="intIzqModo" @change="syncIntIzq()" class="text-red-600">
+                Se presenta libre de lesiones visibles y hemodinámicamente mesurables.
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input type="radio" value="lesion" x-model="intIzqModo" @change="syncIntIzq()" class="text-red-600">
+                Se observa lesión
+              </label>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" @click="clearIntIzq()" class="text-xs text-slate-500 hover:text-slate-700">Limpiar</button>
+            </div>
+            <div x-show="intIzqModo === 'lesion'" class="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div>
+                <div class="text-xs font-semibold uppercase text-slate-600">Estabilidad</div>
+                <div class="mt-1 flex gap-3 text-sm">
+                  <label class="flex items-center gap-2"><input type="radio" value="Estable" x-model="intIzqEstabilidad" @change="syncIntIzq()">Estable</label>
+                  <label class="flex items-center gap-2"><input type="radio" value="Inestable" x-model="intIzqEstabilidad" @change="syncIntIzq()">Inestable</label>
+                </div>
+              </div>
+              <div>
+                <div class="text-xs font-semibold uppercase text-slate-600">Localización</div>
+                <div class="mt-1 grid gap-2 text-sm">
+                  <label class="flex items-center gap-2"><input type="radio" value="Localizada próxima a la bifurcación carotidea" x-model="intIzqLocalizacion" @change="syncIntIzq()">Próxima a la bifurcación carotidea</label>
+                  <label class="flex items-center gap-2"><input type="radio" value="Localizada en segmento medio" x-model="intIzqLocalizacion" @change="syncIntIzq()">Segmento medio</label>
+                  <label class="flex items-center gap-2"><input type="radio" value="Localizada en segmento distal" x-model="intIzqLocalizacion" @change="syncIntIzq()">Segmento distal</label>
+                </div>
+              </div>
+              <div>
+                <div class="text-xs font-semibold uppercase text-slate-600">Estenosis</div>
+                <div class="mt-1 grid gap-2 text-sm">
+                  <label class="flex items-center gap-2"><input type="radio" value="Estenosis < 25%" x-model="intIzqEstenosis" @change="syncIntIzq()">&lt; 25%</label>
+                  <label class="flex items-center gap-2"><input type="radio" value="Estenosis 25-50 %" x-model="intIzqEstenosis" @change="syncIntIzq()">25-50%</label>
+                  <label class="flex items-center gap-2"><input type="radio" value="Estenosis > 60%" x-model="intIzqEstenosis" @change="syncIntIzq()">&gt; 60%</label>
+                </div>
+              </div>
+            </div>
+            <textarea name="int_izquierda" x-model="intIzqText" rows="2" maxlength="512" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="Texto libre del informe"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 class="text-lg font-semibold text-slate-900">Carótida externa</h2>
+        <div class="mt-4 grid gap-4 lg:grid-cols-2">
+          <div class="space-y-3">
+            <div class="text-sm font-medium text-slate-700">Derecha</div>
+            <div class="space-y-2">
+              <label class="flex items-center gap-2 text-sm">
+                <input type="radio" value="normal" x-model="extDerModo" @change="syncExtDer()" class="text-red-600">
+                Se presenta libre de lesiones visibles y hemodinámicamente mesurables.
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input type="radio" value="lesion" x-model="extDerModo" @change="syncExtDer()" class="text-red-600">
+                Se observa lesión
+              </label>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" @click="clearExtDer()" class="text-xs text-slate-500 hover:text-slate-700">Limpiar</button>
+            </div>
+            <div x-show="extDerModo === 'lesion'" class="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div class="text-xs font-semibold uppercase text-slate-600">Estenosis</div>
+              <div class="grid gap-2 text-sm">
+                <label class="flex items-center gap-2"><input type="radio" value="Estenosis < 25%" x-model="extDerEstenosis" @change="syncExtDer()">&lt; 25%</label>
+                <label class="flex items-center gap-2"><input type="radio" value="Estenosis 25-50 %" x-model="extDerEstenosis" @change="syncExtDer()">25-50%</label>
+                <label class="flex items-center gap-2"><input type="radio" value="Estenosis > 60%" x-model="extDerEstenosis" @change="syncExtDer()">&gt; 60%</label>
+              </div>
+            </div>
+            <textarea name="ext_derecha" x-model="extDerText" rows="2" maxlength="512" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="Texto libre del informe"></textarea>
+          </div>
+
+          <div class="space-y-3">
+            <div class="text-sm font-medium text-slate-700">Izquierda</div>
+            <div class="space-y-2">
+              <label class="flex items-center gap-2 text-sm">
+                <input type="radio" value="normal" x-model="extIzqModo" @change="syncExtIzq()" class="text-red-600">
+                Se presenta libre de lesiones visibles y hemodinámicamente mesurables.
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input type="radio" value="lesion" x-model="extIzqModo" @change="syncExtIzq()" class="text-red-600">
+                Se observa lesión
+              </label>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" @click="clearExtIzq()" class="text-xs text-slate-500 hover:text-slate-700">Limpiar</button>
+            </div>
+            <div x-show="extIzqModo === 'lesion'" class="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div class="text-xs font-semibold uppercase text-slate-600">Estenosis</div>
+              <div class="grid gap-2 text-sm">
+                <label class="flex items-center gap-2"><input type="radio" value="Estenosis < 25%" x-model="extIzqEstenosis" @change="syncExtIzq()">&lt; 25%</label>
+                <label class="flex items-center gap-2"><input type="radio" value="Estenosis 25-50 %" x-model="extIzqEstenosis" @change="syncExtIzq()">25-50%</label>
+                <label class="flex items-center gap-2"><input type="radio" value="Estenosis > 60%" x-model="extIzqEstenosis" @change="syncExtIzq()">&gt; 60%</label>
+              </div>
+            </div>
+            <textarea name="ext_izquierda" x-model="extIzqText" rows="2" maxlength="512" class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" placeholder="Texto libre del informe"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 class="text-lg font-semibold text-slate-900">Arterias vertebrales</h2>
+        <input type="hidden" name="art_vertebrales" :value="artVertebrales">
+        <div class="mt-3 space-y-2 text-sm">
+          <label class="flex items-center gap-2">
+            <input type="radio" value="normal" x-model="artVertebralesModo" @change="syncArtVertebrales()" class="text-red-600">
+            Flujos conservados.
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="radio" value="lesion" x-model="artVertebralesModo" @change="syncArtVertebrales()" class="text-red-600">
+            Disminución del flujo en arteria vertebral:
+          </label>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <button type="button" @click="clearArtVertebrales()" class="text-xs text-slate-500 hover:text-slate-700">Limpiar</button>
+        </div>
+        <div x-show="artVertebralesModo === 'lesion'" class="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+          <div class="text-xs font-semibold uppercase text-slate-600">Lado</div>
+          <div class="mt-2 grid gap-2 text-sm">
+            <label class="flex items-center gap-2">
+              <input type="radio" value="Izquierda" x-model="artVertebralesLado" @change="syncArtVertebrales()">
+              Izquierda
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="radio" value="Derecha" x-model="artVertebralesLado" @change="syncArtVertebrales()">
+              Derecha
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-lg border border-slate-200 bg-white p-4">
+        <h2 class="text-lg font-semibold text-slate-900">Imágenes agregadas y sugerencias</h2>
+        <div class="mt-3 space-y-2 text-sm">
+          <label class="flex items-center gap-2">
+            <input type="radio" name="sugerencias" value="Se aprecia alteración anatómica de la glándula tiroides, se sugiere su control por especialista." x-model="sugerencias" class="text-red-600">
+            Se aprecia alteración anatómica de la glándula tiroides, se sugiere su control por especialista.
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="radio" name="sugerencias" value="Este estudio carotídeo realizado amerita realizar estudio de mayor complejidad según criterio de su médico de cabecera." x-model="sugerencias" class="text-red-600">
+            Este estudio carotídeo realizado amerita realizar estudio de mayor complejidad según criterio de su médico de cabecera.
+          </label>
+        </div>
+        <div class="mt-2 flex items-center gap-2">
+          <button type="button" @click="clearSugerencias()" class="text-xs text-slate-500 hover:text-slate-700">Limpiar</button>
+        </div>
+      </section>
+
+      <div class="flex flex-wrap items-center justify-center gap-4">
+        <label class="flex items-center gap-2 text-sm text-slate-600">
+          <input type="checkbox" x-model="firmar" class="rounded border-slate-300 text-red-600">
+          Firmar PDF
+        </label>
+        <button type="submit" class="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" :disabled="guardando">
+          <span x-show="!guardando">Guardar</span>
+          <span x-show="guardando">Guardando...</span>
+        </button>
+        <a href="/historias/" class="text-sm text-slate-600 hover:text-slate-800">Volver</a>
+      </div>
+    </div>
+
+    <aside class="space-y-4">
+      <div class="rounded-lg border border-slate-200 bg-white p-4">
+        <h3 class="text-sm font-semibold uppercase text-slate-600">Informe preliminar</h3>
+        <div class="mt-3 space-y-2 text-sm text-slate-700">
+          <div x-show="comDerText">
+            <span class="font-semibold">Carótida común derecha:</span>
+            <span x-text="comDerText"></span>
+            <span x-show="comDerId === '99' && comDerComentario" x-text="' ' + comDerComentario"></span>
+          </div>
+          <div x-show="comIzqText">
+            <span class="font-semibold">Carótida común izquierda:</span>
+            <span x-text="comIzqText"></span>
+            <span x-show="comIzqId === '99' && comIzqComentario" x-text="' ' + comIzqComentario"></span>
+          </div>
+          <div x-show="intDerText">
+            <span class="font-semibold">Carótida interna derecha:</span>
+            <span x-text="intDerText"></span>
+          </div>
+          <div x-show="extDerText">
+            <span class="font-semibold">Carótida externa derecha:</span>
+            <span x-text="extDerText"></span>
+          </div>
+          <div x-show="intIzqText">
+            <span class="font-semibold">Carótida interna izquierda:</span>
+            <span x-text="intIzqText"></span>
+          </div>
+          <div x-show="extIzqText">
+            <span class="font-semibold">Carótida externa izquierda:</span>
+            <span x-text="extIzqText"></span>
+          </div>
+          <div x-show="artVertebrales">
+            <span class="font-semibold">Arterias vertebrales:</span>
+            <span x-text="artVertebrales"></span>
+          </div>
+          <div x-show="sugerencias">
+            <span class="font-semibold">Sugerencias:</span>
+            <span x-text="sugerencias"></span>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </form>
+</div>
+
+<script>
+  function carotidasForm(initial) {
+    return {
+      comDerId: initial.comDerId || '',
+      comIzqId: initial.comIzqId || '',
+      comDerComentario: initial.comDerComentario || '',
+      comIzqComentario: initial.comIzqComentario || '',
+      comDerText: '',
+      comIzqText: '',
+      espIntMedDer: '{{ form.esp_int_med_der.value|default_if_none:"" }}',
+      espIntMedIzq: '{{ form.esp_int_med_izq.value|default_if_none:"" }}',
+      intDerModo: '',
+      intDerEstabilidad: '',
+      intDerLocalizacion: '',
+      intDerEstenosis: '',
+      intDerText: initial.intDerText || '',
+      intIzqModo: '',
+      intIzqEstabilidad: '',
+      intIzqLocalizacion: '',
+      intIzqEstenosis: '',
+      intIzqText: initial.intIzqText || '',
+      extDerModo: '',
+      extDerEstenosis: '',
+      extDerText: initial.extDerText || '',
+      extIzqModo: '',
+      extIzqEstenosis: '',
+      extIzqText: initial.extIzqText || '',
+      artVertebrales: initial.artVertebrales || '',
+      artVertebralesModo: '',
+      artVertebralesLado: '',
+      sugerencias: initial.sugerencias || '',
+      firmar: !!initial.firmar,
+      guardando: false,
+      syncComDerText(event) {
+        const option = event.target.options[event.target.selectedIndex];
+        this.comDerText = option.value && option.value !== '0' ? option.text : '';
+      },
+      syncComIzqText(event) {
+        const option = event.target.options[event.target.selectedIndex];
+        this.comIzqText = option.value && option.value !== '0' ? option.text : '';
+      },
+      buildLesionText(estabilidad, localizacion, estenosis) {
+        const partes = [];
+        if (estabilidad) partes.push(estabilidad + '.');
+        if (localizacion) partes.push(localizacion + '.');
+        if (estenosis) partes.push(estenosis + '.');
+        return partes.join(' ');
+      },
+      syncIntDer() {
+        if (this.intDerModo === 'normal') {
+          this.intDerText = 'Se presenta libre de lesiones visibles y hemodinámicamente mesurables.';
+          return;
+        }
+        if (this.intDerModo === 'lesion') {
+          const detalle = this.buildLesionText(this.intDerEstabilidad, this.intDerLocalizacion, this.intDerEstenosis);
+          this.intDerText = 'Se observa lesión. ' + detalle;
+        }
+      },
+      syncIntIzq() {
+        if (this.intIzqModo === 'normal') {
+          this.intIzqText = 'Se presenta libre de lesiones visibles y hemodinámicamente mesurables.';
+          return;
+        }
+        if (this.intIzqModo === 'lesion') {
+          const detalle = this.buildLesionText(this.intIzqEstabilidad, this.intIzqLocalizacion, this.intIzqEstenosis);
+          this.intIzqText = 'Se observa lesión. ' + detalle;
+        }
+      },
+      syncExtDer() {
+        if (this.extDerModo === 'normal') {
+          this.extDerText = 'Se presenta libre de lesiones visibles y hemodinámicamente mesurables.';
+          return;
+        }
+        if (this.extDerModo === 'lesion') {
+          this.extDerText = 'Se observa lesión. ' + (this.extDerEstenosis ? this.extDerEstenosis + '.' : '');
+        }
+      },
+      syncExtIzq() {
+        if (this.extIzqModo === 'normal') {
+          this.extIzqText = 'Se presenta libre de lesiones visibles y hemodinámicamente mesurables.';
+          return;
+        }
+        if (this.extIzqModo === 'lesion') {
+          this.extIzqText = 'Se observa lesión. ' + (this.extIzqEstenosis ? this.extIzqEstenosis + '.' : '');
+        }
+      },
+      clearIntDer() {
+        this.intDerModo = '';
+        this.intDerEstabilidad = '';
+        this.intDerLocalizacion = '';
+        this.intDerEstenosis = '';
+        this.intDerText = '';
+      },
+      clearIntIzq() {
+        this.intIzqModo = '';
+        this.intIzqEstabilidad = '';
+        this.intIzqLocalizacion = '';
+        this.intIzqEstenosis = '';
+        this.intIzqText = '';
+      },
+      clearExtDer() {
+        this.extDerModo = '';
+        this.extDerEstenosis = '';
+        this.extDerText = '';
+      },
+      clearExtIzq() {
+        this.extIzqModo = '';
+        this.extIzqEstenosis = '';
+        this.extIzqText = '';
+      },
+      syncArtVertebrales() {
+        if (this.artVertebralesModo === 'normal') {
+          this.artVertebrales = 'Flujos conservados.';
+          return;
+        }
+        if (this.artVertebralesModo === 'lesion') {
+          if (this.artVertebralesLado) {
+            this.artVertebrales = 'Disminución del flujo en arteria vertebral ' + this.artVertebralesLado.toLowerCase() + '.';
+          } else {
+            this.artVertebrales = 'Disminución del flujo en arteria vertebral.';
+          }
+        }
+      },
+      clearArtVertebrales() {
+        this.artVertebralesModo = '';
+        this.artVertebralesLado = '';
+        this.artVertebrales = '';
+      },
+      clearSugerencias() {
+        this.sugerencias = '';
+      },
+      async submitForm(event) {
+        event.preventDefault();
+        if (this.guardando) return;
+        this.guardando = true;
+        const popup = window.open('', '_blank');
+        const form = event.target;
+        const formData = new FormData(form);
+        try {
+          const response = await fetch(form.action || window.location.href, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+          });
+          const data = await response.json();
+            if (response.ok && data.success) {
+              const msg = document.getElementById('carotidas-success');
+              const err = document.getElementById('carotidas-error');
+              if (msg) {
+                msg.textContent = 'Estudio de carótidas guardado';
+                msg.classList.remove('hidden');
+              }
+              if (err) {
+                err.classList.add('hidden');
+              }
+            let url = `{% url 'carotidas:carotidas_imprimir' 0 0 %}`
+              .replace('/0/0/', `/${data.estudio_id}/${data.historia_id}/`);
+            if (this.firmar) {
+              url += '?firma=1';
+            }
+            if (popup) {
+              popup.location = url;
+            } else {
+              window.open(url, '_blank');
+            }
+          } else {
+            const err = document.getElementById('carotidas-error');
+              if (err) {
+                err.textContent = 'Estudio de carótidas no se pudo guardar por error';
+                err.classList.remove('hidden');
+                setTimeout(() => err.classList.add('hidden'), 15000);
+              }
+          }
+        } catch (e) {
+          const err = document.getElementById('carotidas-error');
+          if (err) {
+            err.textContent = 'Estudio de carótidas no se pudo guardar por error';
+            err.classList.remove('hidden');
+            setTimeout(() => err.classList.add('hidden'), 15000);
+          }
+        } finally {
+          this.guardando = false;
+        }
+      },
+      validateEspesor(side) {
+        const expr = /^\d{1,2}$|^\d{1,2}\.\d{1,2}$/;
+        if (side === 'der') {
+          if (!this.espIntMedDer) return;
+          this.espIntMedDer = this.espIntMedDer.replace(',', '.');
+          if (!expr.test(this.espIntMedDer)) {
+            alert('Por favor, escriba un número válido.');
+            this.espIntMedDer = '';
+          }
+        } else {
+          if (!this.espIntMedIzq) return;
+          this.espIntMedIzq = this.espIntMedIzq.replace(',', '.');
+          if (!expr.test(this.espIntMedIzq)) {
+            alert('Por favor, escriba un número válido.');
+            this.espIntMedIzq = '';
+          }
+        }
+      },
+      syncAll() {
+        const derSelect = document.querySelector('select[name="id_com_der"]');
+        if (derSelect && derSelect.value && derSelect.value !== '0') {
+          this.comDerText = derSelect.options[derSelect.selectedIndex].text;
+        }
+        const izqSelect = document.querySelector('select[name="id_com_izq"]');
+        if (izqSelect && izqSelect.value && izqSelect.value !== '0') {
+          this.comIzqText = izqSelect.options[izqSelect.selectedIndex].text;
+        }
+        if (this.artVertebrales) {
+          if (this.artVertebrales.includes('Flujos conservados')) {
+            this.artVertebralesModo = 'normal';
+          } else if (this.artVertebrales.includes('vertebral')) {
+            this.artVertebralesModo = 'lesion';
+            if (this.artVertebrales.toLowerCase().includes('izquierda')) {
+              this.artVertebralesLado = 'Izquierda';
+            } else if (this.artVertebrales.toLowerCase().includes('derecha')) {
+              this.artVertebralesLado = 'Derecha';
+            }
+          }
+        }
+      }
+    }
+  }
+</script>
+<script src="{% static 'main/js/char_counter.js' %}"></script>
+{% endblock %}

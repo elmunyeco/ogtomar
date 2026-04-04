@@ -1,0 +1,64 @@
+@page {
+  size: A4;
+  margin: 50mm 18mm 24mm 18mm;
+  @top-left { content: element(page-header); }
+  @bottom-left { content: element(page-footer); }
+  @bottom-right { content: counter(page) " de " counter(pages); }
+}
+body { font-family: Arial, sans-serif; color: #111827; margin: 0; }
+h1, h2, h3 {
+  margin: 0;
+  text-align: center;
+  text-decoration: none;
+}
+.header { position: running(page-header); display: block; box-sizing: border-box; width: 100%; max-width: 100%; min-width: 100%; padding-top: 8mm; padding-bottom: 6px; margin: 0; border-bottom: 1px solid #e5e7eb; padding-left: 0; padding-right: 0; }
+.header-inner { width: 100%; display: table; table-layout: fixed; }
+.header-left { display: table-cell; width: 40%; vertical-align: middle; }
+.header-right { display: table-cell; width: 60%; vertical-align: middle; text-align: right; }
+.header-right .header-meta { text-align: right; }
+.header-meta { margin-top: 4px; }
+.header-right .header-site { text-align: right; }
+.header-line { display: none; }
+.header-site { font-size: 12px; margin-top: 4px; color: #111827; display: block; }
+.logo { height: 88px; width: auto; max-width: 380px; object-fit: contain; }
+.header-site { font-size: 12px; margin-top: 4px; color: #111827; }
+.meta { margin-top: 8px; font-size: 12px; }
+.meta div { margin-bottom: 4px; }
+.title { margin: 18px 0 8px; text-align: center; }
+.title h1 { font-size: 24px; font-weight: 700; }
+.section { margin-top: 12px; }
+.section h3 { font-size: 14px; margin-bottom: 6px; }
+.item { margin-bottom: 6px; font-size: 13px; }
+.item span { font-weight: bold; }
+.divider-soft { border: none; border-top: 1px solid #e5e7eb; margin: 8px 0; }
+.divider-strong { border: none; border-top: 2px solid #111827; margin: 10px 0; }
+hr.divider-soft, hr.divider-strong { width: 100%; margin-left: 0; margin-right: 0; }
+
+.print-toolbar { text-align: right; margin: 8px 0 16px; }
+.print-button { background: #2563eb; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+
+.container { width: 100%; max-width: 100%; padding: 0; margin: 0; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 6px; border: 1px solid #ddd; }
+
+.informe-header { text-align: center; margin-bottom: 20px; }
+.informe-header h1 { font-size: 20px; font-weight: bold; text-decoration: none; margin: 10px 0; }
+.datos-paciente { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+.dato { margin-bottom: 5px; }
+.dato-etiqueta { font-weight: bold; }
+.informe-tabla { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+.informe-tabla th { background-color: #f9fafb; font-weight: bold; }
+.firma { margin-top: 50px; text-align: center; }
+.firma-linea { display: inline-block; width: 200px; border-bottom: 1px solid #000; margin-bottom: 5px; }
+.signature { margin-top: 36px; text-align: right; }
+.signature-name { font-weight: 600; font-size: 12px; }
+.signature-role { font-size: 11px; }
+.footer { position: running(page-footer); width: 100%; box-sizing: border-box; }
+.footer-spacer { height: 0; }
+.footer-row { display: flex; justify-content: space-between; font-size: 11px; }
+.footer-note { text-align: right; font-size: 11px; margin-top: 4px; }
+
+@media print {
+  .no-print { display: none !important; }
+  .page-break { page-break-after: always; }
+}
