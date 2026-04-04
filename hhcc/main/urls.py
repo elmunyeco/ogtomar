@@ -19,6 +19,11 @@ urlpatterns = [
     path('pacientes/<int:pk>/eliminar/', login_required(views.eliminar_paciente), name='eliminar_paciente'),
     path("historias/", login_required(views.listar_buscar_historias), name="listar_buscar_historias"),
     path(
+        "historias/<int:historia_id>/estudios/",
+        login_required(views.listar_estudios_historia),
+        name="listar_estudios_historia",
+    ),
+    path(
         "ordenes_medicas/<int:paciente_id>/",
         login_required(views.ordenes_medicas),
         name="ordenes_medicas",

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Estudios por Historia - Dr. Omar Prieto{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6 text-left">Estudios de {{ paciente.apellido }}, {{ paciente.nombre }} (HC {{ historia.id }})</h1>
+
+<div class="relative max-w-3xl px-4 mx-auto sm:px-6 mb-8">
+  <form action="" method="GET" class="flex flex-wrap gap-4">
+    <div class="flex items-center gap-2">
+      <label for="fecha_desde" class="text-sm text-gray-700">Fecha desde</label>
+      <input type="date" name="fecha_desde" id="fecha_desde" value="{{ fecha_desde }}"
+        class="h-10 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+    </div>
+    <div class="flex items-center gap-2">
+      <label for="fecha_hasta" class="text-sm text-gray-700">Fecha hasta</label>
+      <input type="date" name="fecha_hasta" id="fecha_hasta" value="{{ fecha_hasta }}"
+        class="h-10 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+    </div>
+    <div class="flex items-center gap-2">
+      <button type="submit"
+        class="h-10 px-4 py-2 bg-[#9a4035] text-white rounded-md hover:bg-[#7a332b] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        Filtrar
+      </button>
+      <a href="?" class="h-10 px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">Limpiar</a>
+    </div>
+  </form>
+</div>
+
+<div class="table-container">
+  <div class="overflow-x-auto bg-white shadow-md rounded-lg p-6 mb-8">
+    <table class="w-full table-auto border-collapse border border-gray-300">
+      <thead class="bg-gray-200 border-b-2 border-gray-300">
+        <tr>
+          <th class="px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">Estudio</th>
+          <th class="px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">Fecha</th>
+          <th class="px-4 py-2 text-center font-semibold text-gray-700 border border-gray-300">Ver</th>
+          <th class="px-4 py-2 text-center font-semibold text-gray-700 border border-gray-300">Imprimir</th>
+          <th class="px-4 py-2 text-center font-semibold text-gray-700 border border-gray-300">Enviar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for est in estudios %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-2 border border-gray-300">{{ est.tipo }}</td>
+          <td class="px-4 py-2 border border-gray-300">
+            {% if est.fecha %}{{ est.fecha|date:"d/m/Y" }}{% else %}-{% endif %}
+          </td>
+          <td class="px-4 py-2 border border-gray-300 text-center">
+            <a href="{{ est.ver_url }}" class="text-blue-600 hover:text-blue-800" title="Ver estudio">
+              Ver
+            </a>
+          </td>
+          <td class="px-4 py-2 border border-gray-300 text-center">
+            <a href="{{ est.pdf_url }}" class="text-green-600 hover:text-green-800" title="Imprimir">
+              Imprimir
+            </a>
+          </td>
+          <td class="px-4 py-2 border border-gray-300 text-center text-gray-400">
+            Enviar
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="px-4 py-2 text-center">No se encontraron estudios.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-6">
+  <a href="{% url 'listar_buscar_historias' %}" class="text-sm text-slate-600 hover:text-slate-800">Volver a historias</a>
+</div>
+{% endblock %}

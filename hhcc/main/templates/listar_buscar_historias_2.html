@@ -73,6 +73,7 @@
                     <th class="px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">Nombre</th>
                     <th class="px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">Apellido</th>
                     <th class="px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">Documento</th>
+                    <th class="px-4 py-2 text-left font-semibold text-gray-700 border border-gray-300">Estudios</th>
                     <th class="px-4 py-2 text-center font-semibold text-gray-700 border border-gray-300">Acciones</th>
                 </tr>
             </thead>
@@ -83,6 +84,22 @@
                     <td class="px-4 py-2 border border-gray-300">{{ historia.paciente.nombre }}</td>
                     <td class="px-4 py-2 border border-gray-300">{{ historia.paciente.apellido }}</td>
                     <td class="px-4 py-2 border border-gray-300">{{ historia.paciente.idTipoDoc.nombre }} {{ historia.paciente.numDoc }}</td>
+                    <td class="px-4 py-2 border border-gray-300 text-sm">
+                        <div class="flex flex-wrap gap-3">
+                            <a href="/ecocardiograma/{{ historia.id }}/estudios/" class="text-slate-700 hover:text-slate-900">
+                                Eco: <span class="font-semibold">{{ historia.eco_count }}</span>
+                            </a>
+                            <a href="/ecostress/{{ historia.id }}/estudios/" class="text-slate-700 hover:text-slate-900">
+                                Stress: <span class="font-semibold">{{ historia.stress_count }}</span>
+                            </a>
+                            <a href="/carotidas/{{ historia.id }}/estudios/" class="text-slate-700 hover:text-slate-900">
+                                Carótidas: <span class="font-semibold">{{ historia.carot_count }}</span>
+                            </a>
+                            <a href="/mmii/{{ historia.id }}/estudios/" class="text-slate-700 hover:text-slate-900">
+                                MMII: <span class="font-semibold">{{ historia.mmii_count }}</span>
+                            </a>
+                        </div>
+                    </td>
                     <td class="px-4 py-2 border border-gray-300">
                         <div class="flex justify-center space-x-4">
                             <!-- Botón Editar con icono -->
@@ -95,7 +112,7 @@
                             </a>
                             
                             <!-- Botón Ver Estudios con icono de documento/libro de registros -->
-                            <a href="{% url 'index' %}" 
+                            <a href="{% url 'listar_estudios_historia' historia.id %}" 
                                class="text-green-600 hover:text-green-800 transition-colors flex items-center" 
                                title="Ver estudios">
                                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -108,7 +125,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" class="px-4 py-2 text-center">No se encontraron historias.</td>
+                    <td colspan="6" class="px-4 py-2 text-center">No se encontraron historias.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -119,13 +136,13 @@
 <!-- Paginación -->
 <div class="mt-10 flex justify-center">
     <nav aria-label="Paginación">
-        <ul class="inline-flex space-x-2">
+        <ul class="pagination">
             <!-- Botones de retroceso -->
             {% if page_obj.has_previous %}
             <li><a href="?page=1&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&laquo;</a></li>
+                    class="page-link">&laquo;</a></li>
             <li><a href="?page={{ page_obj.previous_page_number }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&lt;</a></li>
+                    class="page-link">&lt;</a></li>
             {% endif %}
 
             <!-- Números de página: mostrar solo un rango razonable de páginas -->
@@ -133,7 +150,7 @@
             {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
             <li class="{% if page_obj.number == num %}active{% endif %}">
                 <a href="?page={{ num }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 {% if page_obj.number == num %}bg-[#9a4035] text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %} rounded">{{ num }}</a>
+                    class="page-link {% if page_obj.number == num %}active{% endif %}">{{ num }}</a>
             </li>
             {% endif %}
             {% endfor %}
@@ -141,9 +158,9 @@
             <!-- Botones de avance -->
             {% if page_obj.has_next %}
             <li><a href="?page={{ page_obj.next_page_number }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&gt;</a></li>
+                    class="page-link">&gt;</a></li>
             <li><a href="?page={{ page_obj.paginator.num_pages }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&raquo;</a></li>
+                    class="page-link">&raquo;</a></li>
             {% endif %}
         </ul>
     </nav>

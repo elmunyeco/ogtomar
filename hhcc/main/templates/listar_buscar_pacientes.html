@@ -106,13 +106,13 @@
 <!-- Paginación -->
 <div class="mt-10 flex justify-center">
     <nav aria-label="Paginación">
-        <ul class="inline-flex space-x-2">
+        <ul class="pagination">
             <!-- Botones de retroceso -->
             {% if page_obj.has_previous %}
             <li><a href="?page=1&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&laquo;</a></li>
+                    class="page-link">&laquo;</a></li>
             <li><a href="?page={{ page_obj.previous_page_number }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&lt;</a></li>
+                    class="page-link">&lt;</a></li>
             {% endif %}
 
             <!-- Números de página: mostrar solo un rango razonable de páginas -->
@@ -120,7 +120,7 @@
             {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
             <li class="{% if page_obj.number == num %}active{% endif %}">
                 <a href="?page={{ num }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 {% if page_obj.number == num %}bg-[#9a4035] text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %} rounded">{{ num }}</a>
+                    class="page-link {% if page_obj.number == num %}active{% endif %}">{{ num }}</a>
             </li>
             {% endif %}
             {% endfor %}
@@ -128,9 +128,9 @@
             <!-- Botones de avance -->
             {% if page_obj.has_next %}
             <li><a href="?page={{ page_obj.next_page_number }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&gt;</a></li>
+                    class="page-link">&gt;</a></li>
             <li><a href="?page={{ page_obj.paginator.num_pages }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&raquo;</a></li>
+                    class="page-link">&raquo;</a></li>
             {% endif %}
         </ul>
     </nav>

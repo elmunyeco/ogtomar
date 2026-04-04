@@ -129,6 +129,46 @@ def listar_buscar_historias(request):
             # Búsqueda por apellido del paciente
             historias = historias.filter(paciente__apellido__icontains=query)
 
+    # Anotar cantidad de estudios por historia
+    from django.db.models import Count, IntegerField, OuterRef, Subquery, Value
+    from django.db.models.functions import Coalesce
+    from ecocardiograma.models import EstudioEcocardiograma
+    from ecostress.models import EcostressEstudio
+    from carotidas.models import CarotidasEstudio
+    from mmii.models import MmiiEstudio
+
+    eco_qs = (
+        EstudioEcocardiograma.objects.filter(historia=OuterRef("pk"))
+        .values("historia")
+        .annotate(c=Count("*"))
+        .values("c")
+    )
+    stress_qs = (
+        EcostressEstudio.objects.filter(historia=OuterRef("pk"))
+        .values("historia")
+        .annotate(c=Count("*"))
+        .values("c")
+    )
+    carot_qs = (
+        CarotidasEstudio.objects.filter(historia=OuterRef("pk"))
+        .values("historia")
+        .annotate(c=Count("*"))
+        .values("c")
+    )
+    mmii_qs = (
+        MmiiEstudio.objects.filter(historia=OuterRef("pk"))
+        .values("historia")
+        .annotate(c=Count("*"))
+        .values("c")
+    )
+
+    historias = historias.annotate(
+        eco_count=Coalesce(Subquery(eco_qs, output_field=IntegerField()), Value(0)),
+        stress_count=Coalesce(Subquery(stress_qs, output_field=IntegerField()), Value(0)),
+        carot_count=Coalesce(Subquery(carot_qs, output_field=IntegerField()), Value(0)),
+        mmii_count=Coalesce(Subquery(mmii_qs, output_field=IntegerField()), Value(0)),
+    )
+
     historias = historias.order_by("-id") # Ordenar por ID para evitar inconsistencias en la paginación
 
     # Paginación
@@ -142,7 +182,101 @@ def listar_buscar_historias(request):
     return render(
         request,
         "listar_buscar_historias_2.html",
-        {"page_obj": page_obj, "query": query, "tipo": tipo},
+        {
+            "page_obj": page_obj,
+            "query": query,
+            "tipo": tipo,
+        },
+    )
+
+
+def listar_estudios_historia(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, pk=historia_id)
+    fecha_desde = request.GET.get("fecha_desde", "")
+    fecha_hasta = request.GET.get("fecha_hasta", "")
+
+    from ecocardiograma.models import EstudioEcocardiograma
+    from ecostress.models import EcostressEstudio
+    from carotidas.models import CarotidasEstudio
+    from mmii.models import MmiiEstudio
+
+    def apply_fecha_filters(qs, field_name):
+        if fecha_desde:
+            qs = qs.filter(**{f"{field_name}__gte": fecha_desde})
+        if fecha_hasta:
+            qs = qs.filter(**{f"{field_name}__lte": fecha_hasta})
+        return qs
+
+    estudios = []
+
+    eco_qs = apply_fecha_filters(
+        EstudioEcocardiograma.objects.filter(historia=historia),
+        "fecha",
+    )
+    for est in eco_qs:
+        estudios.append(
+            {
+                "tipo": "Ecocardiograma",
+                "fecha": est.fecha,
+                "ver_url": f"/ecocardiograma/{historia_id}/?action=recuperar&estudio={est.id}",
+                "pdf_url": f"/ecocardiograma/imprimir_estudio/{est.id}/?firma=1",
+            }
+        )
+
+    stress_qs = apply_fecha_filters(
+        EcostressEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+    )
+    for est in stress_qs:
+        estudios.append(
+            {
+                "tipo": "Ecostress",
+                "fecha": est.fecha_estudio,
+                "ver_url": f"/ecostress/{historia_id}/?action=recuperar&estudio={est.id_stress}",
+                "pdf_url": f"/ecostress/imprimir_estudio/{est.id_stress}/{historia_id}/",
+            }
+        )
+
+    carot_qs = apply_fecha_filters(
+        CarotidasEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+    )
+    for est in carot_qs:
+        estudios.append(
+            {
+                "tipo": "Carótidas",
+                "fecha": est.fecha_estudio,
+                "ver_url": f"/carotidas/{historia_id}/?action=recuperar&estudio={est.id}",
+                "pdf_url": f"/carotidas/imprimir_estudio/{est.id}/{historia_id}/",
+            }
+        )
+
+    mmii_qs = apply_fecha_filters(
+        MmiiEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+    )
+    for est in mmii_qs:
+        estudios.append(
+            {
+                "tipo": "MMII",
+                "fecha": est.fecha_estudio,
+                "ver_url": f"/mmii/{historia_id}/?action=recuperar&estudio={est.id_mmii}",
+                "pdf_url": f"/mmii/imprimir_estudio/{est.id_mmii}/{historia_id}/",
+            }
+        )
+
+    estudios.sort(key=lambda x: (x["fecha"] is not None, x["fecha"]), reverse=True)
+
+    return render(
+        request,
+        "listar_estudios_historia.html",
+        {
+            "historia": historia,
+            "paciente": historia.paciente,
+            "estudios": estudios,
+            "fecha_desde": fecha_desde,
+            "fecha_hasta": fecha_hasta,
+        },
     )
 
 
