@@ -10,22 +10,50 @@ class Migration(migrations.Migration):
         ('main', '0002_rename_inx_fix_sexo'),
     ]
 
+    def _safe_rename_indexes(apps, schema_editor):
+        def index_exists(cursor, table, index):
+            cursor.execute(
+                """
+                SELECT COUNT(1)
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = %s
+                  AND INDEX_NAME = %s
+                """,
+                [table, index],
+            )
+            return cursor.fetchone()[0] > 0
+
+        def drop_index(cursor, table, index):
+            cursor.execute(f"DROP INDEX `{index}` ON `{table}`")
+
+        def rename_index(cursor, table, old, new):
+            cursor.execute(f"ALTER TABLE `{table}` RENAME INDEX `{old}` TO `{new}`")
+
+        with schema_editor.connection.cursor() as cursor:
+            # historias_clinicas: idPaciente_idx -> historia_paciente_idx
+            if index_exists(cursor, "historias_clinicas", "idPaciente_idx"):
+                if index_exists(cursor, "historias_clinicas", "historia_paciente_idx"):
+                    drop_index(cursor, "historias_clinicas", "idPaciente_idx")
+                else:
+                    rename_index(cursor, "historias_clinicas", "idPaciente_idx", "historia_paciente_idx")
+
+            # indicaciones_visitas: ind_fecha_idx -> indicaciones_fecha_idx
+            if index_exists(cursor, "indicaciones_visitas", "ind_fecha_idx"):
+                if index_exists(cursor, "indicaciones_visitas", "indicaciones_fecha_idx"):
+                    drop_index(cursor, "indicaciones_visitas", "ind_fecha_idx")
+                else:
+                    rename_index(cursor, "indicaciones_visitas", "ind_fecha_idx", "indicaciones_fecha_idx")
+
+            # indicaciones_visitas: ind_his_fecha_idx -> ind_hist_fecha_idx
+            if index_exists(cursor, "indicaciones_visitas", "ind_his_fecha_idx"):
+                if index_exists(cursor, "indicaciones_visitas", "ind_hist_fecha_idx"):
+                    drop_index(cursor, "indicaciones_visitas", "ind_his_fecha_idx")
+                else:
+                    rename_index(cursor, "indicaciones_visitas", "ind_his_fecha_idx", "ind_hist_fecha_idx")
+
     operations = [
-        migrations.RenameIndex(
-            model_name='historiaclinica',
-            new_name='historia_paciente_idx',
-            old_name='idPaciente_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='indicacionesvisitas',
-            new_name='indicaciones_fecha_idx',
-            old_name='ind_fecha_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='indicacionesvisitas',
-            new_name='ind_hist_fecha_idx',
-            old_name='ind_his_fecha_idx',
-        ),
+        migrations.RunPython(_safe_rename_indexes, reverse_code=migrations.RunPython.noop),
         migrations.AlterField(
             model_name='paciente',
             name='idTipoDoc',
