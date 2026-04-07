@@ -7,6 +7,16 @@
 <h1 class="text-2xl font-bold mb-6 text-left">Estudios de {{ paciente.apellido }}, {{ paciente.nombre }} (HC {{ historia.id }})</h1>
 
 <div class="relative max-w-3xl px-4 mx-auto sm:px-6 mb-8">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <a href="{% url 'historia_estudios_nuevo' historia_id=historia.id %}"
+       class="inline-flex items-center justify-center h-10 px-4 py-2 rounded-md bg-[#9a4035] text-white hover:bg-[#7a332b]">
+      Nuevo estudio
+    </a>
+    <a href="{% url 'detalle_historia_con_historial' historia_id=historia.id %}"
+       class="text-sm text-slate-600 hover:text-slate-800">
+      Volver a historia clínica
+    </a>
+  </div>
   <form action="" method="GET" class="flex flex-wrap gap-4">
     <div class="flex items-center gap-2">
       <label for="fecha_desde" class="text-sm text-gray-700">Fecha desde</label>

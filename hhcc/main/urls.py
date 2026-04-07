@@ -24,6 +24,11 @@ urlpatterns = [
         name="listar_estudios_historia",
     ),
     path(
+        "historias/<int:historia_id>/estudios/nuevo/",
+        login_required(views.historia_estudios_nuevo),
+        name="historia_estudios_nuevo",
+    ),
+    path(
         "ordenes_medicas/<int:paciente_id>/",
         login_required(views.ordenes_medicas),
         name="ordenes_medicas",

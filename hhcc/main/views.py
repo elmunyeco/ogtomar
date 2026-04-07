@@ -1,5 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
+from django.urls import reverse
+from django.utils.dateparse import parse_date
 from .models import Paciente, HistoriaClinica, TipoDocumento, IndicacionesVisitas
 from .forms import PacienteForm
 from django.shortcuts import get_object_or_404
@@ -7,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
+from datetime import date as date_cls
 
 
 def index(request):
@@ -1440,3 +1443,163 @@ def h3_html(request):
     Vista para la página "Tres" en el submenú de Historias
     """
     return render(request, 'historial_medico/h3.html')
+
+
+def _apply_date_filter(qs, field_name, desde, hasta):
+    if desde:
+        qs = qs.filter(**{f"{field_name}__gte": desde})
+    if hasta:
+        qs = qs.filter(**{f"{field_name}__lte": hasta})
+    return qs
+
+
+def historia_estudios(request, historia_id):
+    from ecocardiograma.models import EstudioEcocardiograma
+    from ecostress.models import EcostressEstudio
+    from carotidas.models import CarotidasEstudio
+    from mmii.models import MmiiEstudio
+
+    historia = get_object_or_404(HistoriaClinica, pk=historia_id)
+    paciente = historia.paciente
+
+    desde = parse_date(request.GET.get("desde") or "")
+    hasta = parse_date(request.GET.get("hasta") or "")
+
+    estudios = []
+
+    eco_qs = _apply_date_filter(
+        EstudioEcocardiograma.objects.filter(historia=historia),
+        "fecha",
+        desde,
+        hasta,
+    )
+    for estudio in eco_qs:
+        ver_url = f"{reverse('ecocardiograma:nuevo_estudio_form', args=[historia.id])}?action=recuperar&estudio={estudio.id}"
+        imprimir_url = reverse("ecocardiograma:imprimir_estudio", args=[estudio.id])
+        estudios.append(
+            {
+                "tipo": "Ecocardiograma",
+                "fecha": estudio.fecha,
+                "id": estudio.id,
+                "ver_url": ver_url,
+                "imprimir_url": imprimir_url,
+                "enviar_url": "#",
+            }
+        )
+
+    carotidas_qs = _apply_date_filter(
+        CarotidasEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+        desde,
+        hasta,
+    )
+    for estudio in carotidas_qs:
+        ver_url = f"{reverse('carotidas:carotidas_form', args=[historia.id])}?action=recuperar&estudio={estudio.id}"
+        imprimir_url = reverse(
+            "carotidas:carotidas_imprimir",
+            args=[estudio.id, historia.id],
+        )
+        estudios.append(
+            {
+                "tipo": "Carótidas",
+                "fecha": estudio.fecha_estudio,
+                "id": estudio.id,
+                "ver_url": ver_url,
+                "imprimir_url": imprimir_url,
+                "enviar_url": "#",
+            }
+        )
+
+    mmii_qs = _apply_date_filter(
+        MmiiEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+        desde,
+        hasta,
+    )
+    for estudio in mmii_qs:
+        ver_url = f"{reverse('mmii:mmii_nuevo', args=[historia.id])}?action=recuperar&estudio={estudio.id_mmii}"
+        imprimir_url = reverse(
+            "mmii:mmii_imprimir",
+            args=[estudio.id_mmii, historia.id],
+        )
+        estudios.append(
+            {
+                "tipo": "MMII",
+                "fecha": estudio.fecha_estudio,
+                "id": estudio.id_mmii,
+                "ver_url": ver_url,
+                "imprimir_url": imprimir_url,
+                "enviar_url": "#",
+            }
+        )
+
+    stress_qs = _apply_date_filter(
+        EcostressEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+        desde,
+        hasta,
+    )
+    for estudio in stress_qs:
+        ver_url = f"{reverse('ecostress:ecostress_form', args=[historia.id])}?action=recuperar&estudio={estudio.id_stress}"
+        imprimir_url = reverse(
+            "ecostress:ecostress_imprimir",
+            args=[estudio.id_stress, historia.id],
+        )
+        estudios.append(
+            {
+                "tipo": "Ecostress",
+                "fecha": estudio.fecha_estudio,
+                "id": estudio.id_stress,
+                "ver_url": ver_url,
+                "imprimir_url": imprimir_url,
+                "enviar_url": "#",
+            }
+        )
+
+    def sort_key(item):
+        return item["fecha"] or date_cls.min
+
+    estudios.sort(key=sort_key, reverse=True)
+
+    breadcrumbs = [
+        {"label": "Inicio", "url": "/"},
+        {"label": "Historias", "url": "/historias/"},
+        {"label": f"Historia {historia.id}", "url": f"/historial_medico/{historia.id}/"},
+        {"label": "Estudios", "url": None},
+    ]
+
+    return render(
+        request,
+        "ver_estudios.html",
+        {
+            "historia": historia,
+            "paciente": paciente,
+            "estudios": estudios,
+            "desde": request.GET.get("desde", ""),
+            "hasta": request.GET.get("hasta", ""),
+            "breadcrumbs": breadcrumbs,
+        },
+    )
+
+
+def historia_estudios_nuevo(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, pk=historia_id)
+    paciente = historia.paciente
+
+    breadcrumbs = [
+        {"label": "Inicio", "url": "/"},
+        {"label": "Historias", "url": "/historias/"},
+        {"label": f"Historia {historia.id}", "url": f"/historial_medico/{historia.id}/"},
+        {"label": "Estudios", "url": f"/historias/{historia.id}/estudios/"},
+        {"label": "Nuevo estudio", "url": None},
+    ]
+
+    return render(
+        request,
+        "historias_estudios_nuevo.html",
+        {
+            "historia": historia,
+            "paciente": paciente,
+            "breadcrumbs": breadcrumbs,
+        },
+    )

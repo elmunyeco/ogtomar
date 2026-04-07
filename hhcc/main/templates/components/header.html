@@ -25,10 +25,6 @@ templates/components/header.html
     
     <nav class="main-nav">
         <ul class="main-menu">
-            <li class="menu-item {% if active_section == 'inicio' %}active{% endif %}">
-                <a href="{% url 'index' %}" class="menu-link">Inicio</a>
-            </li>
-            
             <li class="menu-item {% if active_section == 'pacientes' %}active{% endif %}" data-menu="pacientes">
                 <a href="#" class="menu-link menu-toggle">Pacientes</a>
                 <div class="submenu-items hidden">  <!-- Añadido 'hidden' aquí -->
@@ -41,17 +37,6 @@ templates/components/header.html
                 <a href="#" class="menu-link menu-toggle">Historias</a>
                 <div class="submenu-items hidden">
                     <a href="{% url 'listar_buscar_historias' %}" class="submenu-link">Buscar Historias</a>
-                    <!-- Nuevas opciones en el submenú -->
-                    <a href="{% url 'h1_html' %}" class="submenu-link">Uno</a>
-                    <a href="{% url 'h2_html' %}" class="submenu-link">Dos</a>
-                    <a href="{% url 'h3_html' %}" class="submenu-link">Tres</a>
-                </div>
-            </li>
-            
-            <li class="menu-item {% if active_section == 'ordenes' %}active{% endif %}" data-menu="ordenes">
-                <a href="#" class="menu-link menu-toggle">Órdenes</a>
-                <div class="submenu-items hidden">  <!-- Añadido 'hidden' aquí -->
-                    <a href="{% url 'ordenes_medicas' 0 %}" class="submenu-link">Solicitudes</a>
                 </div>
             </li>
         </ul>
