@@ -1,38 +1,52 @@
-# Deploy HHCC (App + DB + Nginx)
+# Deploy (Docker)
 
 ## Archivos
-- `hhcc_app_latest.tar.gz` (imagen app)
-- `nuevo_cardioprieto_latest.tar.gz` (imagen DB)
 - `docker-compose.yml`
 - `nginx/default.conf`
-- `Dockerfile` (referencia)
+- `start_fresh.sh`
+- `hhcc_app_latest.tar.gz`
+- `nuevo_cardioprieto_latest.tar.gz`
+- `cardioprieto_dump.sql`
 
-## Cargar imagenes
-```bash
+## Arranque rapido
+```sh
 docker load -i hhcc_app_latest.tar.gz
 docker load -i nuevo_cardioprieto_latest.tar.gz
-```
-
-## Levantar stack (puerto 80)
-```bash
 docker-compose up -d
 ```
 
-## Detener / limpiar
-```bash
+## Arranque limpio + restore automatico
+```sh
+./start_fresh.sh
+```
+
+`start_fresh.sh`:
+- baja containers
+- carga imágenes
+- levanta `db`
+- espera a que MariaDB acepte conexiones TCP
+- restaura `cardioprieto_dump.sql` si existe
+- arranca `app` y `nginx` con `RUN_MIGRATIONS_ON_STARTUP=0` cuando hay restore, para evitar que Django migre encima de una base ya cargada
+- levanta `app` y `nginx`
+
+## Restore manual
+```sh
+docker-compose up -d db
+docker-compose exec -T db /bin/sh -lc "mariadb --protocol=tcp -h127.0.0.1 -P3306 -uroot -pCorbis5 -e \"CREATE DATABASE IF NOT EXISTS cardioprieto;\""
+docker-compose exec -T db /bin/sh -lc "mariadb --protocol=tcp -h127.0.0.1 -P3306 -uroot -pCorbis5 cardioprieto" < cardioprieto_dump.sql
+RUN_MIGRATIONS_ON_STARTUP=0 docker-compose up -d app nginx
+```
+
+## Detener
+```sh
 docker-compose stop
-# o
+```
+
+## Bajar y borrar
+```sh
 docker-compose down
 ```
 
-## Acceso
-- `http://<IP>/` (Nginx -> app:8000)
-- DB expuesta en `3307` (host) -> `3306` (contenedor)
-
-## Variables
-Las credenciales DB por defecto:
-- DB_NAME: cardioprieto
-- DB_USER: root
-- DB_PASSWORD: Corbis5
-
-Si necesitas cambiar, edita `docker-compose.yml`.
+## Notas
+- `ALLOWED_HOSTS = ["*"]`.
+- `Dockerfile` incluye librerías para PDF (pango/cairo) y `tzdata`.

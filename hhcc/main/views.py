@@ -318,8 +318,12 @@ def crear_paciente(request):
         form = PacienteForm(request.POST)
         if form.is_valid():
             paciente = form.save()
+            historia, _ = HistoriaClinica.objects.get_or_create(
+                paciente=paciente,
+                defaults={"fechaAlta": paciente.fechaAlta},
+            )
             messages.success(request, f'Paciente {paciente.nombre} {paciente.apellido} creado exitosamente.')
-            return redirect('editar_paciente', pk=paciente.pk)
+            return redirect('detalle_historia_con_historial', historia_id=historia.id)
     else:
         form = PacienteForm()
     
@@ -874,6 +878,82 @@ def detalle_historia(request, historia_id):
 
 
 from .models import ComentariosVisitas
+from .utils import static_file_url
+
+
+def _build_historia_visitas_detalle(historia):
+    comentarios = ComentariosVisitas.objects.filter(historia_clinica=historia).order_by(
+        "-fecha"
+    )
+    signos_vitales = SignosVitales.objects.filter(historia=historia).order_by("-fecha")
+    indicaciones = IndicacionesVisitas.objects.filter(
+        historia_clinica=historia, eliminado=False
+    ).order_by("-fecha")
+
+    visitas = []
+    fechas_comentarios = [
+        fecha.date() if isinstance(fecha, datetime) else fecha
+        for fecha in comentarios.values_list("fecha", flat=True)
+    ]
+    fechas_signos = [
+        fecha.date() if isinstance(fecha, datetime) else fecha
+        for fecha in signos_vitales.values_list("fecha", flat=True)
+    ]
+
+    for fecha in sorted(set(fechas_comentarios + fechas_signos), reverse=True):
+        coms_fecha = comentarios.filter(fecha__date=fecha)
+        signos_fecha = signos_vitales.filter(fecha=fecha).first()
+        meds_fecha = indicaciones.filter(fecha=fecha)
+
+        visitas.append(
+            {
+                "date": fecha,
+                "comments": [
+                    {
+                        "id": comentario.id,
+                        "text": comentario.comentarios,
+                        "fecha": comentario.fecha,
+                    }
+                    for comentario in coms_fecha
+                ],
+                "vitalSigns": {
+                    "weight": signos_fecha.peso if signos_fecha and signos_fecha.peso else None,
+                    "cholesterol": (
+                        signos_fecha.colesterol
+                        if signos_fecha and signos_fecha.colesterol is not None
+                        else None
+                    ),
+                    "glucose": (
+                        signos_fecha.glucemia
+                        if signos_fecha and signos_fecha.glucemia is not None
+                        else None
+                    ),
+                    "systolic": (
+                        signos_fecha.presion_sistolica
+                        if signos_fecha and signos_fecha.presion_sistolica is not None
+                        else None
+                    ),
+                    "diastolic": (
+                        signos_fecha.presion_diastolica
+                        if signos_fecha and signos_fecha.presion_diastolica is not None
+                        else None
+                    ),
+                },
+                "medications": [
+                    {
+                        "id": medicamento.id,
+                        "name": medicamento.medicamento,
+                        "h8": medicamento.ochoHoras or "",
+                        "h12": medicamento.doceHoras or "",
+                        "h18": medicamento.dieciochoHoras or "",
+                        "h21": medicamento.veintiunaHoras or "",
+                    }
+                    for medicamento in meds_fecha
+                ],
+            }
+        )
+
+    return visitas
 from django.db.models import Subquery
 
 
@@ -1424,6 +1504,48 @@ def detalle_historia_con_historial(request, historia_id):
     }
 
     return render(request, "detalle_historia_con_historial_2.html", context)
+
+
+def imprimir_historia_clinica(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, id=historia_id)
+    paciente = historia.paciente
+
+    signos_vitales = SignosVitales.objects.filter(historia=historia).order_by("-fecha").first()
+    condiciones_activas = (
+        CondicionMedicaHistoria.objects.filter(historia=historia)
+        .select_related("condicion")
+        .order_by("condicion__orden", "condicion__nombre")
+    )
+    visitas = _build_historia_visitas_detalle(historia)
+    comentarios_hoy = ComentariosVisitas.objects.filter(
+        historia_clinica=historia,
+        tipo="EVOL",
+        fecha__date=timezone.localdate(),
+    ).first()
+
+    context = {
+        "historia": historia,
+        "paciente": paciente,
+        "signos_vitales": signos_vitales,
+        "condiciones_activas": condiciones_activas,
+        "condiciones_nombres": [
+            item.condicion.nombre for item in condiciones_activas if item.condicion
+        ],
+        "visitas": visitas,
+        "comentarios_hoy": comentarios_hoy.comentarios if comentarios_hoy else "",
+        "print_logo_path": static_file_url("main/images/logo_omar_prieto.svg"),
+        "print_site_text": "www.cardioprieto.com",
+        "print_header_text": "Consultorio Cardiológico Doctor Omar Prieto",
+        "print_css_path": static_file_url("main/css/print.css"),
+        "print_show_signature": request.GET.get("firma") == "1",
+    }
+
+    html = render_to_string("historial_medico/imprimir_historia.html", context)
+    pdf = HTML(string=html).write_pdf()
+    filename = f"historia_clinica_{historia_id}.pdf"
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f"inline; filename={filename}"
+    return response
 
 
 def h1_html(request):

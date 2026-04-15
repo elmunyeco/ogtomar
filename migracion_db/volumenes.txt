@@ -1,0 +1,17 @@
+label	cnt
+old_pacientes	11564
+new_pacientes	11564
+old_historias	11564
+new_historias	11564
+old_comentarios	79468
+new_comentarios_visitas	8266
+old_indicaciones	17908
+new_indicaciones	17908
+old_signosvitales	11921
+new_signos_vitales	11921
+old_carotidas	3968
+new_carotidas	3968
+old_stress	107
+new_stress	107
+old_ecocardiograma	12592
+new_ecocardiograma	12592

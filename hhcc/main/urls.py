@@ -78,6 +78,11 @@ urlpatterns = [
         login_required(views.detalle_historia_con_historial),
         name="detalle_historia_con_historial",
     ),
+    path(
+        "historial_medico/<int:historia_id>/imprimir/",
+        login_required(views.imprimir_historia_clinica),
+        name="imprimir_historia_clinica",
+    ),
     path("eliminar-comentario/", login_required(views.eliminar_comentario), name="eliminar_comentario"),
     
     

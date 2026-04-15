@@ -1,0 +1,289 @@
+{% extends "print_base.html" %}
+
+{% block title %}Historia Clínica - {{ paciente.nombre }} {{ paciente.apellido }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+    color: #111827;
+  }
+
+  .legacy-title {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 2px 0 4px;
+  }
+
+  .legacy-top {
+    margin-bottom: 8px;
+  }
+
+  .legacy-date {
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  .legacy-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    margin: 6px 0 8px;
+  }
+
+  .legacy-section-title-spaced {
+    margin-top: 16px;
+  }
+
+  .legacy-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px 16px;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
+  .legacy-grid .item {
+    margin: 0;
+    border: 0;
+    padding: 0;
+  }
+
+  .legacy-cols {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 0.9fr;
+    gap: 12px;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
+  .legacy-col {
+    vertical-align: top;
+  }
+
+  .legacy-col-title {
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .legacy-block {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 10px;
+  }
+
+  .legacy-lines p {
+    margin: 0 0 2px;
+  }
+
+  .legacy-muted {
+    color: #374151;
+  }
+
+  .legacy-history-title {
+    margin: 2px 0 4px;
+    font-weight: 700;
+  }
+
+  .legacy-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+  }
+
+  .legacy-table th,
+  .legacy-table td {
+    border: 0;
+    padding: 0 0 2px 0;
+    vertical-align: top;
+  }
+
+  .legacy-table th {
+    font-size: 11px;
+    font-weight: 700;
+    padding-bottom: 4px;
+  }
+
+  .legacy-divider {
+    border: none;
+    border-top: 1px solid #9ca3af;
+    margin: 8px 0 6px;
+  }
+
+  .patient-label {
+    font-weight: 700;
+  }
+
+  .patient-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 14px;
+  }
+
+  .patient-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 2px 14px;
+  }
+</style>
+{% endblock %}
+
+{% block meta %}
+  <div>Nombre y apellido: {{ paciente.nombre }} {{ paciente.apellido }}</div>
+  <div>Documento: {{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}</div>
+  <div>Historia Clínica: {{ historia.id|stringformat:"05d" }}</div>
+{% endblock %}
+
+{% block titles %}
+  <h1 class="legacy-title">Historia Clínica</h1>
+{% endblock %}
+
+{% block content %}
+  <div class="legacy-top">
+    <div class="legacy-date"><span class="patient-label">Fecha:</span> {% now "d/m/Y" %}</div>
+
+    <div class="legacy-section-title">1. Datos Personales:</div>
+    <div class="legacy-grid">
+      <div class="item"><span class="patient-label">N° Historia Clínica:</span> {{ historia.id }}</div>
+      <div class="item"><span class="patient-label">Doc. Identidad:</span> {{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}</div>
+      <div class="item"><span class="patient-label">Nombre:</span> {{ paciente.nombre }}</div>
+      <div class="item"><span class="patient-label">Apellido:</span> {{ paciente.apellido }}</div>
+      <div class="item"><span class="patient-label">Fec. Nac:</span> {{ paciente.fechaNac|date:"d/m/Y" }}</div>
+      <div class="item"><span class="patient-label">Sexo:</span> {{ paciente.get_sexo_display }}</div>
+      <div class="item"><span class="patient-label">Email:</span> {{ paciente.mail|default:"" }}</div>
+      <div class="item"><span class="patient-label">Dirección:</span> {{ paciente.direccion|default:"" }}</div>
+      <div class="item"><span class="patient-label">Localidad:</span> {{ paciente.localidad|default:"" }}</div>
+      <div class="item"><span class="patient-label">Obra Social:</span> {{ paciente.obraSocial|default:"" }}</div>
+      <div class="item"><span class="patient-label">Plan:</span> {{ paciente.plan|default:"" }}</div>
+      <div class="item"><span class="patient-label">Afiliado:</span> {{ paciente.afiliado|default:"" }}</div>
+      <div class="item"><span class="patient-label">Teléfono:</span> {{ paciente.telefono|default:"" }}</div>
+      <div class="item"><span class="patient-label">Celular:</span> {{ paciente.celular|default:"" }}</div>
+      <div class="item"><span class="patient-label">Profesión:</span> {{ paciente.profesion|default:"" }}</div>
+      <div class="item"><span class="patient-label">Médico Referente:</span> {{ paciente.referente|default:"" }}</div>
+    </div>
+
+    <div class="legacy-section-title legacy-section-title-spaced">2. Diagnósticos:</div>
+    {% if condiciones_nombres %}
+      <div class="legacy-lines">
+        {% for condicion in condiciones_nombres %}
+          <p>{{ condicion }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="legacy-section-title legacy-section-title-spaced">3. Historia Clínica:</div>
+
+    {% with resumen_visita=visitas|first %}
+    <div class="legacy-block">
+      <div class="legacy-history-title">
+        {% if resumen_visita and resumen_visita.date %}
+          {{ resumen_visita.date|date:"d/m/Y" }}
+        {% else %}
+          {{ historia.fechaAlta|date:"d/m/Y" }}
+        {% endif %}
+      </div>
+      <hr class="legacy-divider">
+      <table class="legacy-table">
+        <thead>
+          <tr>
+            <th>Comentarios</th>
+            <th>Indicaciones</th>
+            <th>Datos</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              {% if resumen_visita and resumen_visita.comments %}
+                {% for comentario in resumen_visita.comments %}
+                  <div class="legacy-lines">
+                    <p>{{ comentario.fecha|date:"d/m/Y" }}</p>
+                    <p>{{ comentario.text|linebreaksbr }}</p>
+                  </div>
+                {% endfor %}
+              {% elif comentarios_hoy %}
+                <div class="legacy-lines">
+                  <p>{{ historia.fechaAlta|date:"d/m/Y" }}</p>
+                  <p>{{ comentarios_hoy|linebreaksbr }}</p>
+                </div>
+              {% endif %}
+            </td>
+            <td>
+              {% if resumen_visita and resumen_visita.medications %}
+                {% for med in resumen_visita.medications %}
+                  <div class="legacy-lines">
+                    <p>{{ med.name }}</p>
+                    <p>08:00 hs: {{ med.h8|default:"-" }}</p>
+                    <p>12:00 hs: {{ med.h12|default:"-" }}</p>
+                    <p>18:00 hs: {{ med.h18|default:"-" }}</p>
+                    <p>21:00 hs: {{ med.h21|default:"-" }}</p>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            </td>
+            <td>
+              <div class="legacy-lines">
+                <p>Peso: {{ signos_vitales.peso|default:"0" }} kg.</p>
+                <p>Colesterol: {{ signos_vitales.colesterol|default:"0" }} mg/dl</p>
+                <p>Glucemia: {{ signos_vitales.glucemia|default:"0" }} mg/dl</p>
+                <p>Presión Sistólica: {{ signos_vitales.presion_sistolica|default:"0" }} mm Hg</p>
+                <p>Presión Diastólica: {{ signos_vitales.presion_diastolica|default:"0" }} mm Hg</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {% endwith %}
+
+    {% if visitas|length > 1 %}
+      {% for visita in visitas|slice:"1:" %}
+        <div class="legacy-block">
+          <div class="legacy-history-title">{{ visita.date|date:"d/m/Y" }}</div>
+          <hr class="legacy-divider">
+          <div class="legacy-cols">
+            <div class="legacy-col">
+              <div class="legacy-col-title">Comentarios</div>
+              {% if visita.comments %}
+                {% for comentario in visita.comments %}
+                  <div class="legacy-lines">
+                    <p>{{ comentario.fecha|date:"d/m/Y" }}</p>
+                    <p>{{ comentario.text|linebreaksbr }}</p>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            </div>
+            <div class="legacy-col">
+              <div class="legacy-col-title">Indicaciones</div>
+              {% if visita.medications %}
+                {% for med in visita.medications %}
+                  <div class="legacy-lines">
+                    <p>{{ med.name }}</p>
+                    <p>08:00 hs: {{ med.h8|default:"-" }}</p>
+                    <p>12:00 hs: {{ med.h12|default:"-" }}</p>
+                    <p>18:00 hs: {{ med.h18|default:"-" }}</p>
+                    <p>21:00 hs: {{ med.h21|default:"-" }}</p>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            </div>
+            <div class="legacy-col">
+              <div class="legacy-col-title">Datos</div>
+              {% if visita.vitalSigns %}
+                <div class="legacy-lines">
+                  <p>Peso: {{ visita.vitalSigns.weight|default:"0" }} kg.</p>
+                  <p>Colesterol: {{ visita.vitalSigns.cholesterol|default:"0" }} mg/dl</p>
+                  <p>Glucemia: {{ visita.vitalSigns.glucose|default:"0" }} mg/dl</p>
+                  <p>Presión Sistólica: {{ visita.vitalSigns.systolic|default:"0" }} mm Hg</p>
+                  <p>Presión Diastólica: {{ visita.vitalSigns.diastolic|default:"0" }} mm Hg</p>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+{% endblock %}

@@ -140,11 +140,11 @@
                         <i class="fas fa-file-medical text-xl mb-1"></i>
                         <span class="text-xs">Solicitudes</span>
                     </button>
-                    <button onclick="window.print()"
+                    <a href="{% url 'imprimir_historia_clinica' historia.id %}" target="_blank" rel="noopener noreferrer"
                         class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
                         <i class="fas fa-print text-xl mb-1"></i>
                         <span class="text-xs">Imprimir</span>
-                    </button>
+                    </a>
                 </div>
             </div>
 
