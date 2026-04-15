@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>{% load static %}
+    
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Componente de Búsqueda con Fondo Transparente</title>
+  <!-- Incluir Tailwind CSS desde CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Estilos personalizados -->
+  
+
+    <!-- Enlace al CSS centralizado -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}"></head>
+<body>
+  <div class="relative max-w-3xl px-4 mx-auto mt-10 sm:px-6">
+    <form action="/" method="get">
+      <!-- Inputs ocultos si los necesitas -->
+      <div class="relative w-full max-w-xl mx-auto rounded-full h-18 lg:max-w-none">
+        <input
+          type="text"
+          name="query"
+          id="query"
+          placeholder="e.g. Blog"
+          class="rounded-full w-full h-18 bg-transparent py-0 pl-8 pr-32 outline-none border-2 border-gray-100 shadow-md focus:ring-indigo-200 focus:border-indigo-200"
+        >
+        <button
+          type="submit"
+          class="absolute inline-flex items-center h-12 px-4 py-2 text-sm text-white transition duration-300 ease-in-out rounded-full right-3 top-3 bg-[#9a4035] sm:px-6 sm:text-base sm:font-medium hover:bg-[#7a332b] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 button-shadow"
+        >
+          <svg
+            class="w-6 h-6 text-white"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <span class="ml-2">Search</span> <!-- Texto "Search" -->
+        </button>
+      </div>
+    </form>
+  </div>
+</body>
+</html>

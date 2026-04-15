@@ -1,0 +1,29 @@
+services:
+  db:
+    image: nuevo_cardioprieto:latest
+    container_name: nuevo_cardioprieto
+    restart: always
+    environment:
+      - MARIADB_ROOT_PASSWORD=Corbis5
+    ports:
+      - "3307:3306"
+
+  app:
+    image: hhcc_app:latest
+    container_name: hhcc_app
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - .env.docker
+
+  nginx:
+    image: nginx:alpine
+    container_name: hhcc_nginx
+    restart: always
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro

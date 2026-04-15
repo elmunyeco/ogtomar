@@ -1,0 +1,5 @@
+services:
+  db:
+    container_name: nuevo_cardioprieto_cmp
+    ports:
+      - "3308:3306"

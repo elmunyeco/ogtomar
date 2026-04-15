@@ -1,0 +1,139 @@
+{% comment %}
+templates/components/header.html - Componente de encabezado estilizado
+{% endcomment %}
+
+{% load static %}
+
+<!-- ENCABEZADO REUTILIZABLE - COMIENZA -->
+<header class="header-container">
+    <!-- Sección superior del encabezado -->
+    <div class="header-main">
+        <div class="logo-section">
+            <img src="{% static 'main/images/logo.png' %}" alt="Logo Dr. Omar Prieto" class="header-logo">
+            <div class="doctor-title">
+                <span class="doctor-name">Dr. Omar Prieto</span>
+                <span class="doctor-specialty">CARDIOLOGÍA INTEGRAL</span>
+            </div>
+        </div>
+        <div class="user-actions">
+            <div class="user-info">
+                <span>Dr. Omar Prieto</span>
+            </div>
+            <button id="logout-button" class="logout-btn">Cerrar Sesión</button>
+        </div>
+    </div>
+    
+    <!-- Navegación principal con menú estilizado -->
+    <nav class="main-nav">
+        <ul class="main-menu">
+            <li class="menu-item {% if active_section == 'inicio' %}active{% endif %}">
+                <a href="{% url 'index' %}" class="menu-link">Inicio</a>
+            </li>
+            
+            <li class="menu-item {% if active_section == 'pacientes' %}active{% endif %}" data-menu="pacientes">
+                <a href="#" class="menu-link menu-toggle">Pacientes</a>
+                <div class="submenu-container">
+                    <div class="submenu-items">
+                        <a href="{% url 'listar_buscar_pacientes' %}" class="submenu-link">Buscar Pacientes</a>
+                        <a href="{% url 'guardar_paciente' 0 %}" class="submenu-link">Nuevo Paciente</a>
+                    </div>
+                </div>
+            </li>
+            
+            <li class="menu-item {% if active_section == 'historias' %}active{% endif %}" data-menu="historias">
+                <a href="#" class="menu-link menu-toggle">Historias</a>
+                <div class="submenu-container">
+                    <div class="submenu-items">
+                        <a href="{% url 'listar_buscar_historias' %}" class="submenu-link">Buscar Historias</a>
+                    </div>
+                </div>
+            </li>
+            
+            <li class="menu-item {% if active_section == 'ordenes' %}active{% endif %}" data-menu="ordenes">
+                <a href="#" class="menu-link menu-toggle">Órdenes</a>
+                <div class="submenu-container">
+                    <div class="submenu-items">
+                        <a href="{% url 'ordenes_medicas' 0 %}" class="submenu-link">Órdenes Médicas</a>
+                        <a href="{% url 'ordenes_pedicas' 0 %}" class="submenu-link">Solicitudes</a>
+                    </div>
+                </div>
+            </li>
+        </ul>
+        
+        <!-- Breadcrumb integrado a la derecha -->
+        <div class="current-path">
+            {% if breadcrumbs %}
+                {% for crumb in breadcrumbs %}
+                    {% if forloop.counter0 > 0 %}
+                        <span class="breadcrumb-separator">›</span>
+                    {% endif %}
+                    <span class="breadcrumb-item">
+                        {% if not forloop.last and crumb.url %}
+                            <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+                        {% else %}
+                            <span>{{ crumb.label }}</span>
+                        {% endif %}
+                    </span>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </nav>
+</header>
+
+<!-- Script para el menú con vanilla JavaScript -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Referencias a elementos del menú
+        const menuToggles = document.querySelectorAll('.menu-toggle');
+        const menuItems = document.querySelectorAll('.menu-item[data-menu]');
+        const logoutButton = document.getElementById('logout-button');
+        
+        // Función para cerrar todos los menús
+        function closeAllMenus() {
+            menuItems.forEach(item => {
+                item.classList.remove('menu-open');
+            });
+        }
+        
+        // Manejador para clicks en toggles de menú
+        menuToggles.forEach(toggle => {
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                const menuItem = this.closest('.menu-item');
+                
+                if (menuItem.classList.contains('menu-open')) {
+                    // Si ya está abierto, ciérralo
+                    menuItem.classList.remove('menu-open');
+                } else {
+                    // Cierra todos los menús y abre el seleccionado
+                    closeAllMenus();
+                    menuItem.classList.add('menu-open');
+                }
+            });
+        });
+        
+        // Cerrar menús al hacer clic fuera
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.menu-item')) {
+                closeAllMenus();
+            }
+        });
+        
+        // Permitir clics dentro del submenú sin cerrarlo
+        const submenus = document.querySelectorAll('.submenu-items');
+        submenus.forEach(submenu => {
+            submenu.addEventListener('click', function(e) {
+                e.stopPropagation(); // Evita que el clic se propague
+            });
+        });
+        
+        // Manejador para el botón de cerrar sesión
+        if (logoutButton) {
+            logoutButton.addEventListener('click', function() {
+                // En producción, redireccionar a la URL de logout
+                window.location.href = '/logout/';
+            });
+        }
+    });
+</script>
+<!-- ENCABEZADO REUTILIZABLE - TERMINA -->

@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Doppler color arterial de miembros inferiores{% endblock %}
+
+{% block content %}
+<div
+  x-data="mmiiForm({
+    hasEstudio: {{ estudio|yesno:"true,false" }},
+    artFemComunDerecha: '{{ form.art_fem_comun_derecha.value|default_if_none:""|escapejs }}',
+    artFemSuperficialDerecha: '{{ form.art_fem_superficial_derecha.value|default_if_none:""|escapejs }}',
+    artFemProfundaDerecha: '{{ form.art_fem_profunda_derecha.value|default_if_none:""|escapejs }}',
+    artPopliteaDerecha: '{{ form.art_poplitea_derecha.value|default_if_none:""|escapejs }}',
+    artInfrapatelaresDerecha: '{{ form.art_infrapatelares_derecha.value|default_if_none:""|escapejs }}',
+    artFemComunIzquierda: '{{ form.art_fem_comun_izquierda.value|default_if_none:""|escapejs }}',
+    artFemSuperficialIzquierda: '{{ form.art_fem_superficial_izquierda.value|default_if_none:""|escapejs }}',
+    artFemProfundaIzquierda: '{{ form.art_fem_profunda_izquierda.value|default_if_none:""|escapejs }}',
+    artPopliteaIzquierda: '{{ form.art_poplitea_izquierda.value|default_if_none:""|escapejs }}',
+    artInfrapatelaresIzquierda: '{{ form.art_infrapatelares_izquierda.value|default_if_none:""|escapejs }}',
+    conclusion: '{{ form.conclusion.value|default_if_none:""|escapejs }}',
+    defaultArteria: '{{ default_arteria|escapejs }}',
+    defaultConclusion: '{{ default_conclusion|escapejs }}'
+  })"
+  x-init="applyDefaults()"
+  class="space-y-6"
+>
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-900">Doppler color arterial de miembros inferiores</h1>
+    </div>
+    <div class="text-right text-sm text-slate-600">
+      <div>Paciente: <span class="font-medium text-slate-900">{{ paciente.apellido }}, {{ paciente.nombre }}</span></div>
+      <div>Historia clínica: <span class="font-medium text-slate-900">{{ historia.id }}</span></div>
+      <div>Fecha de estudio: <span class="font-medium text-slate-900">{% now "d/m/Y" %}</span></div>
+    </div>
+  </div>
+
+  <div id="mmii-success" class="hidden px-4 py-2 text-sm rounded" style="background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;"></div>
+  <div id="mmii-error" class="hidden px-4 py-2 text-sm rounded" style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;"></div>
+  {% if messages %}
+    <div class="space-y-2">
+      {% for message in messages %}
+        <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form id="mmii-form" method="post" class="space-y-6" @submit.prevent="submitForm($event)">
+    {% csrf_token %}
+    {{ form.historia }}
+
+    <section class="rounded-lg border border-slate-200 bg-white p-4">
+      <h2 class="text-lg font-semibold text-slate-900">Sistema arterial derecho</h2>
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="text-sm font-medium text-slate-700">Arteria femoral común</label>
+          <textarea
+            name="art_fem_comun_derecha"
+            x-model="artFemComunDerecha"
+            rows="3"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Arteria femoral superficial</label>
+          <textarea
+            name="art_fem_superficial_derecha"
+            x-model="artFemSuperficialDerecha"
+            rows="3"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Arteria femoral profunda (proximal)</label>
+          <textarea
+            name="art_fem_profunda_derecha"
+            x-model="artFemProfundaDerecha"
+            rows="3"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Arteria poplítea</label>
+          <textarea
+            name="art_poplitea_derecha"
+            x-model="artPopliteaDerecha"
+            rows="3"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Arterias infrapatelares (tibial posterior y anterior)</label>
+          <textarea
+            name="art_infrapatelares_derecha"
+            x-model="artInfrapatelaresDerecha"
+            rows="3"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-slate-200 bg-white p-4">
+      <h2 class="text-lg font-semibold text-slate-900">Sistema arterial izquierdo</h2>
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="text-sm font-medium text-slate-700">Arteria femoral común</label>
+          <textarea
+            name="art_fem_comun_izquierda"
+            x-model="artFemComunIzquierda"
+            rows="3"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Arteria femoral superficial</label>
+          <textarea
+            name="art_fem_superficial_izquierda"
+            x-model="artFemSuperficialIzquierda"
+            rows="3"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Arteria femoral profunda (proximal)</label>
+          <textarea
+            name="art_fem_profunda_izquierda"
+            x-model="artFemProfundaIzquierda"
+            rows="3"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Arteria poplítea</label>
+          <textarea
+            name="art_poplitea_izquierda"
+            x-model="artPopliteaIzquierda"
+            rows="3"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-slate-700">Arterias infrapatelares (tibial posterior y anterior)</label>
+          <textarea
+            name="art_infrapatelares_izquierda"
+            x-model="artInfrapatelaresIzquierda"
+            rows="3"
+            maxlength="512"
+            class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          ></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-slate-200 bg-white p-4">
+      <h2 class="text-lg font-semibold text-slate-900">Conclusiones</h2>
+      <div class="mt-4">
+        <textarea
+          name="conclusion"
+          x-model="conclusion"
+          rows="3"
+          maxlength="8000"
+          class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+        ></textarea>
+      </div>
+    </section>
+
+    <div class="flex flex-wrap items-center justify-center gap-4">
+      <label class="flex items-center gap-2 text-sm text-slate-600">
+        <input type="checkbox" x-model="firmar" class="rounded border-slate-300 text-red-600">
+        Firmar PDF
+      </label>
+      <button
+        type="submit"
+        class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+        :disabled="guardando"
+      >
+        <span x-show="!guardando">Guardar</span>
+        <span x-show="guardando">Guardando...</span>
+      </button>
+      <a href="{% url 'listar_buscar_historias' %}" class="text-sm text-slate-500 hover:text-slate-700">Volver</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('mmiiForm', (defaults) => ({
+      hasEstudio: !!defaults.hasEstudio,
+      guardando: false,
+      firmar: false,
+      artFemComunDerecha: defaults.artFemComunDerecha || '',
+      artFemSuperficialDerecha: defaults.artFemSuperficialDerecha || '',
+      artFemProfundaDerecha: defaults.artFemProfundaDerecha || '',
+      artPopliteaDerecha: defaults.artPopliteaDerecha || '',
+      artInfrapatelaresDerecha: defaults.artInfrapatelaresDerecha || '',
+      artFemComunIzquierda: defaults.artFemComunIzquierda || '',
+      artFemSuperficialIzquierda: defaults.artFemSuperficialIzquierda || '',
+      artFemProfundaIzquierda: defaults.artFemProfundaIzquierda || '',
+      artPopliteaIzquierda: defaults.artPopliteaIzquierda || '',
+      artInfrapatelaresIzquierda: defaults.artInfrapatelaresIzquierda || '',
+      conclusion: defaults.conclusion || '',
+      defaultArteria: defaults.defaultArteria || '',
+      defaultConclusion: defaults.defaultConclusion || '',
+      applyDefaults() {
+        if (this.hasEstudio) return;
+        if (!this.artFemComunDerecha && this.defaultArteria) this.artFemComunDerecha = this.defaultArteria;
+        if (!this.artFemSuperficialDerecha && this.defaultArteria) this.artFemSuperficialDerecha = this.defaultArteria;
+        if (!this.artFemProfundaDerecha && this.defaultArteria) this.artFemProfundaDerecha = this.defaultArteria;
+        if (!this.artPopliteaDerecha && this.defaultArteria) this.artPopliteaDerecha = this.defaultArteria;
+        if (!this.artInfrapatelaresDerecha && this.defaultArteria) this.artInfrapatelaresDerecha = this.defaultArteria;
+        if (!this.artFemComunIzquierda && this.defaultArteria) this.artFemComunIzquierda = this.defaultArteria;
+        if (!this.artFemSuperficialIzquierda && this.defaultArteria) this.artFemSuperficialIzquierda = this.defaultArteria;
+        if (!this.artFemProfundaIzquierda && this.defaultArteria) this.artFemProfundaIzquierda = this.defaultArteria;
+        if (!this.artPopliteaIzquierda && this.defaultArteria) this.artPopliteaIzquierda = this.defaultArteria;
+        if (!this.artInfrapatelaresIzquierda && this.defaultArteria) this.artInfrapatelaresIzquierda = this.defaultArteria;
+        if (!this.conclusion && this.defaultConclusion) this.conclusion = this.defaultConclusion;
+      },
+      async submitForm(event) {
+        event.preventDefault();
+        if (this.guardando) return;
+        this.guardando = true;
+        const popup = window.open('', '_blank');
+        const form = event.target;
+        const formData = new FormData(form);
+        try {
+          const response = await fetch(form.action || window.location.href, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+          });
+          const data = await response.json();
+          if (response.ok && data.success) {
+            const msg = document.getElementById('mmii-success');
+            const err = document.getElementById('mmii-error');
+            if (msg) {
+              msg.textContent = 'Estudio de MMII guardado';
+              msg.classList.remove('hidden');
+            }
+            if (err) {
+              err.classList.add('hidden');
+            }
+            let url = `{% url 'mmii:mmii_imprimir' 0 0 %}`
+              .replace('/0/0/', `/${data.estudio_id}/${data.historia_id}/`);
+            if (this.firmar) {
+              url += '?firma=1';
+            }
+            if (popup) {
+              popup.location = url;
+            } else {
+              window.open(url, '_blank');
+            }
+          } else {
+            const err = document.getElementById('mmii-error');
+            if (err) {
+              err.textContent = 'Estudio de MMII no se pudo guardar por error';
+              err.classList.remove('hidden');
+              setTimeout(() => err.classList.add('hidden'), 15000);
+            }
+          }
+        } catch (e) {
+          const err = document.getElementById('mmii-error');
+          if (err) {
+            err.textContent = 'Estudio de MMII no se pudo guardar por error';
+            err.classList.remove('hidden');
+            setTimeout(() => err.classList.add('hidden'), 15000);
+          }
+        } finally {
+          this.guardando = false;
+        }
+      }
+    }))
+  });
+</script>
+<script src="{% static 'main/js/char_counter.js' %}"></script>
+{% endblock %}

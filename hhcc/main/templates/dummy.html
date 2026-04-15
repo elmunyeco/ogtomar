@@ -7,25 +7,7 @@
 <div class="container">
     <h1>Bienvenido a la página de hacer nada</h1>  
     <p>Esta es una página de ejemplo para mostrar cómo se vería el contenido.</p>
+</div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Configurar breadcrumbs para Alpine
-        const breadcrumbs = [
-            { label: 'Inicio', url: '/' }
-        ];
-        
-        // Si estamos en Alpine, configurar el componente
-        if (window.Alpine) {
-            // Acceder al componente del header para actualizar sus breadcrumbs
-            const header = document.querySelector('[x-data="headerComponent"]');
-            if (header && header.__x) {
-                header.__x.$data.activeSection = 'inicio';
-                header.__x.$data.breadcrumbs = breadcrumbs;
-            }
-        }
-    });
-</script>
-{% endblock %}
+{% block extra_js %}{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "print_base.html" %}
+
+{% block title %}Ecostrés cardíaco{% endblock %}
+
+{% block meta %}
+  <div>Nombre y apellido: {{ paciente.nombre }} {{ paciente.apellido }}</div>
+  <div>Fecha del estudio: {{ fecha_estudio|date:"j \d\e F \d\e Y" }}</div>
+  <div>Historia Clínica: {{ historia.id|stringformat:"05d" }}</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  @media print {
+    .print-section {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block titles %}
+  <h1>Ecostrés cardíaco</h1>
+{% endblock %}
+
+{% block content %}
+  {% if datos_estudio %}
+  <div class="section print-section">
+    <h3>Datos del estudio</h3>
+    {% for label, value in datos_estudio %}
+      <div class="item"><span>{{ label }}</span> {{ value }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if prueba_items %}
+  <div class="section print-section">
+    <h3>Prueba ergometrica</h3>
+    {% for label, value in prueba_items %}
+      <div class="item"><span>{{ label }}</span> {{ value }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if texto_items %}
+  <div class="section print-section">
+    <h3>Informe clinico</h3>
+    {% for label, value in texto_items %}
+      <div class="item"><span>{{ label }}:</span> {{ value|linebreaksbr }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endblock %}

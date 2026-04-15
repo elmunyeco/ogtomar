@@ -195,41 +195,89 @@
             transition: all 0.2s;
         }
         
-        .submenu-link:hover {
-            background-color: #f8f9fa;
-            color: #b25a55;
-        }
-        
-        .current-path {
-            display: flex;
-            align-items: center;
-            margin-left: auto;
-            font-size: 0.85rem;
-            color: #6c757d;
-        }
-        
-        .breadcrumb-item {
-            color: #6c757d;
-        }
-        
-        .breadcrumb-item a {
-            color: #b25a55;
-            text-decoration: none;
-        }
-        
-        .breadcrumb-item a:hover {
-            text-decoration: underline;
-        }
-        
-        .breadcrumb-separator {
-            color: #ced4da;
-            margin: 0 5px;
-        }
-        
-        .breadcrumb-item:last-child {
-            color: #495057;
-            font-weight: 500;
-        }
+.submenu-link:hover {
+    background-color: #f8f9fa;
+    color: #b25a55;
+}
+
+h1,
+h2,
+h3 {
+    text-align: center;
+    text-decoration: none;
+}
+
+.current-path {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.breadcrumb-item {
+    color: #6c757d;
+}
+
+.breadcrumb-item a {
+    color: #b25a55;
+    text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-separator {
+    color: #ced4da;
+    margin: 0 5px;
+}
+
+.breadcrumb-item:last-child {
+    color: #495057;
+    font-weight: 500;
+}
+
+/* ===== Paginacion (estilo limpio) ===== */
+.pagination {
+    display: flex;
+    gap: 0.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.pagination .page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 0.6rem;
+    border-radius: 9999px;
+    background-color: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.pagination .page-link:hover {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.pagination .page-link.active {
+    background-color: #9a4035;
+    color: #ffffff;
+    border-color: #9a4035;
+}
+
+.pagination .page-link.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
         
         /* Estilos adicionales para el contenido principal */
         body {
@@ -956,4 +1004,3 @@
             background-color: rgb(249, 250, 251);
             border-radius: 0.25rem;
         }
-

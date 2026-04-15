@@ -1,0 +1,128 @@
+{# Archivo: ecocardiograma/templates/ecocardiograma/partials/valor_con_unidad.html #}
+<div class="flex items-center">
+    <input type="number" step="0.1" 
+           value="{{ valor|default:'' }}" 
+           class="form-input w-24" 
+           placeholder="{{ placeholder }}">
+    <span class="lblUnidad">{{ unidad }}</span>
+</div>
+
+{# Archivo: ecocardiograma/templates/ecocardiograma/partials/campo_calculado.html #}
+<div class="flex items-center">
+    <span class="p-2 bg-gray-50 rounded border w-24">{{ valor|default:'-' }}</span>
+    <span class="lblUnidad">{{ unidad }}</span>
+</div>
+
+{# Archivo: ecocardiograma/templates/ecocardiograma/partials/fila_tabla_bidimensional.html #}
+<tr class="hover:bg-gray-50">
+    <td class="border border-gray-300 px-4 py-2">{{ numero }}</td>
+    <td class="border border-gray-300 px-4 py-2">{{ campo }}</td>
+    <td class="border border-gray-300 px-4 py-2">
+        {% if es_calculado %}
+            {% include 'ecocardiograma/partials/campo_calculado.html' with valor=valor unidad=unidad %}
+        {% else %}
+            {% include 'ecocardiograma/partials/valor_con_unidad.html' with valor=valor unidad=unidad placeholder=placeholder %}
+        {% endif %}
+    </td>
+</tr>
+
+{# Archivo: ecocardiograma/templates/ecocardiograma/partials/fila_tabla_doppler.html #}
+<tr class="hover:bg-gray-50">
+    <td class="border border-gray-300 px-4 py-2">{{ numero }}</td>
+    <td class="border border-gray-300 px-4 py-2">{{ campo }}</td>
+    <td class="border border-gray-300 px-4 py-2">
+        {% if tiene_ondas %}
+            <div class="space-y-2">
+                <div class="flex items-center">
+                    <label class="w-16 text-sm">Onda E:</label>
+                    <input type="number" step="0.1" 
+                           value="{{ valor_e|default:'' }}" 
+                           class="form-input w-20" 
+                           placeholder="0.0">
+                    <span class="lblUnidad">m/seg</span>
+                </div>
+                <div class="flex items-center">
+                    <label class="w-16 text-sm">Onda A:</label>
+                    <input type="number" step="0.1" 
+                           value="{{ valor_a|default:'' }}" 
+                           class="form-input w-20" 
+                           placeholder="0.0">
+                    <span class="lblUnidad">m/seg</span>
+                </div>
+            </div>
+        {% else %}
+            {% include 'ecocardiograma/partials/valor_con_unidad.html' with valor=valor unidad="m/seg" %}
+        {% endif %}
+    </td>
+    <td class="border border-gray-300 px-4 py-2">
+        <span>{{ gradiente|default:'-' }}</span>
+    </td>
+</tr>
+
+{# Archivo: ecocardiograma/templates/ecocardiograma/partials/select_conclusion.html #}
+<div class="divConclusiones">
+    <label class="block font-medium text-gray-700 mb-2">{{ label }}:</label>
+    <div class="space-y-2">
+        <select class="form-select max-w-md" name="{{ name }}">
+            <option value="">:: Seleccionar ::</option>
+            {% for valor, texto in opciones %}
+                <option value="{{ valor }}" {% if valor_actual == valor %}selected{% endif %}>{{ texto }}</option>
+            {% endfor %}
+        </select>
+        {% if mostrar_comentario and valor_actual and valor_actual != "1" %}
+            <div class="mt-2">
+                <textarea class="form-textarea w-full max-w-md" 
+                          rows="3" 
+                          name="{{ name_comentario }}" 
+                          placeholder="{{ placeholder_comentario }}">{{ comentario_actual|default:'' }}</textarea>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{# Archivo: ecocardiograma/templates/ecocardiograma/partials/checkbox_multiple.html #}
+<div class="divConclusiones">
+    <label class="block font-medium text-gray-700 mb-2">{{ label }}:</label>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for opcion in opciones %}
+            <label class="flex items-center">
+                <input type="checkbox" 
+                       value="{{ opcion.valor }}"
+                       {% if opcion.valor in valores_seleccionados %}checked{% endif %}
+                       class="form-checkbox h-4 w-4 text-blue-600">
+                <span class="ml-2 text-sm">{{ opcion.texto }}</span>
+            </label>
+        {% endfor %}
+    </div>
+</div>
+
+{# Archivo: ecocardiograma/templates/ecocardiograma/partials/mensaje_estado.html #}
+<div class="mt-4 p-3 rounded {{ clase_css }}" style="display: {{ mostrar|yesno:'block,none' }};">
+    {{ texto }}
+</div>
+
+{# Archivo: ecocardiograma/templates/ecocardiograma/partials/loading_spinner.html #}
+<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+</svg>
+
+{# Archivo: ecocardiograma/templates/ecocardiograma/partials/boton_tab.html #}
+<button @click="activeTab = '{{ tab_id }}'" 
+        :class="activeTab === '{{ tab_id }}' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+        class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
+    <span>{{ tab_label }}</span>
+    {% if tiene_errores %}
+        <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            !
+        </span>
+    {% endif %}
+</button>
+
+{# Archivo: ecocardiograma/templates/ecocardiograma/partials/area_segmento.html #}
+<div class="segment-area" 
+     @click="abrirModalSegmento({{ numero }})" 
+     style="left: {{ left }}%; top: {{ top }}%; width: {{ width }}%; height: {{ height }}%;" 
+     title="Segmento {{ numero }} - {{ descripcion }}"
+     :class="{'border-blue-500': segmentos[{{ numero }}] && segmentos[{{ numero }}] !== '0'}">
+</div>

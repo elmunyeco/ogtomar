@@ -22,7 +22,9 @@
 </head>
 
 <body class="min-h-screen flex flex-col">
-    {% include 'components/header.html' %}
+    {% if user.is_authenticated %}
+        {% include 'components/header.html' %}
+    {% endif %}
 
    <main class="flex-grow page-content">
         <div class="container-content">

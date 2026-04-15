@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Órdenes Médicas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .lab-grid {
+            display: grid;
+            grid-template-rows: repeat(25, min-content);
+            grid-auto-flow: column;
+            grid-auto-columns: 1fr;
+            gap: 0.25rem 2rem;
+        }
+
+        .lab-item {
+            display: flex;
+            align-items: center;
+            padding: 0.15rem 0.25rem;
+        }
+
+        .lab-item input[type="checkbox"] {
+            width: 0.75rem;
+            height: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .lab-item:hover {
+            background-color: rgb(249, 250, 251);
+            border-radius: 0.25rem;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div x-data="{
+       pacienteId: {{ paciente.id }},
+       showError: false,
+       diagnostico: '',
+       otrosEstudios: '',
+       seleccionados: {},
+       haySeleccionados() {
+           return Object.values(this.seleccionados).some(val => val) || this.otrosEstudios.trim() !== '';
+       },
+       imprimirOrdenes() {
+           if (!this.haySeleccionados()) {
+               this.showError = true;
+               return;
+           }
+
+           let grupos = {
+               lab: [],
+               cardio: [],
+               clinicos: []
+           };
+           for (let i = 1; i <= 87; i++) {
+                let id = 's' + i.toString().padStart(3, '0');
+                if (this.seleccionados[id]) {
+                    grupos.lab.push(id);
+                }
+            }
+            for (let i = 101; i <= 124; i++) {
+                let id = 's' + i;
+                if (this.seleccionados[id]) {
+                    grupos.cardio.push(id);
+                }
+            }
+            for (let i = 201; i <= 229; i++) {
+                let id = 's' + i;
+                if (this.seleccionados[id]) {
+                    grupos.clinicos.push(id);
+                }
+            }
+
+            let diagnosticoParam = this.diagnostico.trim() || '-';
+            diagnosticoParam = encodeURIComponent(diagnosticoParam);
+            
+            for (let grupo in grupos) {
+                if (grupos[grupo].length > 0) {
+                    let url = `/generar_pdf_orden/${this.pacienteId}/${diagnosticoParam}/${grupos[grupo].join('|')}/${grupo}/`;
+                    let windowName = `pdf_${grupo}_${Date.now()}`;  // Nombre único para cada ventana
+                    window.open(url, windowName, 'height=800,width=600');
+                }
+            }
+            
+            if (this.otrosEstudios.trim()) {
+                let otrosEstudiosFormatted = this.otrosEstudios.split('\n')
+                    .map(estudio => estudio.trim())
+                    .filter(estudio => estudio)
+                    .map(estudio => encodeURIComponent(estudio));
+                
+                otrosEstudiosFormatted.forEach(estudio => {
+                    let url = `/generar_pdf_orden/${this.pacienteId}/${diagnosticoParam}/${estudio}/otros/`;
+                    let windowName = `pdf_otros_${Date.now()}`;
+                    window.open(url, windowName, 'height=800,width=600');
+                });
+            }
+            this.showError = false;
+       }
+    }" class="container mx-auto p-6 max-w-6xl">
+
+        <!-- Mensaje de error -->
+        <div x-show="showError" x-transition
+            class="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg"
+            style="display: none;">
+            <span class="block sm:inline">Seleccionar al menos un estudio.</span>
+            <button @click="showError = false" class="ml-4 text-red-700 hover:text-red-900">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Encabezado -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center space-x-4">
+                    <span class="text-xl font-medium text-gray-900">{{ paciente.nombre }} {{ paciente.apellido }}</span>
+                    <span class="text-gray-500">{{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}</span>
+                </div>
+                <span class="text-gray-500">Fecha: {% now "d/m/Y" %}</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 text-sm">
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Obra Social</span>
+                    <span>{{ paciente.obraSocial }}</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-gray-500">Número de Afiliado</span>
+                    <span>{{ paciente.afiliado }}</span>
+                </div>
+            </div>
+            <div class="mt-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Diagnóstico</label>
+                <textarea x-model="diagnostico"
+                    class="w-full p-3 border rounded-lg resize-none focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
+                    rows="2" placeholder="Ingrese el diagnóstico del paciente..."></textarea>
+            </div>
+        </div>
+
+        <!-- Estudios de Laboratorio -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex items-center space-x-2 mb-4">
+                <i class="fas fa-flask text-[#9a4035]"></i>
+                <h2 class="text-lg font-medium">Estudios de Laboratorio</h2>
+            </div>
+            <div class="grid grid-cols-3 gap-x-6">
+                <!-- Primera columna -->
+                <div class="space-y-1">
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s001">
+                        <span class="text-sm text-gray-700">Hemograma</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s002">
+                        <span class="text-sm text-gray-700">Coagulograma</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s003">
+                        <span class="text-sm text-gray-700">KPTT</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s004">
+                        <span class="text-sm text-gray-700">Quick</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s005">
+                        <span class="text-sm text-gray-700">Recuento de Plaquetas</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s006">
+                        <span class="text-sm text-gray-700">Grupo y Factor</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s007">
+                        <span class="text-sm text-gray-700">Urea</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s008">
+                        <span class="text-sm text-gray-700">Creatinina</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s009">
+                        <span class="text-sm text-gray-700">Ácido Úrico</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s010">
+                        <span class="text-sm text-gray-700">Ionograma</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s011">
+                        <span class="text-sm text-gray-700">Magnesemia</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s012">
+                        <span class="text-sm text-gray-700">Calcemia</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s013">
+                        <span class="text-sm text-gray-700">Glucemia</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s014">
+                        <span class="text-sm text-gray-700">Insulinemia</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s015">
+                        <span class="text-sm text-gray-700">Homa</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s016">
+                        <span class="text-sm text-gray-700">Hemoglobina Glicosilada</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s017">
+                        <span class="text-sm text-gray-700">Fructosamina</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s018">
+                        <span class="text-sm text-gray-700">CTOG</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s019">
+                        <span class="text-sm text-gray-700">Hepatograma</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s020">
+                        <span class="text-sm text-gray-700">HDL, LDL, TG</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s021">
+                        <span class="text-sm text-gray-700">Lipidograma</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s022">
+                        <span class="text-sm text-gray-700">LPA</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s023">
+                        <span class="text-sm text-gray-700">APO A</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s024">
+                        <span class="text-sm text-gray-700">APO B</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s025">
+                        <span class="text-sm text-gray-700">Vitamina D</span>
+                    </label>
+                </div>
+
+                <!-- Segunda columna -->
+                <div class="space-y-1">
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s026">
+                        <span class="text-sm text-gray-700">Serologia Chagas</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s027">
+                        <span class="text-sm text-gray-700">VIH Elisa</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s028">
+                        <span class="text-sm text-gray-700">CPK</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s029">
+                        <span class="text-sm text-gray-700">CPK MB</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s030">
+                        <span class="text-sm text-gray-700">LDH</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s031">
+                        <span class="text-sm text-gray-700">Troponina</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s032">
+                        <span class="text-sm text-gray-700">Mioglobina</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s033">
+                        <span class="text-sm text-gray-700">BNP</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s034">
+                        <span class="text-sm text-gray-700">Pro BNP</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s035">
+                        <span class="text-sm text-gray-700">Dimero D</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s036">
+                        <span class="text-sm text-gray-700">PCR US</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s037">
+                        <span class="text-sm text-gray-700">Homocisteina</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s038">
+                        <span class="text-sm text-gray-700">Latex AR</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s039">
+                        <span class="text-sm text-gray-700">AC Anti Jo</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s040">
+                        <span class="text-sm text-gray-700">AC Anti Ro</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s041">
+                        <span class="text-sm text-gray-700">FAN</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s042">
+                        <span class="text-sm text-gray-700">ASTO</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s043">
+                        <span class="text-sm text-gray-700">TSH, T3, T4, T4L</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s044">
+                        <span class="text-sm text-gray-700">ATPO</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s045">
+                        <span class="text-sm text-gray-700">AC ATG</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s046">
+                        <span class="text-sm text-gray-700">AC AFM</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s047">
+                        <span class="text-sm text-gray-700">TRAB</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s048">
+                        <span class="text-sm text-gray-700">Proteinograma Electroforetico</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s049">
+                        <span class="text-sm text-gray-700">Proteinograma por Inmunofijacion</span>
+                    </label>
+                </div>
+
+                <!-- Tercera columna -->
+                <div class="space-y-1">
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s050">
+                        <span class="text-sm text-gray-700">Catecolaminas en plasma</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s051">
+                        <span class="text-sm text-gray-700">Aldosterona</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s052">
+                        <span class="text-sm text-gray-700">Renina plasmática</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s053">
+                        <span class="text-sm text-gray-700">Cortisol en Ayunas</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s054">
+                        <span class="text-sm text-gray-700">ACTH</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s055">
+                        <span class="text-sm text-gray-700">PRL</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s056">
+                        <span class="text-sm text-gray-700">PTH</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s057">
+                        <span class="text-sm text-gray-700">Ac. Folico</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s058">
+                        <span class="text-sm text-gray-700">Eritropoyetina plasmática</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s059">
+                        <span class="text-sm text-gray-700">PSA total y libre</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s060">
+                        <span class="text-sm text-gray-700">Testosterona en plasma</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s061">
+                        <span class="text-sm text-gray-700">LH-FSH</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s062">
+                        <span class="text-sm text-gray-700">AAG</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s063">
+                        <span class="text-sm text-gray-700">AAE</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s064">
+                        <span class="text-sm text-gray-700">IG A</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s065">
+                        <span class="text-sm text-gray-700">IG E</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s066">
+                        <span class="text-sm text-gray-700">Factor Lupico</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s067">
+                        <span class="text-sm text-gray-700">Microalbuminuria de 24 hs</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s068">
+                        <span class="text-sm text-gray-700">Clearance de Creatinina</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s069">
+                        <span class="text-sm text-gray-700">Orina completa</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s070">
+                        <span class="text-sm text-gray-700">Urocultivo</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s071">
+                        <span class="text-sm text-gray-700">Antibiograma</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s072">
+                        <span class="text-sm text-gray-700">Recuento de Colonias</span>
+                    </label>
+                    <label class="lab-item">
+                        <input type="checkbox" class="form-checkbox text-[#9a4035]" x-model="seleccionados.s073">
+                        <span class="text-sm text-gray-700">Tipificacion de gérmenes</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estudios Cardiovasculares -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex items-center space-x-2 mb-4">
+                <i class="fas fa-heartbeat text-[#9a4035]"></i>
+                <h2 class="text-lg font-medium">Estudios Cardiovasculares</h2>
+            </div>
+            <div class="grid grid-cols-1 gap-y-1">
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s101" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Estudio de perfusión miocárdica en reposo y ejercicio gatillado
+                        (Gated Spect)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s102" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Estudio de perfusión miocárdica en reposo y ejercicio
+                        (Spect)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s103" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Estudio de perfusión miocárdica con dipiridamol (Spect)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s104" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Holter de 48 hs 3 Canales</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s105" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Monitoreo Ambulatorio de la presión arterial</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s106" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Cinecoronariografia y eventual angioplastia</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s107" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Angiotomografia de alta resolución de arterias coronarias con
+                        contraste
+                        (Score de Calcio)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s108" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Resonancia magnética cardiaca con evaluación de realce tardío
+                        (con
+                        cte)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s109" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Angioresonancia de vasos del cuello y Cerebro (con
+                        contraste)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s110" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Angiotomografia de Vasos del cuello y cerebro con reconstrucción
+                        3d
+                        (con
+                        contraste)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s111" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Tomografia computada de abdomen de alta resolución evaluación de
+                        glandula suprarrenal</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s112" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Doppler color de ambas arterias renales</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s113" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Ecostress con ejercicio físico con treadmill</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s114" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Ecocardiograma doppler color con evaluación de Strain</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s115" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Doppler color de vasos del cuello con evaluación de QIMT</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s116" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Doppler color arterial de miembros inferiores</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s117" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Doppler color venoso de miembros inferiores</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s118" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Doppler color de aorta torácica y abdominal</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s119" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Evaluacion por servicio de electrofisiología</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Estudios Clínicos -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex items-center space-x-2 mb-4">
+                <i class="fas fa-stethoscope text-[#9a4035]"></i>
+                <h2 class="text-lg font-medium">Estudios Clínicos</h2>
+            </div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s201" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Espirometría</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s202" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Polisomnografia</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s203" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Electroencefalograma</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s204" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Mapeo Cerebral</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s205" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Videoendoscopia digestiva alta con sedación</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s206" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Videoendoscopia digestiva baja con sedación</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s207" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Tomografia computada de cerebro sin contraste</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s208" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Tomografia computada de cerebro con contraste</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s209" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Resonancia magnética de cerebro con difusión (con
+                        contraste)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s210" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Tomografia computada de Torax (sin contraste)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s211" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Tomografia computada de Torax (con contraste)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s212" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Tomografia computada de Abdomen (sin contraste)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s213" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Tomografia computada de Abdomen (con contraste)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s214" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Rx. Torax (frente)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s220" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Rx. Columna Cervical (F,P,O)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s221" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Espinograma (F,P)</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s222" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Densitometria Osea corporal total</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s223" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">PET TC Corporal total</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s224" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Volumenes Pulmonares y DLCO</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s225" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Test de marcha de 6 minutos</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s226" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Ecografia y doppler color tiroideo</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s227" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Centellograma tiroideo</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s228" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Ecografia Abdominal</span>
+                </label>
+                <label class="lab-item">
+                    <input type="checkbox" x-model="seleccionados.s229" class="form-checkbox text-[#9a4035]">
+                    <span class="text-sm text-gray-700">Ecografia Vesico prostatica</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Otros Estudios -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-20">
+            <div class="flex items-center space-x-2 mb-4">
+                <i class="fas fa-plus-circle text-[#9a4035]"></i>
+                <h2 class="text-lg font-medium">Otros Estudios</h2>
+            </div>
+            <textarea x-model="otrosEstudios"
+                class="w-full p-3 border rounded-lg resize-none focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
+                rows="3" placeholder="Ingrese otros estudios adicionales..."></textarea>
+        </div>
+        <!-- Barra de acciones -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
+            <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
+                <button
+                    class="px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors"
+                    onclick="window.history.back()">
+                    Cancelar
+                </button>
+                <button @click="imprimirOrdenes()"
+                    class="px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-colors">
+                    Imprimir Órdenes
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
+```

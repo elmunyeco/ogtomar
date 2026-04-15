@@ -59,7 +59,7 @@
             </div>
             
             <div class="flex justify-center space-x-4">
-                <a href="{% url 'detalle_paciente' paciente.id %}" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                <a href="{% url 'listar_buscar_pacientes' %}" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                     Cancelar
                 </a>
                 
@@ -81,29 +81,4 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    // Este script se ejecuta después de que la página carga
-    document.addEventListener('DOMContentLoaded', function() {
-        // Configurar breadcrumbs para Alpine
-        const breadcrumbs = [
-            { label: 'Inicio', url: '/' },
-            { label: 'Pacientes', url: '/pacientes/' },
-            { label: '{{ paciente.nombre }} {{ paciente.apellido }}', url: '{% url "detalle_paciente" paciente.id %}' },
-            { label: 'Eliminar', url: '#' }
-        ];
-        
-        // Si estamos en Alpine, configurar el componente
-        if (window.Alpine) {
-            Alpine.store('breadcrumbs', breadcrumbs);
-            
-            // Acceder al componente del header para actualizar sus breadcrumbs
-            const header = document.querySelector('[x-data="headerComponent"]');
-            if (header && header.__x) {
-                header.__x.$data.activeSection = 'pacientes';
-                header.__x.$data.breadcrumbs = breadcrumbs;
-            }
-        }
-    });
-</script>
-{% endblock %}
+{% block extra_js %}{% endblock %}

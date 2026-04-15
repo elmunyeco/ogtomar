@@ -1,0 +1,35 @@
+{% extends "print_base.html" %}
+
+{% block title %}Estudio de Carótidas{% endblock %}
+
+{% block meta %}
+  <div>Nombre y apellido: {{ paciente.nombre }} {{ paciente.apellido }}</div>
+  <div>Fecha del estudio: {{ fecha_estudio|date:"j \d\e F \d\e Y" }}</div>
+  <div>Historia Clínica: {{ historia.id|stringformat:"05d" }}</div>
+{% endblock %}
+
+{% block titles %}
+  <h1>Doppler Color de Vasos del Cuello</h1>
+  <h3>Análisis de Espesor Íntima Media (QIMT)</h3>
+  <h3>Quality Intima Media Thickness Analysis</h3>
+{% endblock %}
+
+{% block content %}
+  {% if informe_items %}
+  <div class="section">
+    <h3>Informe</h3>
+    {% for label, value in informe_items %}
+      <div class="item"><span>{{ label }}</span> {{ value }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if espesor_items %}
+  <div class="section">
+    <h3>Espesor Íntima Media</h3>
+    {% for label, value in espesor_items %}
+      <div class="item"><span>{{ label }}</span> {{ value }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endblock %}

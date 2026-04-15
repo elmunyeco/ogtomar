@@ -20,4 +20,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('main.urls')),
     path('ecocardiograma/', include('ecocardiograma.urls')),
+    path('carotidas/', include('carotidas.urls')),
+    path('ecostress/', include('ecostress.urls')),
+    path('mmii/', include('mmii.urls')),
 ]

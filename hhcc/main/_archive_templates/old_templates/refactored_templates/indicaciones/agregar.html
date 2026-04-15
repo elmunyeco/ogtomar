@@ -1,0 +1,97 @@
+{# templates/indicaciones/agregar.html #}
+{% extends "indicaciones/base.html" %}
+{% block content %}
+<main class="container mx-auto p-6 max-w-6xl" x-data="{
+    indicacion: {
+        medicamento: '',
+        ochoHoras: '',
+        doceHoras: '',
+        dieciochoHoras: '',
+        veintiunaHoras: '',
+        fecha: new Date().toISOString().split('T')[0]
+    },
+    errorMessage: '',
+    
+    async guardarIndicacion() {
+        try {
+            const response = await fetch('{% url 'indicacion_agregar' historia_id=historia.id %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(this.indicacion)
+            })
+
+            const data = await response.json();
+            if (response.ok) {
+                window.location.href = '{% url 'indicaciones' historia_id=historia.id %}';
+            } else {
+                this.errorMessage = data.message || 'Error al guardar';
+            }
+        } catch (error) {
+            this.errorMessage = 'Error de conexión';
+        }
+    }
+}">
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <div x-show="errorMessage" class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            <span x-text="errorMessage"></span>
+        </div>
+
+        <div class="mb-6">
+            <h2 class="text-lg font-medium text-gray-900">Nueva Indicación</h2>
+            <p class="text-sm text-gray-600">Complete los datos de la indicación</p>
+        </div>
+
+        <form @submit.prevent="guardarIndicacion" class="space-y-6">
+            <!-- Campos del formulario -->
+            <div class="grid grid-cols-1 gap-6">
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Medicamento
+                    </label>
+                    <input type="text" x-model="indicacion.medicamento"
+                        class="w-full p-2 border rounded focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
+                        required>
+                </div>
+
+                <template x-for="(label, field) in {
+                    ochoHoras: '08:00 hs',
+                    doceHoras: '12:00 hs',
+                    dieciochoHoras: '18:00 hs',
+                    veintiunaHoras: '21:00 hs'
+                }">
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-2" x-text="label"></label>
+                        <input type="text" :placeholder="`Dosis ${label}`" x-model="indicacion[field]"
+                            class="w-full p-2 border rounded focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]">
+                    </div>
+                </template>
+
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray
+                    <div class=" form-group">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Fecha
+                        </label>
+                        <input type="date" x-model="indicacion.fecha"
+                            class="w-full p-2 border rounded focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
+                            required>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-4">
+                <a href="{% url 'indicaciones' historia_id=historia.id %}"
+                    class="btn-hover-effect px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white">
+                    Cancelar
+                </a>
+                <button type="submit"
+                    class="btn-hover-effect px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b]">
+                    Guardar Indicación
+                </button>
+            </div>
+        </form>
+    </div>
+</main>
+{% endblock %}

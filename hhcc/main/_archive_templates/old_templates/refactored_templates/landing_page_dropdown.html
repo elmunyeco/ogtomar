@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iframe con Marca de Agua</title>
+    
+
+
+
+    <script defer src="https://unpkg.com/@alpinejs/ui@3.10.5-beta.7/dist/cdn.min.js"></script>
+    <script defer src="https://unpkg.com/@alpinejs/focus@3.10.5/dist/cdn.min.js"></script>
+    <script defer src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.10.5/dist/cdn.min.js"></script>
+</head>
+
+<body data-controller="lazy-loader">
+    <main data-controller="class-toggler"
+        data-class-toggler-active-toggler-classes-value='["bg-white", "border-gray-200", "shadow-sm"]'
+        data-class-toggler-inactive-toggler-classes-value='["border-transparent", "hover:text-gray-700"]'
+        data-class-toggler-active-toggleable-classes-value='["max-w-screen-3xl"]'>
+
+        <header
+            class="flex items-center justify-between h-16 px-4 leading-6 text-gray-700 border-b border-gray-200 border-solid sm:grid sm:auto-cols-auto sm:grid-cols-3 sm:px-6 lg:px-8">
+            <nav class="flex sm:col-span-2" aria-label="Navegación">
+                <ol role="list" class="flex items-center space-x-4">
+                    <li x-data="{ open: false }" @click.away="open = false">
+                        <button @click="open = !open" class="nav-link" aria-label="Menú principal">
+                            <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                fill="currentColor">
+                                <path
+                                    d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z">
+                                </path>
+                            </svg>
+                            <span class="sr-only">Inicio</span>
+                        </button>
+                        <div class="dropdown-menu" :class="{ 'show': open }">
+                            <a href="#" class="dropdown-item">Lista de Pacientes</a>
+                            <a href="#" class="dropdown-item">Lista de Historias Clinicas</a>
+                        </div>
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Botón de Iniciar Sesión a la derecha -->
+            <div class="flex items-center justify-end sm:col-span-1">
+                <a class="btn-sign-in" href="#">Iniciar Sesión</a>
+            </div>
+        </header>
+
+        <section class="px-4 py-8 text-gray-700 sm:px-6 lg:px-8 iframe-container">
+            <div class="w-full mx-auto max-w-screen-3xl">
+                <div class="relative overflow-hidden shadow-xl rounded-xl">
+                    <div class="flex items-center pl-3 space-x-1 bg-gray-200 rounded-t-xl h-7">
+                        <span class="w-2 h-2 bg-white rounded-full"></span>
+                        <span class="w-2 h-2 bg-white rounded-full"></span>
+                        <span class="w-2 h-2 bg-white rounded-full"></span>
+                    </div>
+                    <!-- Fondo centrado con el logo y el iframe encima -->
+                    <div class="iframe-background">
+                        <iframe class="w-full h-[calc(100vh_-_10.75rem)] rounded-b-xl" frameborder="0" scrolling="yes"
+                            src="/buscador/">
+                        </iframe>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Región live para mensajes toast globales -->
+    <div aria-live="assertive" id="flash-messages" class="fixed bottom-0 right-0 z-50">
+        <div class="toast">Este es un mensaje de notificación</div>
+    </div>
+</body>
+
+</html>

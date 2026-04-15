@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-s6t!(@**v#55u-0bxn52i4c83q*ydsu82#_&q#0d0i&g1%=^!*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 SHELL_PLUS = "ipython"
@@ -44,6 +44,9 @@ INSTALLED_APPS = [
     'corsheaders',
     'main',
     'ecocardiograma',
+    'carotidas',
+    'ecostress',
+    'mmii',
 ]
 
 MIDDLEWARE = [
@@ -77,6 +80,10 @@ TEMPLATES = [
     },
 ]
 
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/login/"
+
 
 CORS_ALLOWED_ORIGINS = [
         "http://localhost:8080",
@@ -92,39 +99,35 @@ X_FRAME_OPTIONS = 'ALLOWALL'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+DB_ENGINE = os.getenv("DB_ENGINE", "django.db.backends.mysql")
+DB_NAME = os.getenv("DB_NAME", "cardioprieto")
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "Corbis5")
+DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
+DB_PORT = os.getenv("DB_PORT", "3307")
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'cardioprieto',
-        'USER': 'root',
-        'PASSWORD': 'Corbis5',
-        'HOST': '127.0.0.1',
-        'PORT': '3307',
+    "default": {
+        "ENGINE": DB_ENGINE,
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASSWORD,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
     },
-    'sandbox': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    "sandbox": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    },
 }
 
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
+# En local, permitimos contraseñas simples para evitar bloqueos en UI.
+# Ajustar/endurcer antes de producción.
+AUTH_PASSWORD_VALIDATORS = []
 
 
 # Internationalization

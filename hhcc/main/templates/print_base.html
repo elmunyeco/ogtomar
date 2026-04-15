@@ -1,0 +1,56 @@
+{% load i18n l10n static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Informe{% endblock %}</title>
+  <link rel="stylesheet" href="{% if print_css_path %}{{ print_css_path }}{% else %}{% static 'main/css/print.css' %}{% endif %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  {% language 'es-ar' %}
+  {% with logo=print_logo_path|default:None %}
+  <div class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        {% if logo %}
+          <img class="logo" src="{{ logo }}" alt="{{ print_header_text|default:'Consultorio Cardiológico Doctor Omar Prieto' }}">
+        {% else %}
+          <img class="logo" src="{% static 'main/images/logo_omar_prieto.svg' %}" alt="{{ print_header_text|default:'Consultorio Cardiológico Doctor Omar Prieto' }}" onerror="this.onerror=null;this.src='{% static "main/images/logo.png" %}';" >
+        {% endif %}
+      </div>
+      <div class="header-right">
+        <div class="meta header-meta">
+          {% block meta %}{% endblock %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endwith %}
+
+  <div class="footer">
+    <div class="footer-row">
+      <div>Emitido {% now "d/m/Y" %}</div>
+    </div>
+  </div>
+
+  <div class="title">
+    {% block titles %}{% endblock %}
+  </div>
+
+  <hr class="divider-soft">
+
+  {% block content %}{% endblock %}
+
+  {% if print_show_signature %}
+  <div class="signature">
+    <div class="signature-name">Dr. Omar Prieto</div>
+    <div class="signature-role">cardiologo</div>
+  </div>
+  {% endif %}
+
+  <div class="footer-spacer"></div>
+  {% endlanguage %}
+</body>
+</html>

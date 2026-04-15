@@ -120,6 +120,16 @@
                 </div>
 
                 <div class="flex items-center space-x-6">
+                    <button @click="window.location.href='{% url 'listar_estudios_historia' historia_id=historia.id %}'"
+                        class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
+                        <i class="fas fa-notes-medical text-xl mb-1"></i>
+                        <span class="text-xs">Estudios</span>
+                    </button>
+                    <button @click="window.location.href='{% url 'historia_estudios_nuevo' historia_id=historia.id %}'"
+                        class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
+                        <i class="fas fa-plus-circle text-xl mb-1"></i>
+                        <span class="text-xs">Nuevo estudio</span>
+                    </button>
                     <button @click="window.location.href='{% url 'indicaciones' historia_id=historia.id %}'"
                         class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
                         <i class="fas fa-pills text-xl mb-1"></i>
@@ -128,13 +138,13 @@
                     <button @click="window.location.href='{% url 'ordenes_medicas' paciente.id %}'"
                         class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
                         <i class="fas fa-file-medical text-xl mb-1"></i>
-                        <span class="text-xs">Prácticas</span>
+                        <span class="text-xs">Solicitudes</span>
                     </button>
-                    <button onclick="window.print()"
+                    <a href="{% url 'imprimir_historia_clinica' historia.id %}" target="_blank" rel="noopener noreferrer"
                         class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
                         <i class="fas fa-print text-xl mb-1"></i>
                         <span class="text-xs">Imprimir</span>
-                    </button>
+                    </a>
                 </div>
             </div>
 

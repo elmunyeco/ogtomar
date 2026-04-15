@@ -1,14 +1,25 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
+from django.urls import reverse
+from django.utils.dateparse import parse_date
 from .models import Paciente, HistoriaClinica, TipoDocumento, IndicacionesVisitas
 from .forms import PacienteForm
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout as auth_logout
+from django.views.decorators.http import require_http_methods
 from django.contrib import messages
+from datetime import date as date_cls
 
 
 def index(request):
     return render(request, "index.html")
+
+
+@require_http_methods(["GET", "POST"])
+def logout_view(request):
+    auth_logout(request)
+    return redirect("login")
 
 
 def landing_page(request):
@@ -121,6 +132,46 @@ def listar_buscar_historias(request):
             # Búsqueda por apellido del paciente
             historias = historias.filter(paciente__apellido__icontains=query)
 
+    # Anotar cantidad de estudios por historia
+    from django.db.models import Count, IntegerField, OuterRef, Subquery, Value
+    from django.db.models.functions import Coalesce
+    from ecocardiograma.models import EstudioEcocardiograma
+    from ecostress.models import EcostressEstudio
+    from carotidas.models import CarotidasEstudio
+    from mmii.models import MmiiEstudio
+
+    eco_qs = (
+        EstudioEcocardiograma.objects.filter(historia=OuterRef("pk"))
+        .values("historia")
+        .annotate(c=Count("*"))
+        .values("c")
+    )
+    stress_qs = (
+        EcostressEstudio.objects.filter(historia=OuterRef("pk"))
+        .values("historia")
+        .annotate(c=Count("*"))
+        .values("c")
+    )
+    carot_qs = (
+        CarotidasEstudio.objects.filter(historia=OuterRef("pk"))
+        .values("historia")
+        .annotate(c=Count("*"))
+        .values("c")
+    )
+    mmii_qs = (
+        MmiiEstudio.objects.filter(historia=OuterRef("pk"))
+        .values("historia")
+        .annotate(c=Count("*"))
+        .values("c")
+    )
+
+    historias = historias.annotate(
+        eco_count=Coalesce(Subquery(eco_qs, output_field=IntegerField()), Value(0)),
+        stress_count=Coalesce(Subquery(stress_qs, output_field=IntegerField()), Value(0)),
+        carot_count=Coalesce(Subquery(carot_qs, output_field=IntegerField()), Value(0)),
+        mmii_count=Coalesce(Subquery(mmii_qs, output_field=IntegerField()), Value(0)),
+    )
+
     historias = historias.order_by("-id") # Ordenar por ID para evitar inconsistencias en la paginación
 
     # Paginación
@@ -134,7 +185,101 @@ def listar_buscar_historias(request):
     return render(
         request,
         "listar_buscar_historias_2.html",
-        {"page_obj": page_obj, "query": query, "tipo": tipo},
+        {
+            "page_obj": page_obj,
+            "query": query,
+            "tipo": tipo,
+        },
+    )
+
+
+def listar_estudios_historia(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, pk=historia_id)
+    fecha_desde = request.GET.get("fecha_desde", "")
+    fecha_hasta = request.GET.get("fecha_hasta", "")
+
+    from ecocardiograma.models import EstudioEcocardiograma
+    from ecostress.models import EcostressEstudio
+    from carotidas.models import CarotidasEstudio
+    from mmii.models import MmiiEstudio
+
+    def apply_fecha_filters(qs, field_name):
+        if fecha_desde:
+            qs = qs.filter(**{f"{field_name}__gte": fecha_desde})
+        if fecha_hasta:
+            qs = qs.filter(**{f"{field_name}__lte": fecha_hasta})
+        return qs
+
+    estudios = []
+
+    eco_qs = apply_fecha_filters(
+        EstudioEcocardiograma.objects.filter(historia=historia),
+        "fecha",
+    )
+    for est in eco_qs:
+        estudios.append(
+            {
+                "tipo": "Ecocardiograma",
+                "fecha": est.fecha,
+                "ver_url": f"/ecocardiograma/{historia_id}/?action=recuperar&estudio={est.id}",
+                "pdf_url": f"/ecocardiograma/imprimir_estudio/{est.id}/?firma=1",
+            }
+        )
+
+    stress_qs = apply_fecha_filters(
+        EcostressEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+    )
+    for est in stress_qs:
+        estudios.append(
+            {
+                "tipo": "Ecostress",
+                "fecha": est.fecha_estudio,
+                "ver_url": f"/ecostress/{historia_id}/?action=recuperar&estudio={est.id_stress}",
+                "pdf_url": f"/ecostress/imprimir_estudio/{est.id_stress}/{historia_id}/",
+            }
+        )
+
+    carot_qs = apply_fecha_filters(
+        CarotidasEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+    )
+    for est in carot_qs:
+        estudios.append(
+            {
+                "tipo": "Carótidas",
+                "fecha": est.fecha_estudio,
+                "ver_url": f"/carotidas/{historia_id}/?action=recuperar&estudio={est.id}",
+                "pdf_url": f"/carotidas/imprimir_estudio/{est.id}/{historia_id}/",
+            }
+        )
+
+    mmii_qs = apply_fecha_filters(
+        MmiiEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+    )
+    for est in mmii_qs:
+        estudios.append(
+            {
+                "tipo": "MMII",
+                "fecha": est.fecha_estudio,
+                "ver_url": f"/mmii/{historia_id}/?action=recuperar&estudio={est.id_mmii}",
+                "pdf_url": f"/mmii/imprimir_estudio/{est.id_mmii}/{historia_id}/",
+            }
+        )
+
+    estudios.sort(key=lambda x: (x["fecha"] is not None, x["fecha"]), reverse=True)
+
+    return render(
+        request,
+        "listar_estudios_historia.html",
+        {
+            "historia": historia,
+            "paciente": historia.paciente,
+            "estudios": estudios,
+            "fecha_desde": fecha_desde,
+            "fecha_hasta": fecha_hasta,
+        },
     )
 
 
@@ -173,8 +318,12 @@ def crear_paciente(request):
         form = PacienteForm(request.POST)
         if form.is_valid():
             paciente = form.save()
+            historia, _ = HistoriaClinica.objects.get_or_create(
+                paciente=paciente,
+                defaults={"fechaAlta": paciente.fechaAlta},
+            )
             messages.success(request, f'Paciente {paciente.nombre} {paciente.apellido} creado exitosamente.')
-            return redirect('detalle_paciente', pk=paciente.pk)
+            return redirect('detalle_historia_con_historial', historia_id=historia.id)
     else:
         form = PacienteForm()
     
@@ -219,14 +368,19 @@ def eliminar_paciente(request, pk):
     Vista para eliminar un paciente
     """
     paciente = get_object_or_404(Paciente, pk=pk)
+    tiene_historias = paciente.historias_clinicas.exists()
     
     if request.method == 'POST':
-        nombre_completo = f"{paciente.nombre} {paciente.apellido}"
-        paciente.delete()
-        messages.success(request, f'Paciente {nombre_completo} eliminado exitosamente.')
-        return redirect('listar_buscar_pacientes')
+        if tiene_historias:
+            messages.error(request, "No es posible eliminar este paciente porque tiene historias clínicas asociadas.")
+            return redirect('eliminar_paciente', pk=paciente.pk)
+        else:
+            nombre_completo = f"{paciente.nombre} {paciente.apellido}"
+            paciente.delete()
+            messages.success(request, f'Paciente {nombre_completo} eliminado exitosamente.')
+            return redirect('listar_buscar_pacientes')
     
-    return render(request, 'eliminar_paciente.html', {'paciente': paciente})
+    return render(request, 'eliminar_paciente.html', {'paciente': paciente, 'historias': tiene_historias})
 
 
 def detalle_historia(request, historia_id):
@@ -578,14 +732,6 @@ def get_nombre_estudio(codigo, tipo):
     return estudios.get(tipo, {}).get(codigo, "Estudio no encontrado")
 
 
-def ordenes_pedicas(request, paciente_id):
-    paciente = get_object_or_404(Paciente, id=paciente_id)
-    context = {
-        "paciente": paciente,
-    }
-    return render(request, "ordenes_pedicas.html", context)
-
-
 from django.template.loader import render_to_string
 from django.http import FileResponse
 from weasyprint import HTML
@@ -606,11 +752,17 @@ def generar_pdf_orden(request, paciente_id, diagnostico, estudios, tipo=None):
         else settings.STATIC_ROOT
     )
 
+    estudios_list = [s for s in estudios.split("|") if s]
+    if tipo == "otros":
+        estudios_nombres = estudios_list
+    else:
+        estudios_nombres = [get_nombre_estudio(codigo, tipo) for codigo in estudios_list]
+
     context = {
         "paciente": paciente,
         "diagnostico": diagnostico,
         "fecha_solicitud": datetime.now().strftime("%d/%m/%Y"),
-        "estudios": estudios.split("|"),
+        "estudios": estudios_nombres,
         "STATIC_ROOT": static_root,  # Pasar la ruta estática al template
     }
 
@@ -690,16 +842,23 @@ def detalle_historia_viejo(request, historia_id):
 
 def detalle_historia(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
-    today = timezone.now().date()
+    now = timezone.now()
+    local_now = timezone.localtime(now)
+    start_local = datetime.combine(local_now.date(), time.min).replace(tzinfo=local_now.tzinfo)
+    start_utc = start_local.astimezone(dt_timezone.utc)
+    end_utc = start_utc + timedelta(days=1)
 
     # Obtener última visita (para cargar signos vitales y condiciones)
     signos_vitales = SignosVitales.objects.filter(
-        historia=historia, fecha=today
+        historia=historia, fecha=local_now.date()
     ).first()
 
     # Obtener comentarios del día si existen
     comentarios_hoy = ComentariosVisitas.objects.filter(
-        historia_clinica=historia, fecha=today, tipo="EVOL"
+        historia_clinica=historia,
+        fecha__gte=start_utc,
+        fecha__lt=end_utc,
+        tipo="EVOL",
     ).first()
 
     condiciones_paciente = CondicionMedicaHistoria.objects.filter(historia=historia)
@@ -719,6 +878,82 @@ def detalle_historia(request, historia_id):
 
 
 from .models import ComentariosVisitas
+from .utils import static_file_url
+
+
+def _build_historia_visitas_detalle(historia):
+    comentarios = ComentariosVisitas.objects.filter(historia_clinica=historia).order_by(
+        "-fecha"
+    )
+    signos_vitales = SignosVitales.objects.filter(historia=historia).order_by("-fecha")
+    indicaciones = IndicacionesVisitas.objects.filter(
+        historia_clinica=historia, eliminado=False
+    ).order_by("-fecha")
+
+    visitas = []
+    fechas_comentarios = [
+        fecha.date() if isinstance(fecha, datetime) else fecha
+        for fecha in comentarios.values_list("fecha", flat=True)
+    ]
+    fechas_signos = [
+        fecha.date() if isinstance(fecha, datetime) else fecha
+        for fecha in signos_vitales.values_list("fecha", flat=True)
+    ]
+
+    for fecha in sorted(set(fechas_comentarios + fechas_signos), reverse=True):
+        coms_fecha = comentarios.filter(fecha__date=fecha)
+        signos_fecha = signos_vitales.filter(fecha=fecha).first()
+        meds_fecha = indicaciones.filter(fecha=fecha)
+
+        visitas.append(
+            {
+                "date": fecha,
+                "comments": [
+                    {
+                        "id": comentario.id,
+                        "text": comentario.comentarios,
+                        "fecha": comentario.fecha,
+                    }
+                    for comentario in coms_fecha
+                ],
+                "vitalSigns": {
+                    "weight": signos_fecha.peso if signos_fecha and signos_fecha.peso else None,
+                    "cholesterol": (
+                        signos_fecha.colesterol
+                        if signos_fecha and signos_fecha.colesterol is not None
+                        else None
+                    ),
+                    "glucose": (
+                        signos_fecha.glucemia
+                        if signos_fecha and signos_fecha.glucemia is not None
+                        else None
+                    ),
+                    "systolic": (
+                        signos_fecha.presion_sistolica
+                        if signos_fecha and signos_fecha.presion_sistolica is not None
+                        else None
+                    ),
+                    "diastolic": (
+                        signos_fecha.presion_diastolica
+                        if signos_fecha and signos_fecha.presion_diastolica is not None
+                        else None
+                    ),
+                },
+                "medications": [
+                    {
+                        "id": medicamento.id,
+                        "name": medicamento.medicamento,
+                        "h8": medicamento.ochoHoras or "",
+                        "h12": medicamento.doceHoras or "",
+                        "h18": medicamento.dieciochoHoras or "",
+                        "h21": medicamento.veintiunaHoras or "",
+                    }
+                    for medicamento in meds_fecha
+                ],
+            }
+        )
+
+    return visitas
 from django.db.models import Subquery
 
 
@@ -812,20 +1047,26 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from datetime import datetime, time, timedelta, timezone as dt_timezone
 import json
 from .utils import process_signos_vitales
+from django.contrib.auth.decorators import login_required
 
 
 def guardar_historia(request, historia_id):
     try:
         historia = get_object_or_404(HistoriaClinica, pk=historia_id)
         data = json.loads(request.body)
-        today = timezone.now().date()
+        now = timezone.now()
+        local_now = timezone.localtime(now)
+        start_local = datetime.combine(local_now.date(), time.min).replace(tzinfo=local_now.tzinfo)
+        start_utc = start_local.astimezone(dt_timezone.utc)
+        end_utc = start_utc + timedelta(days=1)
 
         # Guardar signos vitales
         signos_vitales = process_signos_vitales(data)
         if any(v is not None for v in signos_vitales.values()):
-            fecha_visita = data.get("fecha_visita", today)  # Permitir fecha específica
+            fecha_visita = data.get("fecha_visita", local_now.date())  # Permitir fecha específica
             signos_existentes = SignosVitales.objects.filter(
                 historia=historia, fecha=fecha_visita
             ).first()
@@ -852,15 +1093,37 @@ def guardar_historia(request, historia_id):
         # Guardar/actualizar comentario
 
         if comentarios := data.get("comentarios"):
-            ComentariosVisitas.objects.update_or_create(
+            existente = ComentariosVisitas.objects.filter(
                 historia_clinica=historia,
-                fecha=today,
                 tipo="EVOL",
-                defaults={"comentarios": comentarios},
-            )
+                fecha__gte=start_utc,
+                fecha__lt=end_utc,
+            ).first()
+            if existente:
+                existente.comentarios = comentarios
+                existente.save()
+            else:
+                ComentariosVisitas.objects.create(
+                    historia_clinica=historia,
+                    tipo="EVOL",
+                    comentarios=comentarios,
+                )
         return JsonResponse({"status": "success"})
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
+
+
+@login_required
+def cambiar_nombre(request):
+    mensaje = None
+    if request.method == "POST":
+        first_name = request.POST.get("first_name", "").strip()
+        last_name = request.POST.get("last_name", "").strip()
+        request.user.first_name = first_name
+        request.user.last_name = last_name
+        request.user.save()
+        mensaje = "Nombre actualizado correctamente."
+    return render(request, "account_name_form.html", {"mensaje": mensaje})
 
 
 from django.views.decorators.csrf import csrf_protect
@@ -1021,7 +1284,7 @@ def historial_medico(request, id_historia):
         fecha_str = fecha.strftime("%Y-%m-%d")
 
         # Buscar datos para esta fecha
-        coms_fecha = comentarios.filter(fecha=fecha)
+        coms_fecha = comentarios.filter(fecha__date=fecha)
         signos_fecha = signos_vitales.filter(fecha=fecha).first()
         meds_fecha = indicaciones.filter(fecha=fecha)
 
@@ -1114,16 +1377,23 @@ def eliminar_comentario(request):
 def detalle_historia_con_historial(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
     paciente = historia.paciente
-    today = timezone.now().date()
+    now = timezone.now()
+    local_now = timezone.localtime(now)
+    start_local = datetime.combine(local_now.date(), time.min).replace(tzinfo=local_now.tzinfo)
+    start_utc = start_local.astimezone(dt_timezone.utc)
+    end_utc = start_utc + timedelta(days=1)
 
     # Obtener última visita (para cargar signos vitales y condiciones)
     signos_vitales = SignosVitales.objects.filter(
-        historia=historia, fecha=today
+        historia=historia, fecha=local_now.date()
     ).first()
 
     # Obtener comentarios del día si existen
     comentarios_hoy = ComentariosVisitas.objects.filter(
-        historia_clinica=historia, fecha=today, tipo="EVOL"
+        historia_clinica=historia,
+        fecha__gte=start_utc,
+        fecha__lt=end_utc,
+        tipo="EVOL",
     ).first()
 
     condiciones_paciente = CondicionMedicaHistoria.objects.filter(historia=historia)
@@ -1162,7 +1432,7 @@ def detalle_historia_con_historial(request, historia_id):
         fecha_str = fecha.strftime("%Y-%m-%d")
 
         # Buscar datos para esta fecha
-        coms_fecha = comentarios.filter(fecha=fecha)
+        coms_fecha = comentarios.filter(fecha__date=fecha)
         signos_fecha = signos_vitales_historial.filter(fecha=fecha).first()
         meds_fecha = indicaciones.filter(fecha=fecha)
 
@@ -1236,6 +1506,48 @@ def detalle_historia_con_historial(request, historia_id):
     return render(request, "detalle_historia_con_historial_2.html", context)
 
 
+def imprimir_historia_clinica(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, id=historia_id)
+    paciente = historia.paciente
+
+    signos_vitales = SignosVitales.objects.filter(historia=historia).order_by("-fecha").first()
+    condiciones_activas = (
+        CondicionMedicaHistoria.objects.filter(historia=historia)
+        .select_related("condicion")
+        .order_by("condicion__orden", "condicion__nombre")
+    )
+    visitas = _build_historia_visitas_detalle(historia)
+    comentarios_hoy = ComentariosVisitas.objects.filter(
+        historia_clinica=historia,
+        tipo="EVOL",
+        fecha__date=timezone.localdate(),
+    ).first()
+
+    context = {
+        "historia": historia,
+        "paciente": paciente,
+        "signos_vitales": signos_vitales,
+        "condiciones_activas": condiciones_activas,
+        "condiciones_nombres": [
+            item.condicion.nombre for item in condiciones_activas if item.condicion
+        ],
+        "visitas": visitas,
+        "comentarios_hoy": comentarios_hoy.comentarios if comentarios_hoy else "",
+        "print_logo_path": static_file_url("main/images/logo_omar_prieto.svg"),
+        "print_site_text": "www.cardioprieto.com",
+        "print_header_text": "Consultorio Cardiológico Doctor Omar Prieto",
+        "print_css_path": static_file_url("main/css/print.css"),
+        "print_show_signature": request.GET.get("firma") == "1",
+    }
+
+    html = render_to_string("historial_medico/imprimir_historia.html", context)
+    pdf = HTML(string=html).write_pdf()
+    filename = f"historia_clinica_{historia_id}.pdf"
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f"inline; filename={filename}"
+    return response
+
+
 def h1_html(request):
     """
     Vista para la página "Uno" en el submenú de Historias
@@ -1253,3 +1565,163 @@ def h3_html(request):
     Vista para la página "Tres" en el submenú de Historias
     """
     return render(request, 'historial_medico/h3.html')
+
+
+def _apply_date_filter(qs, field_name, desde, hasta):
+    if desde:
+        qs = qs.filter(**{f"{field_name}__gte": desde})
+    if hasta:
+        qs = qs.filter(**{f"{field_name}__lte": hasta})
+    return qs
+
+
+def historia_estudios(request, historia_id):
+    from ecocardiograma.models import EstudioEcocardiograma
+    from ecostress.models import EcostressEstudio
+    from carotidas.models import CarotidasEstudio
+    from mmii.models import MmiiEstudio
+
+    historia = get_object_or_404(HistoriaClinica, pk=historia_id)
+    paciente = historia.paciente
+
+    desde = parse_date(request.GET.get("desde") or "")
+    hasta = parse_date(request.GET.get("hasta") or "")
+
+    estudios = []
+
+    eco_qs = _apply_date_filter(
+        EstudioEcocardiograma.objects.filter(historia=historia),
+        "fecha",
+        desde,
+        hasta,
+    )
+    for estudio in eco_qs:
+        ver_url = f"{reverse('ecocardiograma:nuevo_estudio_form', args=[historia.id])}?action=recuperar&estudio={estudio.id}"
+        imprimir_url = reverse("ecocardiograma:imprimir_estudio", args=[estudio.id])
+        estudios.append(
+            {
+                "tipo": "Ecocardiograma",
+                "fecha": estudio.fecha,
+                "id": estudio.id,
+                "ver_url": ver_url,
+                "imprimir_url": imprimir_url,
+                "enviar_url": "#",
+            }
+        )
+
+    carotidas_qs = _apply_date_filter(
+        CarotidasEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+        desde,
+        hasta,
+    )
+    for estudio in carotidas_qs:
+        ver_url = f"{reverse('carotidas:carotidas_form', args=[historia.id])}?action=recuperar&estudio={estudio.id}"
+        imprimir_url = reverse(
+            "carotidas:carotidas_imprimir",
+            args=[estudio.id, historia.id],
+        )
+        estudios.append(
+            {
+                "tipo": "Carótidas",
+                "fecha": estudio.fecha_estudio,
+                "id": estudio.id,
+                "ver_url": ver_url,
+                "imprimir_url": imprimir_url,
+                "enviar_url": "#",
+            }
+        )
+
+    mmii_qs = _apply_date_filter(
+        MmiiEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+        desde,
+        hasta,
+    )
+    for estudio in mmii_qs:
+        ver_url = f"{reverse('mmii:mmii_nuevo', args=[historia.id])}?action=recuperar&estudio={estudio.id_mmii}"
+        imprimir_url = reverse(
+            "mmii:mmii_imprimir",
+            args=[estudio.id_mmii, historia.id],
+        )
+        estudios.append(
+            {
+                "tipo": "MMII",
+                "fecha": estudio.fecha_estudio,
+                "id": estudio.id_mmii,
+                "ver_url": ver_url,
+                "imprimir_url": imprimir_url,
+                "enviar_url": "#",
+            }
+        )
+
+    stress_qs = _apply_date_filter(
+        EcostressEstudio.objects.filter(historia=historia),
+        "fecha_estudio",
+        desde,
+        hasta,
+    )
+    for estudio in stress_qs:
+        ver_url = f"{reverse('ecostress:ecostress_form', args=[historia.id])}?action=recuperar&estudio={estudio.id_stress}"
+        imprimir_url = reverse(
+            "ecostress:ecostress_imprimir",
+            args=[estudio.id_stress, historia.id],
+        )
+        estudios.append(
+            {
+                "tipo": "Ecostress",
+                "fecha": estudio.fecha_estudio,
+                "id": estudio.id_stress,
+                "ver_url": ver_url,
+                "imprimir_url": imprimir_url,
+                "enviar_url": "#",
+            }
+        )
+
+    def sort_key(item):
+        return item["fecha"] or date_cls.min
+
+    estudios.sort(key=sort_key, reverse=True)
+
+    breadcrumbs = [
+        {"label": "Inicio", "url": "/"},
+        {"label": "Historias", "url": "/historias/"},
+        {"label": f"Historia {historia.id}", "url": f"/historial_medico/{historia.id}/"},
+        {"label": "Estudios", "url": None},
+    ]
+
+    return render(
+        request,
+        "ver_estudios.html",
+        {
+            "historia": historia,
+            "paciente": paciente,
+            "estudios": estudios,
+            "desde": request.GET.get("desde", ""),
+            "hasta": request.GET.get("hasta", ""),
+            "breadcrumbs": breadcrumbs,
+        },
+    )
+
+
+def historia_estudios_nuevo(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, pk=historia_id)
+    paciente = historia.paciente
+
+    breadcrumbs = [
+        {"label": "Inicio", "url": "/"},
+        {"label": "Historias", "url": "/historias/"},
+        {"label": f"Historia {historia.id}", "url": f"/historial_medico/{historia.id}/"},
+        {"label": "Estudios", "url": f"/historias/{historia.id}/estudios/"},
+        {"label": "Nuevo estudio", "url": None},
+    ]
+
+    return render(
+        request,
+        "historias_estudios_nuevo.html",
+        {
+            "historia": historia,
+            "paciente": paciente,
+            "breadcrumbs": breadcrumbs,
+        },
+    )

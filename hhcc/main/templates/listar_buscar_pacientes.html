@@ -79,7 +79,7 @@
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-2 border border-gray-300">{{ paciente.nombre }}</td>
                     <td class="px-4 py-2 border border-gray-300">{{ paciente.apellido }}</td>
-                    <td class="px-4 py-2 border border-gray-300">DNI {{ paciente.dni }}</td>
+                    <td class="px-4 py-2 border border-gray-300">DNI {{ paciente.numDoc }}</td>
                     <td class="px-4 py-2 border border-gray-300">
                         <div class="flex justify-center space-x-4">
                             <!-- Botón Editar con icono -->
@@ -106,13 +106,13 @@
 <!-- Paginación -->
 <div class="mt-10 flex justify-center">
     <nav aria-label="Paginación">
-        <ul class="inline-flex space-x-2">
+        <ul class="pagination">
             <!-- Botones de retroceso -->
             {% if page_obj.has_previous %}
             <li><a href="?page=1&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&laquo;</a></li>
+                    class="page-link">&laquo;</a></li>
             <li><a href="?page={{ page_obj.previous_page_number }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&lt;</a></li>
+                    class="page-link">&lt;</a></li>
             {% endif %}
 
             <!-- Números de página: mostrar solo un rango razonable de páginas -->
@@ -120,7 +120,7 @@
             {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
             <li class="{% if page_obj.number == num %}active{% endif %}">
                 <a href="?page={{ num }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 {% if page_obj.number == num %}bg-[#9a4035] text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %} rounded">{{ num }}</a>
+                    class="page-link {% if page_obj.number == num %}active{% endif %}">{{ num }}</a>
             </li>
             {% endif %}
             {% endfor %}
@@ -128,9 +128,9 @@
             <!-- Botones de avance -->
             {% if page_obj.has_next %}
             <li><a href="?page={{ page_obj.next_page_number }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&gt;</a></li>
+                    class="page-link">&gt;</a></li>
             <li><a href="?page={{ page_obj.paginator.num_pages }}&query={{ query }}&tipo={{ tipo }}"
-                    class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">&raquo;</a></li>
+                    class="page-link">&raquo;</a></li>
             {% endif %}
         </ul>
     </nav>
@@ -147,27 +147,4 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    // Este script se ejecuta después de que la página carga
-    document.addEventListener('DOMContentLoaded', function() {
-        // Configurar breadcrumbs para Alpine
-        const breadcrumbs = [
-            { label: 'Inicio', url: '/' },
-            { label: 'Buscar Pacientes', url: '/pacientes/' }
-        ];
-        
-        // Si estamos en Alpine, configurar el componente
-        if (window.Alpine) {
-            Alpine.store('breadcrumbs', breadcrumbs);
-            
-            // Acceder al componente del header para actualizar sus breadcrumbs
-            const header = document.querySelector('[x-data="headerComponent"]');
-            if (header && header.__x) {
-                header.__x.$data.activeSection = 'pacientes';
-                header.__x.$data.breadcrumbs = breadcrumbs;
-            }
-        }
-    });
-</script>
-{% endblock %}
+{% block extra_js %}{% endblock %}
