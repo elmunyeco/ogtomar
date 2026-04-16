@@ -28,7 +28,7 @@ Principio operativo:
 
 ### Bloque 1. Estabilizacion inmediata
 
-#### 1. Corregir redirects legacy a `detalle_historia`
+#### 1.1 Corregir redirects legacy a `detalle_historia`
 
 Estado: resuelto en `refactor/flujo-clinico-integral`
 
@@ -47,7 +47,7 @@ Criterio de aceptacion:
 - no quedan referencias activas a `detalle_historia`
 - actualizar condiciones y guardar signos vitales vuelven correctamente a la historia clinica
 
-#### 2. Unificar comportamiento de "guardar estudio"
+#### 1.4 Unificar comportamiento de "guardar estudio"
 
 Estado: resuelto en `refactor/flujo-clinico-integral`
 
@@ -72,7 +72,7 @@ Criterio de aceptacion:
 
 - MMII, Ecostress, Carotidas y Ecocardiograma reaccionan igual despues de guardar
 
-#### 3. Corregir todos los botones "Volver" en estudios
+#### 2.1 Corregir todos los botones "Volver" en estudios
 
 Estado: resuelto en `refactor/flujo-clinico-integral`
 
@@ -94,7 +94,7 @@ Criterio de aceptacion:
 
 ### Bloque 2. Consolidacion de arquitectura
 
-#### 4. Elegir una sola implementacion del listado de estudios
+#### 1.2 Elegir una sola implementacion del listado de estudios
 
 Estado: pendiente
 
@@ -116,7 +116,7 @@ Criterio de aceptacion:
 - una sola URL y una sola vista resuelven el listado de estudios por historia
 - no quedan caminos duplicados en `main/views.py`
 
-#### 5. Separar claramente "nuevo estudio" de "estudio existente"
+#### 1.3 Separar claramente "nuevo estudio" de "estudio existente"
 
 Estado: resuelto en `refactor/flujo-clinico-integral`
 
@@ -139,7 +139,7 @@ Criterio de aceptacion:
 - desde el listado de estudios se entra a una ruta explicita de estudio existente
 - el usuario puede distinguir semantica y tecnicamente entre alta y edicion
 
-#### 6. Revisar si conviene mantener listados por modulo
+#### 2.3 Revisar si conviene mantener listados por modulo
 
 Estado: pendiente
 
@@ -163,7 +163,7 @@ Criterio de aceptacion:
 
 ### Bloque 3. Mejora de experiencia de uso
 
-#### 7. Dar acceso directo a historia desde listado de pacientes
+#### 3.1 Dar acceso directo a historia desde listado de pacientes
 
 Estado: pendiente
 
@@ -181,7 +181,7 @@ Criterio de aceptacion:
 
 - desde el listado de pacientes se puede ir directo a la historia clinica
 
-#### 8. Corregir el significado de "Ultima visita"
+#### 3.2 Corregir el significado de "Ultima visita"
 
 Estado: pendiente
 
@@ -199,7 +199,7 @@ Criterio de aceptacion:
 
 - la fecha mostrada representa actividad clinica real
 
-#### 9. Limpiar terminologia en historia clinica
+#### 4.1 Limpiar terminologia en historia clinica
 
 Estado: pendiente
 
@@ -218,7 +218,7 @@ Criterio de aceptacion:
 
 - la interfaz usa un lenguaje consistente
 
-#### 10. Mejorar header y navegacion global
+#### 2.2 Mejorar header y navegacion global
 
 Estado: pendiente
 
@@ -237,7 +237,7 @@ Criterio de aceptacion:
 
 ### Bloque 4. Limpieza tecnica
 
-#### 11. Eliminar rutas y vistas de ejemplo o legacy que ya no aportan
+#### 4.2 Eliminar rutas y vistas de ejemplo o legacy que ya no aportan
 
 Estado: pendiente
 
