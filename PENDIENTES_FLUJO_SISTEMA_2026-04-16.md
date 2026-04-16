@@ -30,7 +30,7 @@ Principio operativo:
 
 #### 1. Corregir redirects legacy a `detalle_historia`
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
@@ -49,7 +49,7 @@ Criterio de aceptacion:
 
 #### 2. Unificar comportamiento de "guardar estudio"
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
@@ -74,7 +74,7 @@ Criterio de aceptacion:
 
 #### 3. Corregir todos los botones "Volver" en estudios
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 

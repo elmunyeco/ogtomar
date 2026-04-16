@@ -1399,7 +1399,7 @@ document.addEventListener('alpine:init', () => {
             </svg>
             <span x-text="guardando ? 'Guardando...' : 'Guardar'"></span>
         </button>
-        <a href="{% url 'listar_buscar_historias' %}" class="text-sm text-gray-600 hover:text-gray-800">Volver</a>
+        <a href="{% url 'listar_estudios_historia' historia_id=historia.id %}" class="text-sm text-gray-600 hover:text-gray-800">Volver</a>
     </div>
 
     <!-- Modal para selección de segmentos -->

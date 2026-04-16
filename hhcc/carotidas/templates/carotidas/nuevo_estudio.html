@@ -334,7 +334,7 @@
           <span x-show="!guardando">Guardar</span>
           <span x-show="guardando">Guardando...</span>
         </button>
-        <a href="/historias/" class="text-sm text-slate-600 hover:text-slate-800">Volver</a>
+        <a href="{% url 'listar_estudios_historia' historia_id=historia.id %}" class="text-sm text-slate-600 hover:text-slate-800">Volver</a>
       </div>
     </div>
 
