@@ -246,6 +246,11 @@ Nota funcional fijada:
 - puede existir a futuro un buscador global como tercer entrada, pero todavia no debe condicionar el diseño actual del header
 - estudios se navega desde paciente o historia, no como objeto principal autonomo
 
+Avance implementado en `refactor/flujo-clinico-integral`:
+
+- el logo ya navega a `Inicio`
+- el nombre del usuario ya funciona como link directo a perfil (`cambiar_nombre`)
+
 ### Bloque 4. Limpieza tecnica
 
 #### 4.2 Eliminar rutas y vistas de ejemplo o legacy que ya no aportan
