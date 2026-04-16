@@ -200,7 +200,7 @@ Criterio de aceptacion:
 
 #### 3.3 Corregir comportamiento de `Cancelar` en alta/edicion de paciente
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
