@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Informe de Revision de Flujo del Sistema</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="informe_pdf.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Informe de Revision de Flujo del Sistema</h1>
+</header>
+<h1 id="informe-de-revision-de-flujo-del-sistema">Informe de Revision de
+Flujo del Sistema</h1>
+<p>Fecha: 2026-04-16</p>
+<p>Repositorio revisado: <code>/home/eze/omar</code></p>
+<p>Objetivo: evaluar el sistema completo desde la perspectiva de un
+usuario especializado, con foco en flujo operativo, coherencia de
+navegacion y retorno despues de cada accion.</p>
+<h2 id="alcance">Alcance</h2>
+<p>La revision cubrio los flujos principales de:</p>
+<ul>
+<li>autenticacion y navegacion global</li>
+<li>busqueda de pacientes</li>
+<li>busqueda de historias clinicas</li>
+<li>historia clinica</li>
+<li>medicacion / indicaciones</li>
+<li>ordenes medicas</li>
+<li>listado de estudios</li>
+<li>formularios de estudios de ecocardiograma, carotidas, MMII y
+ecostress</li>
+<li>impresion de historia clinica</li>
+</ul>
+<p>No se hicieron cambios de codigo durante esta revision. El objetivo
+fue detectar problemas de flujo, priorizarlos y proponer soluciones
+concretas.</p>
+<h2 id="resumen-ejecutivo">Resumen Ejecutivo</h2>
+<p>El sistema ya es usable y resuelve la operatoria principal, pero hoy
+conviven capas viejas y nuevas de navegacion. Eso genera una sensacion
+de sistema mezclado y, mas importante, introduce comportamientos
+inconsistentes en puntos criticos: que pantalla se abre para editar un
+estudio, adonde vuelve el usuario despues de guardar, y cual es el eje
+de navegacion principal.</p>
+<p>La conclusion principal es esta: la historia clinica del paciente
+deberia ser el centro de navegacion del sistema, y varios flujos
+actuales todavia desvían al usuario a listados globales o a rutas
+ambiguas.</p>
+<h2 id="hallazgos-y-soluciones">Hallazgos y Soluciones</h2>
+<h3 id="1-alta">1. Alta</h3>
+<h4 id="11-redirects-a-una-vista-que-ya-no-existe">1.1 Redirects a una
+vista que ya no existe</h4>
+<p>Problema:</p>
+<p>Hay acciones que todavia redirigen a <code>detalle_historia</code>,
+aunque la ruta vigente es
+<code>detalle_historia_con_historial</code>.</p>
+<p>Referencias:</p>
+<ul>
+<li><code>hhcc/main/views.py:1006</code></li>
+<li><code>hhcc/main/views.py:1022</code></li>
+<li><code>hhcc/main/urls.py:76</code></li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>Si esos endpoints siguen activos, el usuario puede caer en una ruta
+rota.</li>
+<li>Aunque hoy se usen menos, dejan una zona fragil y dificil de
+mantener.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Reemplazar todos los <code>redirect("detalle_historia", ...)</code>
+por <code>redirect("detalle_historia_con_historial", ...)</code>.</li>
+<li>Hacer una pasada global sobre <code>views.py</code> buscando nombres
+de rutas legacy.</li>
+<li>Agregar una prueba simple de integracion para estos POST.</li>
+</ul>
+<h4 id="12-doble-implementacion-del-listado-de-estudios">1.2 Doble
+implementacion del listado de estudios</h4>
+<p>Problema:</p>
+<p>Existen dos vistas distintas para el listado de estudios, con
+contratos de datos diferentes y templates distintos. La URL activa
+publica una, pero el codigo mantiene otra en paralelo.</p>
+<p>Referencias:</p>
+<ul>
+<li><code>hhcc/main/views.py:196</code></li>
+<li><code>hhcc/main/views.py:1578</code></li>
+<li><code>hhcc/main/urls.py:22</code></li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>Alto riesgo de tocar la implementacion equivocada.</li>
+<li>Posibles regresiones silenciosas cuando se modifica solo una de las
+dos.</li>
+<li>Sensacion de flujo inconsistente si partes del sistema usan una
+variante y otras otra.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Elegir una sola vista de listado de estudios como canonica.</li>
+<li>Eliminar o archivar la otra.</li>
+<li>Unificar tambien el template y el contrato de datos asociado.</li>
+</ul>
+<h4 id="13-edicion-de-estudios-montada-sobre-rutas-de-nuevo">1.3 Edicion
+de estudios montada sobre rutas de "nuevo"</h4>
+<p>Problema:</p>
+<p>Para abrir un estudio existente, el sistema deriva al formulario de
+"nuevo estudio" y recupera el contenido via query string
+(<code>action=recuperar&amp;estudio=...</code>).</p>
+<p>Referencias:</p>
+<ul>
+<li><code>hhcc/main/views.py:1599</code></li>
+<li><code>hhcc/main/views.py:1619</code></li>
+<li><code>hhcc/main/views.py:1642</code></li>
+<li><code>hhcc/main/views.py:1665</code></li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>El flujo es semantica y tecnicamente ambiguo.</li>
+<li>Complica validaciones, breadcrumbs, botones y mensajes.</li>
+<li>Hace dificil saber si el usuario esta creando, editando o solo
+consultando.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Definir una ruta explicita por estudio existente, por ejemplo:
+<ul>
+<li><code>/ecocardiograma/estudio/&lt;id&gt;/</code></li>
+<li><code>/carotidas/estudio/&lt;id&gt;/</code></li>
+<li><code>/mmii/estudio/&lt;id&gt;/</code></li>
+<li><code>/ecostress/estudio/&lt;id&gt;/</code></li>
+</ul></li>
+<li>Reservar las rutas <code>/nuevo/</code> solo para altas.</li>
+<li>Hacer que los listados apunten a esa ruta explicita de
+edicion/detalle.</li>
+</ul>
+<h4 id="14-criterio-inconsistente-despues-de-guardar-un-estudio">1.4
+Criterio inconsistente despues de guardar un estudio</h4>
+<p>Problema:</p>
+<p>Cada modulo responde distinto despues de guardar:</p>
+<ul>
+<li>MMII vuelve a la vista de nuevo estudio.</li>
+<li>Ecostress vuelve a la vista de nuevo estudio.</li>
+<li>Carotidas salta a una pantalla distinta.</li>
+</ul>
+<p>Referencias:</p>
+<ul>
+<li><code>hhcc/mmii/views.py:68</code></li>
+<li><code>hhcc/ecostress/views.py:76</code></li>
+<li><code>hhcc/carotidas/views.py:41</code></li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>El usuario no puede anticipar que va a pasar al guardar.</li>
+<li>Se pierde continuidad de trabajo por paciente.</li>
+<li>El sistema requiere reaprendizaje por modulo.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Definir una regla unica para todos los estudios.</li>
+<li>Recomendacion:
+<ul>
+<li>guardar y quedarse en el estudio recien guardado si se va a seguir
+editando</li>
+<li>o guardar y volver al listado de estudios de esa historia si el
+flujo es mas transaccional</li>
+</ul></li>
+<li>Aplicar la misma regla en los cuatro modulos.</li>
+</ul>
+<h3 id="2-media-alta">2. Media-Alta</h3>
+<h4
+id="21-los-botones-volver-de-estudios-rompen-el-contexto-del-paciente">2.1
+Los botones "Volver" de estudios rompen el contexto del paciente</h4>
+<p>Problema:</p>
+<p>Los formularios de estudios vuelven al listado general de historias
+en lugar de volver a la historia o al listado de estudios del paciente
+actual.</p>
+<p>Referencias:</p>
+<ul>
+<li><code>hhcc/ecocardiograma/templates/ecocardiograma/eco_form.html:1402</code></li>
+<li><code>hhcc/carotidas/templates/carotidas/nuevo_estudio.html:337</code></li>
+<li><code>hhcc/mmii/templates/mmii/nuevo_estudio.html:190</code></li>
+<li><code>hhcc/ecostress/templates/ecostress/nuevo_estudio.html:234</code></li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>El medico pierde el hilo del paciente que estaba atendiendo.</li>
+<li>Se agregan clics innecesarios para retomar el contexto.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Cambiar todos los "Volver" para que regresen a:
+<ul>
+<li><code>historias/&lt;historia_id&gt;/estudios/</code></li>
+</ul></li>
+<li>En un segundo nivel, ofrecer desde ahi acceso a la historia clinica
+completa.</li>
+</ul>
+<h4 id="22-navegacion-global-insuficiente-y-logo-mal-aprovechado">2.2
+Navegacion global insuficiente y logo mal aprovechado</h4>
+<p>Problema:</p>
+<p>El logo lleva a editar perfil en lugar de llevar al inicio, y el menu
+principal expone muy pocas entradas para el uso real del sistema.</p>
+<p>Referencias:</p>
+<ul>
+<li><code>hhcc/main/templates/components/header.html:10</code></li>
+<li><code>hhcc/main/templates/components/header.html:26</code></li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>El sistema no ofrece una orientacion global clara.</li>
+<li>Muchas funciones quedan descubiertas solo por conocimiento
+previo.</li>
+<li>El logo, que deberia ser un ancla de navegacion, hoy no cumple ese
+rol.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Hacer que el logo lleve al inicio real del sistema.</li>
+<li>Mantener perfil/cambio de nombre como accion de usuario, no como
+home implicita.</li>
+<li>Evaluar agregar al header accesos directos a:
+<ul>
+<li>Pacientes</li>
+<li>Historias</li>
+<li>Buscador</li>
+<li>Estudios</li>
+</ul></li>
+</ul>
+<h4 id="23-dos-modelos-de-acceso-a-estudios-compiten-entre-si">2.3 Dos
+modelos de acceso a estudios compiten entre si</h4>
+<p>Problema:</p>
+<p>Desde el listado de historias se puede entrar al listado unificado de
+estudios o a listados especificos por modulo. No queda claro cual es la
+entrada principal recomendada.</p>
+<p>Referencias:</p>
+<ul>
+<li><code>hhcc/main/templates/listar_buscar_historias_2.html:87</code></li>
+<li><code>hhcc/main/templates/listar_buscar_historias_2.html:115</code></li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>Duplica caminos para una misma tarea.</li>
+<li>Aumenta la dispersión del flujo.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Elegir un camino principal.</li>
+<li>Recomendacion:
+<ul>
+<li>desde historias, entrar primero a la historia clinica</li>
+<li>desde la historia, ir a <code>Estudios</code></li>
+<li>dejar los contadores por modulo como informacion o acceso
+secundario, no como flujo principal</li>
+</ul></li>
+</ul>
+<h3 id="3-media">3. Media</h3>
+<h4
+id="31-la-lista-de-pacientes-no-ofrece-acceso-directo-a-la-historia-clinica">3.1
+La lista de pacientes no ofrece acceso directo a la historia
+clinica</h4>
+<p>Problema:</p>
+<p>Desde el listado de pacientes hoy solo se puede editar el paciente.
+No hay un acceso claro y directo a su historia clinica.</p>
+<p>Referencia:</p>
+<ul>
+<li><code>hhcc/main/templates/listar_buscar_pacientes.html:83</code></li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>Para la operatoria diaria, editar la ficha suele ser menos frecuente
+que abrir la historia.</li>
+<li>Obliga a hacer mas navegacion de la necesaria.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Agregar una segunda accion por fila:
+<ul>
+<li><code>Abrir historia</code></li>
+</ul></li>
+<li>Mantener <code>Editar paciente</code> como accion administrativa
+separada.</li>
+</ul>
+<h4
+id="32-la-historia-muestra-ultima-visita-con-una-fecha-que-no-representa-la-ultima-visita-real">3.2
+La historia muestra "Ultima visita" con una fecha que no representa la
+ultima visita real</h4>
+<p>Problema:</p>
+<p>Se muestra <code>historia.fechaAlta</code> como "Ultima visita", pero
+eso parece ser la fecha de alta de la historia, no la ultima evolucion
+registrada.</p>
+<p>Referencia:</p>
+<ul>
+<li><code>hhcc/main/templates/detalle_historia_con_historial_2.html:172</code></li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>El medico puede interpretar mal la recencia clinica del
+seguimiento.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Mostrar la fecha del ultimo comentario/visita real.</li>
+<li>Si no hay visitas, mostrar "Sin visitas registradas" o la fecha de
+apertura de historia con rotulo correcto.</li>
+</ul>
+<h3 id="4-baja">4. Baja</h3>
+<h4 id="41-terminologia-inconsistente-en-la-historia-clinica">4.1
+Terminologia inconsistente en la historia clinica</h4>
+<p>Problema:</p>
+<p>Dentro del panel de la historia se sigue usando el rotulo
+<code>Visitas</code> donde el contenido corresponde a comentarios o
+evolucion.</p>
+<p>Referencias:</p>
+<ul>
+<li><code>hhcc/main/templates/detalle_historia_con_historial_2.html:346</code></li>
+<li><code>hhcc/main/templates/historial_medico/historial_medico.html:217</code></li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>No rompe flujo, pero ensucia el lenguaje funcional.</li>
+<li>Hace mas dificil cerrar una interfaz consistente.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Renombrar el bloque como <code>Comentarios</code> o
+<code>Evolucion</code>.</li>
+<li>Unificar ese lenguaje en historia, impresion y API.</li>
+</ul>
+<h4 id="42-rutas-de-ejemplo-visibles-en-el-arbol-principal">4.2 Rutas de
+ejemplo visibles en el arbol principal</h4>
+<p>Problema:</p>
+<p>Siguen definidas rutas de ejemplo (<code>h1</code>, <code>h2</code>,
+<code>h3</code>) en el archivo principal de URLs.</p>
+<p>Referencia:</p>
+<ul>
+<li><code>hhcc/main/urls.py:89</code></li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>Aumenta ruido tecnico.</li>
+<li>Daña la claridad del arbol de navegacion.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Eliminar esas rutas si ya no cumplen funcion.</li>
+<li>Si sirven para diseño o referencia, moverlas a un entorno de
+desarrollo o carpeta de archivo.</li>
+</ul>
+<h2 id="propuesta-de-flujo-objetivo">Propuesta de Flujo Objetivo</h2>
+<h3 id="eje-principal">Eje principal</h3>
+<p>El eje principal del sistema deberia ser:</p>
+<ol type="1">
+<li>Buscar paciente o buscar historia.</li>
+<li>Entrar a la historia clinica.</li>
+<li>Desde la historia:
+<ul>
+<li>cargar evolucion</li>
+<li>cargar signos vitales</li>
+<li>ajustar diagnosticos</li>
+<li>ir a indicaciones</li>
+<li>ir a estudios</li>
+<li>ir a ordenes</li>
+<li>imprimir</li>
+</ul></li>
+</ol>
+<h3 id="regla-de-contexto">Regla de contexto</h3>
+<p>Toda pantalla secundaria deberia conservar el contexto de la historia
+activa.</p>
+<p>Eso implica:</p>
+<ul>
+<li>breadcrumbs consistentes</li>
+<li>botones <code>Volver</code> hacia la historia o hacia el listado de
+estudios de esa historia</li>
+<li>mensajes de exito que no expulsen al usuario a listados
+globales</li>
+</ul>
+<h3 id="regla-unica-para-estudios">Regla unica para estudios</h3>
+<p>Cada modulo de estudio deberia tener tres estados claros:</p>
+<ul>
+<li>nuevo</li>
+<li>edicion de estudio existente</li>
+<li>impresion</li>
+</ul>
+<p>Y los tres deberian compartir el mismo criterio de retorno.</p>
+<h2 id="priorizacion-recomendada">Priorizacion Recomendada</h2>
+<h3 id="fase-1-estabilizacion-de-flujo">Fase 1: estabilizacion de
+flujo</h3>
+<ul>
+<li>corregir redirects a rutas inexistentes</li>
+<li>unificar retornos despues de guardar estudios</li>
+<li>cambiar botones <code>Volver</code> de estudios para preservar
+contexto</li>
+</ul>
+<h3 id="fase-2-simplificacion-de-arquitectura">Fase 2: simplificacion de
+arquitectura</h3>
+<ul>
+<li>consolidar una sola vista de listado de estudios</li>
+<li>eliminar rutas y templates duplicados o legacy</li>
+<li>definir rutas explicitas para editar estudios existentes</li>
+</ul>
+<h3 id="fase-3-afinado-de-ux">Fase 3: afinado de UX</h3>
+<ul>
+<li>agregar acceso directo a historia desde listado de pacientes</li>
+<li>corregir significado de "Ultima visita"</li>
+<li>depurar terminologia (<code>Visitas</code> vs
+<code>Comentarios</code>)</li>
+<li>mejorar header y home de navegacion</li>
+</ul>
+<h2 id="conclusion">Conclusion</h2>
+<p>El sistema no necesita un rediseño total. Necesita ordenar su columna
+vertebral de navegacion.</p>
+<p>Hoy el mayor costo para el usuario no esta en la complejidad clinica
+sino en la inconsistencia entre modulos y en la convivencia de flujos
+viejos y nuevos. Si se toma la historia clinica como centro, se unifican
+los retornos y se limpian las rutas duplicadas, el sistema puede ganar
+mucha claridad sin una reescritura grande.</p>
+<h2 id="anexo-archivos-principales-revisados">Anexo: Archivos
+principales revisados</h2>
+<ul>
+<li><code>hhcc/main/urls.py</code></li>
+<li><code>hhcc/main/views.py</code></li>
+<li><code>hhcc/main/templates/components/header.html</code></li>
+<li><code>hhcc/main/templates/listar_buscar_pacientes.html</code></li>
+<li><code>hhcc/main/templates/listar_buscar_historias_2.html</code></li>
+<li><code>hhcc/main/templates/detalle_historia_con_historial_2.html</code></li>
+<li><code>hhcc/main/templates/historial_medico/historial_medico.html</code></li>
+<li><code>hhcc/main/templates/listar_estudios_historia.html</code></li>
+<li><code>hhcc/ecocardiograma/templates/ecocardiograma/eco_form.html</code></li>
+<li><code>hhcc/carotidas/templates/carotidas/nuevo_estudio.html</code></li>
+<li><code>hhcc/mmii/templates/mmii/nuevo_estudio.html</code></li>
+<li><code>hhcc/ecostress/templates/ecostress/nuevo_estudio.html</code></li>
+<li><code>hhcc/carotidas/views.py</code></li>
+<li><code>hhcc/mmii/views.py</code></li>
+<li><code>hhcc/ecostress/views.py</code></li>
+</ul>
+</body>
+</html>
