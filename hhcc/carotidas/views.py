@@ -39,9 +39,7 @@ def nuevo_estudio(request, historia_id):
                         "historia_id": historia.pk,
                     }
                 )
-            return redirect(
-                f"{reverse('carotidas:carotidas_nuevo', args=[historia.pk])}?action=recuperar&estudio={estudio.pk}"
-            )
+            return redirect("carotidas:estudio_editar", estudio_id=estudio.pk)
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JsonResponse({"success": False, "errors": form.errors}, status=400)
     else:
@@ -60,11 +58,41 @@ def nuevo_estudio(request, historia_id):
 
 
 def detalle_estudio(request, pk):
-    estudio = get_object_or_404(CarotidasEstudio, pk=pk)
+    return redirect("carotidas:estudio_editar", estudio_id=pk)
+
+
+def editar_estudio(request, estudio_id):
+    estudio = get_object_or_404(CarotidasEstudio, pk=estudio_id)
+    historia = estudio.historia
+
+    if request.method == "POST":
+        form = CarotidasForm(request.POST, instance=estudio, initial={"historia": historia})
+        if form.is_valid():
+            estudio = form.save()
+            messages.success(request, "Estudio doppler de vasos de cuello guardado.")
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "estudio_id": estudio.pk,
+                        "historia_id": historia.pk,
+                    }
+                )
+            return redirect("carotidas:estudio_editar", estudio_id=estudio.pk)
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "errors": form.errors}, status=400)
+    else:
+        form = CarotidasForm(instance=estudio, initial={"historia": historia})
+
     return render(
         request,
-        "carotidas/detalle_estudio.html",
-        {"estudio": estudio, "historia": estudio.historia, "paciente": estudio.historia.paciente},
+        "carotidas/nuevo_estudio.html",
+        {
+            "form": form,
+            "historia": historia,
+            "paciente": historia.paciente,
+            "estudio": estudio,
+        },
     )
 
 

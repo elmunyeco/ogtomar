@@ -118,7 +118,7 @@ Criterio de aceptacion:
 
 #### 5. Separar claramente "nuevo estudio" de "estudio existente"
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 

@@ -506,6 +506,10 @@ document.addEventListener('alpine:init', () => {
                 const resultado = await this.guardarDatos(true);
                 if (resultado.success) {
                     this.mostrarMensaje('Estudio ecocardiográfico guardado', 'success');
+                    const editUrl = `{% url 'ecocardiograma:estudio_editar' 0 %}`.replace('0', this.estudio.id);
+                    if (window.location.pathname !== new URL(editUrl, window.location.origin).pathname) {
+                        window.history.replaceState({}, '', editUrl);
+                    }
                     // Abrir ventana de impresión
                     let url = `{% url 'ecocardiograma:imprimir_estudio' 0 %}`.replace('0', this.estudio.id);
                     if (this.firmar) {

@@ -74,15 +74,55 @@ def nuevo_estudio(request, historia_id):
                         "historia_id": historia.pk,
                     }
                 )
-            return redirect(
-                f"{reverse('ecostress:ecostress_nuevo', args=[historia.pk])}?action=recuperar&estudio={estudio.pk}"
-            )
+            return redirect("ecostress:estudio_editar", estudio_id=estudio.pk)
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JsonResponse({"success": False, "errors": form.errors}, status=400)
     else:
         form = EcostressForm(instance=estudio, initial=initial)
         if not estudio:
             form.initial["fecha_estudio"] = timezone.localdate()
+
+    return render(
+        request,
+        "ecostress/nuevo_estudio.html",
+        {
+            "form": form,
+            "historia": historia,
+            "paciente": historia.paciente,
+            "estudio": estudio,
+            "default_informe": DEFAULT_INFORME_ERGOMETRIA,
+            "default_datos_eco": DEFAULT_DATOS_ECO,
+            "default_conclusion": DEFAULT_CONCLUSION,
+        },
+    )
+
+
+def editar_estudio(request, estudio_id):
+    estudio = get_object_or_404(EcostressEstudio, pk=estudio_id)
+    historia = estudio.historia
+    initial = {"historia": historia}
+
+    if request.method == "POST":
+        form = EcostressForm(request.POST, instance=estudio, initial=initial)
+        if form.is_valid():
+            estudio = form.save(commit=False)
+            if not estudio.fecha_estudio:
+                estudio.fecha_estudio = timezone.localdate()
+            estudio.save()
+            messages.success(request, "Estudio de ecostrés cardíaco guardado.")
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "estudio_id": estudio.pk,
+                        "historia_id": historia.pk,
+                    }
+                )
+            return redirect("ecostress:estudio_editar", estudio_id=estudio.pk)
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "errors": form.errors}, status=400)
+    else:
+        form = EcostressForm(instance=estudio, initial=initial)
 
     return render(
         request,

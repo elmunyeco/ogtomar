@@ -221,7 +221,7 @@ def listar_estudios_historia(request, historia_id):
             {
                 "tipo": "Ecocardiograma",
                 "fecha": est.fecha,
-                "ver_url": f"/ecocardiograma/{historia_id}/?action=recuperar&estudio={est.id}",
+                "ver_url": reverse("ecocardiograma:estudio_editar", args=[est.id]),
                 "pdf_url": f"/ecocardiograma/imprimir_estudio/{est.id}/?firma=1",
             }
         )
@@ -235,7 +235,7 @@ def listar_estudios_historia(request, historia_id):
             {
                 "tipo": "Ecostress",
                 "fecha": est.fecha_estudio,
-                "ver_url": f"/ecostress/{historia_id}/?action=recuperar&estudio={est.id_stress}",
+                "ver_url": reverse("ecostress:estudio_editar", args=[est.id_stress]),
                 "pdf_url": f"/ecostress/imprimir_estudio/{est.id_stress}/{historia_id}/",
             }
         )
@@ -249,7 +249,7 @@ def listar_estudios_historia(request, historia_id):
             {
                 "tipo": "Carótidas",
                 "fecha": est.fecha_estudio,
-                "ver_url": f"/carotidas/{historia_id}/?action=recuperar&estudio={est.id}",
+                "ver_url": reverse("carotidas:estudio_editar", args=[est.id]),
                 "pdf_url": f"/carotidas/imprimir_estudio/{est.id}/{historia_id}/",
             }
         )
@@ -263,7 +263,7 @@ def listar_estudios_historia(request, historia_id):
             {
                 "tipo": "MMII",
                 "fecha": est.fecha_estudio,
-                "ver_url": f"/mmii/{historia_id}/?action=recuperar&estudio={est.id_mmii}",
+                "ver_url": reverse("mmii:estudio_editar", args=[est.id_mmii]),
                 "pdf_url": f"/mmii/imprimir_estudio/{est.id_mmii}/{historia_id}/",
             }
         )
@@ -1596,7 +1596,7 @@ def historia_estudios(request, historia_id):
         hasta,
     )
     for estudio in eco_qs:
-        ver_url = f"{reverse('ecocardiograma:nuevo_estudio_form', args=[historia.id])}?action=recuperar&estudio={estudio.id}"
+        ver_url = reverse("ecocardiograma:estudio_editar", args=[estudio.id])
         imprimir_url = reverse("ecocardiograma:imprimir_estudio", args=[estudio.id])
         estudios.append(
             {
@@ -1616,7 +1616,7 @@ def historia_estudios(request, historia_id):
         hasta,
     )
     for estudio in carotidas_qs:
-        ver_url = f"{reverse('carotidas:carotidas_form', args=[historia.id])}?action=recuperar&estudio={estudio.id}"
+        ver_url = reverse("carotidas:estudio_editar", args=[estudio.id])
         imprimir_url = reverse(
             "carotidas:carotidas_imprimir",
             args=[estudio.id, historia.id],
@@ -1639,7 +1639,7 @@ def historia_estudios(request, historia_id):
         hasta,
     )
     for estudio in mmii_qs:
-        ver_url = f"{reverse('mmii:mmii_nuevo', args=[historia.id])}?action=recuperar&estudio={estudio.id_mmii}"
+        ver_url = reverse("mmii:estudio_editar", args=[estudio.id_mmii])
         imprimir_url = reverse(
             "mmii:mmii_imprimir",
             args=[estudio.id_mmii, historia.id],
@@ -1662,7 +1662,7 @@ def historia_estudios(request, historia_id):
         hasta,
     )
     for estudio in stress_qs:
-        ver_url = f"{reverse('ecostress:ecostress_form', args=[historia.id])}?action=recuperar&estudio={estudio.id_stress}"
+        ver_url = reverse("ecostress:estudio_editar", args=[estudio.id_stress])
         imprimir_url = reverse(
             "ecostress:ecostress_imprimir",
             args=[estudio.id_stress, historia.id],

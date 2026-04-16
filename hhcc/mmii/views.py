@@ -66,9 +66,45 @@ def nuevo_estudio(request, historia_id):
                         "historia_id": historia.pk,
                     }
                 )
-            return redirect(
-                f"{reverse('mmii:mmii_nuevo', args=[historia.pk])}?action=recuperar&estudio={estudio.pk}"
-            )
+            return redirect("mmii:estudio_editar", estudio_id=estudio.pk)
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "errors": form.errors}, status=400)
+    else:
+        form = MmiiForm(instance=estudio, initial=initial)
+
+    return render(
+        request,
+        "mmii/nuevo_estudio.html",
+        {
+            "form": form,
+            "historia": historia,
+            "paciente": historia.paciente,
+            "estudio": estudio,
+            "default_arteria": DEFAULT_ARTERIA,
+            "default_conclusion": DEFAULT_CONCLUSION,
+        },
+    )
+
+
+def editar_estudio(request, estudio_id):
+    estudio = get_object_or_404(MmiiEstudio, pk=estudio_id)
+    historia = estudio.historia
+    initial = {"historia": historia}
+
+    if request.method == "POST":
+        form = MmiiForm(request.POST, instance=estudio, initial=initial)
+        if form.is_valid():
+            estudio = form.save()
+            messages.success(request, "Estudio doppler color de MMII guardado.")
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "estudio_id": estudio.pk,
+                        "historia_id": historia.pk,
+                    }
+                )
+            return redirect("mmii:estudio_editar", estudio_id=estudio.pk)
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JsonResponse({"success": False, "errors": form.errors}, status=400)
     else:
