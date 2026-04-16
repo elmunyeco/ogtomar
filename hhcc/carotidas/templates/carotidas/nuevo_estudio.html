@@ -528,16 +528,20 @@
             body: formData
           });
           const data = await response.json();
-            if (response.ok && data.success) {
-              const msg = document.getElementById('carotidas-success');
-              const err = document.getElementById('carotidas-error');
-              if (msg) {
-                msg.textContent = 'Estudio de carótidas guardado';
-                msg.classList.remove('hidden');
-              }
-              if (err) {
-                err.classList.add('hidden');
-              }
+          if (response.ok && data.success) {
+            const msg = document.getElementById('carotidas-success');
+            const err = document.getElementById('carotidas-error');
+            if (msg) {
+              msg.textContent = 'Estudio de carótidas guardado';
+              msg.classList.remove('hidden');
+            }
+            if (err) {
+              err.classList.add('hidden');
+            }
+            const editUrl = `{% url 'carotidas:estudio_editar' 0 %}`.replace('0', data.estudio_id);
+            if (window.location.pathname !== new URL(editUrl, window.location.origin).pathname) {
+              window.history.replaceState({}, '', editUrl);
+            }
             let url = `{% url 'carotidas:carotidas_imprimir' 0 0 %}`
               .replace('/0/0/', `/${data.estudio_id}/${data.historia_id}/`);
             if (this.firmar) {

@@ -301,6 +301,10 @@
             if (err) {
               err.classList.add('hidden');
             }
+            const editUrl = `{% url 'ecostress:estudio_editar' 0 %}`.replace('0', data.estudio_id);
+            if (window.location.pathname !== new URL(editUrl, window.location.origin).pathname) {
+              window.history.replaceState({}, '', editUrl);
+            }
             let url = `{% url 'ecostress:ecostress_imprimir' 0 0 %}`
               .replace('/0/0/', `/${data.estudio_id}/${data.historia_id}/`);
             if (this.firmar) {
