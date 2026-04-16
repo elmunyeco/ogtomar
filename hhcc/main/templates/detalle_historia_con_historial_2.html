@@ -37,6 +37,17 @@
     .btn-hover-effect {
         transition: all 0.2s ease-in-out;
     }
+
+    .visit-comment-card {
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .visit-comment-text {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
 </style>
 {% endblock %}
 
@@ -346,8 +357,8 @@
                                         <template x-if="(visita.comments?.length || 0) > 0">
                                             <div class="space-y-3">
                                                 <template x-for="comment in visita.comments" :key="comment.id">
-                                                    <div class="relative bg-white p-3 rounded shadow-sm border-l-4 border-[#9a4035]">
-                                                        <p class="text-gray-700" x-text="comment.text || ''"></p>
+                                                    <div class="visit-comment-card relative bg-white p-3 pr-10 rounded shadow-sm border-l-4 border-[#9a4035]">
+                                                        <p class="visit-comment-text text-gray-700" x-text="comment.text || ''"></p>
                                                         <button @click="eliminarComentario(comment.id)"
                                                             class="absolute top-2 right-2 text-gray-400 hover:text-[#9a4035]"
                                                             title="Eliminar comentario">
