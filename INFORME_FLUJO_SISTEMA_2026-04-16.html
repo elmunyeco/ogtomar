@@ -236,14 +236,14 @@ rol.</li>
 <li>Hacer que el logo lleve al inicio real del sistema.</li>
 <li>Mantener perfil/cambio de nombre como accion de usuario, no como
 home implicita.</li>
-<li>Mantener la arquitectura de dos objetos principales del sistema:
+<li>Mantener por ahora la arquitectura de dos objetos principales del
+sistema:
 <ul>
 <li>Pacientes</li>
 <li>Historias</li>
 </ul></li>
-<li>No introducir un item global <code>Buscador</code>, porque no existe
-un tercer objeto independiente: los buscadores validos son el de
-pacientes y el de historias.</li>
+<li>Por ahora no introducir un item global <code>Buscador</code>, porque
+hoy los buscadores vigentes son el de pacientes y el de historias.</li>
 <li>No introducir un item global <code>Estudios</code>, porque estudios
 no tiene entrada directa autonoma; se accede desde
 paciente/historia.</li>
@@ -254,8 +254,11 @@ paciente/historia.</li>
 mismo nivel de importancia en la navegacion.</li>
 <li>El sistema no debe sugerir que <code>Historias</code> está por
 encima de <code>Pacientes</code>.</li>
-<li>El header debe respetar el modelo de dos objetos principales, no
-crear una tercera via conceptual.</li>
+<li>Por ahora el header debe respetar el esquema de dos objetos
+principales.</li>
+<li>Esto no descarta que exista mas adelante un buscador global como
+tercer entrada, pero todavia no corresponde diseñar el header como si ya
+estuviera resuelto.</li>
 </ul>
 <h4 id="23-dos-modelos-de-acceso-a-estudios-compiten-entre-si">2.3 Dos
 modelos de acceso a estudios compiten entre si</h4>

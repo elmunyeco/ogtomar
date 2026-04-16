@@ -228,21 +228,22 @@ Archivos a revisar:
 Trabajo esperado:
 
 - hacer que el logo lleve al inicio
-- preservar la arquitectura de dos objetos principales:
+- preservar por ahora la arquitectura de dos objetos principales:
   - `Pacientes`
   - `Historias`
-- no agregar un item global `Buscador`
+- no agregar por ahora un item global `Buscador`
 - no agregar un item global `Estudios`
 
 Criterio de aceptacion:
 
 - el header sirve como ancla real de navegacion
 - `Pacientes` y `Historias` mantienen igual jerarquia visual y conceptual
-- no aparecen categorias globales que rompan el modelo de dos objetos principales
+- no aparecen por ahora categorias globales que rompan el esquema vigente de dos objetos principales
 
 Nota funcional fijada:
 
-- los buscadores validos del sistema son el de pacientes y el de historias
+- hoy los buscadores vigentes del sistema son el de pacientes y el de historias
+- puede existir a futuro un buscador global como tercer entrada, pero todavia no debe condicionar el diseño actual del header
 - estudios se navega desde paciente o historia, no como objeto principal autonomo
 
 ### Bloque 4. Limpieza tecnica

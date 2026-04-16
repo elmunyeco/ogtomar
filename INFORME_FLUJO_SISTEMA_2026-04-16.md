@@ -185,17 +185,18 @@ Solucion propuesta:
 
 - Hacer que el logo lleve al inicio real del sistema.
 - Mantener perfil/cambio de nombre como accion de usuario, no como home implicita.
-- Mantener la arquitectura de dos objetos principales del sistema:
+- Mantener por ahora la arquitectura de dos objetos principales del sistema:
   - Pacientes
   - Historias
-- No introducir un item global `Buscador`, porque no existe un tercer objeto independiente: los buscadores validos son el de pacientes y el de historias.
+- Por ahora no introducir un item global `Buscador`, porque hoy los buscadores vigentes son el de pacientes y el de historias.
 - No introducir un item global `Estudios`, porque estudios no tiene entrada directa autonoma; se accede desde paciente/historia.
 
 Definicion funcional confirmada:
 
 - `Pacientes` y `Historias` deben conservar el mismo nivel de importancia en la navegacion.
 - El sistema no debe sugerir que `Historias` está por encima de `Pacientes`.
-- El header debe respetar el modelo de dos objetos principales, no crear una tercera via conceptual.
+- Por ahora el header debe respetar el esquema de dos objetos principales.
+- Esto no descarta que exista mas adelante un buscador global como tercer entrada, pero todavia no corresponde diseñar el header como si ya estuviera resuelto.
 
 #### 2.3 Dos modelos de acceso a estudios compiten entre si
 
