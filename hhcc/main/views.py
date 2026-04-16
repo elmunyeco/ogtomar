@@ -1408,6 +1408,12 @@ def detalle_historia_con_historial(request, historia_id):
         tipo="EVOL",
     ).first()
 
+    ultima_visita_real = (
+        ComentariosVisitas.objects.filter(historia_clinica=historia, tipo="EVOL")
+        .order_by("-fecha")
+        .first()
+    )
+
     condiciones_paciente = CondicionMedicaHistoria.objects.filter(historia=historia)
     todas_condiciones = CondicionMedica.objects.all()
     condiciones_activas = condiciones_paciente.values_list("condicion_id", flat=True)
@@ -1511,6 +1517,7 @@ def detalle_historia_con_historial(request, historia_id):
         "todas_condiciones": todas_condiciones,
         "condiciones_activas": condiciones_activas,
         "comentarios_hoy": comentarios_hoy.comentarios if comentarios_hoy else "",
+        "ultima_visita_real": ultima_visita_real.fecha if ultima_visita_real else None,
         "historial_json": historial_json,
         "debug": settings.DEBUG,
     }

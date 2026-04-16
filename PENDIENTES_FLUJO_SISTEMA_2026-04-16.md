@@ -182,7 +182,7 @@ Criterio de aceptacion:
 
 #### 3.2 Corregir el significado de "Ultima visita"
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 

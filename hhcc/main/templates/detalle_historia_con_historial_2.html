@@ -170,7 +170,13 @@
                 </div>
                 <div>
                     <span class="text-gray-500 mr-2">Última visita:</span>
-                    <span>{{ historia.fechaAlta|date:"d/m/Y" }}</span>
+                    <span>
+                        {% if ultima_visita_real %}
+                            {{ ultima_visita_real|date:"d/m/Y" }}
+                        {% else %}
+                            Sin visitas registradas
+                        {% endif %}
+                    </span>
                 </div>
             </div>
         </div>
