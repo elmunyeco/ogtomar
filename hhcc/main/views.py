@@ -794,9 +794,17 @@ def _build_historia_visitas_detalle(historia):
         fecha.date() if isinstance(fecha, datetime) else fecha
         for fecha in signos_vitales.values_list("fecha", flat=True)
     ]
+    comentarios_por_fecha = {}
+    for comentario in comentarios:
+        comentario_fecha = (
+            comentario.fecha.date()
+            if isinstance(comentario.fecha, datetime)
+            else comentario.fecha
+        )
+        comentarios_por_fecha.setdefault(comentario_fecha, []).append(comentario)
 
     for fecha in sorted(set(fechas_comentarios + fechas_signos), reverse=True):
-        coms_fecha = comentarios.filter(fecha__date=fecha)
+        coms_fecha = comentarios_por_fecha.get(fecha, [])
         signos_fecha = signos_vitales.filter(fecha=fecha).first()
         meds_fecha = indicaciones.filter(fecha=fecha)
 
@@ -1171,6 +1179,14 @@ def historial_medico(request, id_historia):
         fecha.date() if isinstance(fecha, datetime) else fecha
         for fecha in signos_vitales.values_list("fecha", flat=True)
     ]
+    comentarios_por_fecha = {}
+    for comentario in comentarios:
+        comentario_fecha = (
+            comentario.fecha.date()
+            if isinstance(comentario.fecha, datetime)
+            else comentario.fecha
+        )
+        comentarios_por_fecha.setdefault(comentario_fecha, []).append(comentario)
 
     todas_fechas = com_fechas + sv_fechas
     todas_fechas = sorted(set(todas_fechas), reverse=True)
@@ -1179,7 +1195,7 @@ def historial_medico(request, id_historia):
         fecha_str = fecha.strftime("%Y-%m-%d")
 
         # Buscar datos para esta fecha
-        coms_fecha = comentarios.filter(fecha__date=fecha)
+        coms_fecha = comentarios_por_fecha.get(fecha, [])
         signos_fecha = signos_vitales.filter(fecha=fecha).first()
         meds_fecha = indicaciones.filter(fecha=fecha)
 
@@ -1325,6 +1341,14 @@ def detalle_historia_con_historial(request, historia_id):
         fecha.date() if isinstance(fecha, datetime) else fecha
         for fecha in signos_vitales_historial.values_list("fecha", flat=True)
     ]
+    comentarios_por_fecha = {}
+    for comentario in comentarios:
+        comentario_fecha = (
+            comentario.fecha.date()
+            if isinstance(comentario.fecha, datetime)
+            else comentario.fecha
+        )
+        comentarios_por_fecha.setdefault(comentario_fecha, []).append(comentario)
 
     todas_fechas = com_fechas + sv_fechas
     todas_fechas = sorted(set(todas_fechas), reverse=True)
@@ -1333,7 +1357,7 @@ def detalle_historia_con_historial(request, historia_id):
         fecha_str = fecha.strftime("%Y-%m-%d")
 
         # Buscar datos para esta fecha
-        coms_fecha = comentarios.filter(fecha__date=fecha)
+        coms_fecha = comentarios_por_fecha.get(fecha, [])
         signos_fecha = signos_vitales_historial.filter(fecha=fecha).first()
         meds_fecha = indicaciones.filter(fecha=fecha)
 

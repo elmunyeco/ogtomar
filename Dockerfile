@@ -30,6 +30,7 @@ WORKDIR /app
 
 COPY ./hhcc /app/
 COPY ./requirements.txt /app/
+COPY ./docker-entrypoint.sh /app/docker-entrypoint.sh
 
 RUN pip3 install --upgrade pip
 RUN pip3 install -r requirements.txt
@@ -56,26 +57,6 @@ RUN chmod +x /app/wait-for-mysql.sh
 
 EXPOSE 8000
 
-RUN cat > /app/start.sh <<'SH'
-#!/bin/bash
-set -e
+RUN chmod +x /app/docker-entrypoint.sh
 
-DB_HOST=${DB_HOST:-db}
-DB_PORT=${DB_PORT:-3306}
-
-/app/wait-for-mysql.sh "$DB_HOST" "$DB_PORT" echo "Base de datos lista"
-
-if ! mariadb -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS ${DB_NAME};" >/dev/null 2>&1; then
-  echo "WARN: no se pudo crear/verificar la base de datos"
-fi
-
-if ! python3 manage.py migrate --noinput; then
-  echo "WARN: migrate failed, retrying with --fake-initial"
-  python3 manage.py migrate --noinput --fake-initial || true
-fi
-python3 manage.py runserver 0.0.0.0:8000
-SH
-
-RUN chmod +x /app/start.sh
-
-CMD ["/app/start.sh"]
+CMD ["/app/docker-entrypoint.sh"]

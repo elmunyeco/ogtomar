@@ -43,6 +43,20 @@ else
 fi
 
 echo "==> Verifying env"
-docker exec -it hhcc_app env | grep ^DB_ || true
+docker exec hhcc_app env | grep ^DB_ || true
+
+echo "==> Waiting for app readiness"
+for _ in $(seq 1 60); do
+  if curl -fsS http://127.0.0.1/login/ >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+
+echo "==> Recent app logs"
+docker logs --tail 40 hhcc_app || true
+
+echo "==> Recent db logs"
+docker logs --tail 40 nuevo_cardioprieto || true
 
 echo "==> Done"
