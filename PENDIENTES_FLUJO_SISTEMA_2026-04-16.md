@@ -164,7 +164,7 @@ Criterio de aceptacion:
 
 #### 3.1 Dar acceso directo a historia desde listado de pacientes
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 

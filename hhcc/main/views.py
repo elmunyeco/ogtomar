@@ -76,6 +76,18 @@ def listar_buscar_pacientes(request):
         # Si no hay búsqueda, mostrar todos los pacientes
         pacientes = Paciente.objects.all()
 
+    from django.db.models import OuterRef, Subquery
+
+    historia_principal_qs = (
+        HistoriaClinica.objects.filter(paciente=OuterRef("pk"))
+        .order_by("-id")
+        .values("id")[:1]
+    )
+
+    pacientes = pacientes.annotate(
+        historia_principal_id=Subquery(historia_principal_qs)
+    )
+
     # Ordenar los pacientes por un campo específico antes de paginar
     pacientes = pacientes.order_by("-id")  # Ordenar por ID para evitar inconsistencias en la paginación
 
