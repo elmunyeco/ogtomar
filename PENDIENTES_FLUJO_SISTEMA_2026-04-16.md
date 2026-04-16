@@ -140,7 +140,7 @@ Criterio de aceptacion:
 
 #### 2.3 Revisar si conviene mantener listados por modulo
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 

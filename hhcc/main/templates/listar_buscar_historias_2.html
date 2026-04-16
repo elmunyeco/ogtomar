@@ -86,18 +86,18 @@
                     <td class="px-4 py-2 border border-gray-300">{{ historia.paciente.idTipoDoc.nombre }} {{ historia.paciente.numDoc }}</td>
                     <td class="px-4 py-2 border border-gray-300 text-sm">
                         <div class="flex flex-wrap gap-3">
-                            <a href="/ecocardiograma/{{ historia.id }}/estudios/" class="text-slate-700 hover:text-slate-900">
+                            <span class="text-slate-700">
                                 Eco: <span class="font-semibold">{{ historia.eco_count }}</span>
-                            </a>
-                            <a href="/ecostress/{{ historia.id }}/estudios/" class="text-slate-700 hover:text-slate-900">
+                            </span>
+                            <span class="text-slate-700">
                                 Stress: <span class="font-semibold">{{ historia.stress_count }}</span>
-                            </a>
-                            <a href="/carotidas/{{ historia.id }}/estudios/" class="text-slate-700 hover:text-slate-900">
+                            </span>
+                            <span class="text-slate-700">
                                 Carótidas: <span class="font-semibold">{{ historia.carot_count }}</span>
-                            </a>
-                            <a href="/mmii/{{ historia.id }}/estudios/" class="text-slate-700 hover:text-slate-900">
+                            </span>
+                            <span class="text-slate-700">
                                 MMII: <span class="font-semibold">{{ historia.mmii_count }}</span>
-                            </a>
+                            </span>
                         </div>
                     </td>
                     <td class="px-4 py-2 border border-gray-300">
@@ -105,7 +105,7 @@
                             <!-- Botón Editar con icono -->
                             <a href="{% url 'detalle_historia_con_historial' historia_id=historia.id %}" 
                                class="text-blue-600 hover:text-blue-800 transition-colors flex items-center" 
-                               title="Editar historia clínica">
+                               title="Abrir historia clínica">
                                 <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
