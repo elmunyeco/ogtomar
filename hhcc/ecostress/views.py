@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -73,7 +74,9 @@ def nuevo_estudio(request, historia_id):
                         "historia_id": historia.pk,
                     }
                 )
-            return redirect("ecostress:ecostress_nuevo", historia_id=historia.pk)
+            return redirect(
+                f"{reverse('ecostress:ecostress_nuevo', args=[historia.pk])}?action=recuperar&estudio={estudio.pk}"
+            )
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JsonResponse({"success": False, "errors": form.errors}, status=400)
     else:

@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from main.utils import static_file_url
@@ -38,7 +39,9 @@ def nuevo_estudio(request, historia_id):
                         "historia_id": historia.pk,
                     }
                 )
-            return redirect("carotidas:carotidas_detalle", pk=estudio.pk)
+            return redirect(
+                f"{reverse('carotidas:carotidas_nuevo', args=[historia.pk])}?action=recuperar&estudio={estudio.pk}"
+            )
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JsonResponse({"success": False, "errors": form.errors}, status=400)
     else:
