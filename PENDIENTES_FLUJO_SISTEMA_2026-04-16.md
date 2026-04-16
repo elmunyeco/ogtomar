@@ -225,7 +225,7 @@ Nota funcional:
 
 #### 4.1 Limpiar terminologia en historia clinica
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
