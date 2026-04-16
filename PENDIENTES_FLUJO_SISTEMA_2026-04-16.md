@@ -96,14 +96,13 @@ Criterio de aceptacion:
 
 #### 1.2 Elegir una sola implementacion del listado de estudios
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
 - `hhcc/main/views.py`
 - `hhcc/main/urls.py`
 - `hhcc/main/templates/listar_estudios_historia.html`
-- `hhcc/main/templates/ver_estudios.html`
 
 Trabajo esperado:
 
