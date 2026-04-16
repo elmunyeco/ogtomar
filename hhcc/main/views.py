@@ -1003,7 +1003,7 @@ def actualizar_condiciones(request, historia_id):
             historia=historia, condicion_id=condicion_id
         )
 
-    return redirect("detalle_historia", historia_id=historia_id)
+    return redirect("detalle_historia_con_historial", historia_id=historia_id)
 
 
 @require_POST
@@ -1019,7 +1019,7 @@ def guardar_signos_vitales(request, historia_id):
         colesterol=request.POST.get("colesterol"),
     )
 
-    return redirect("detalle_historia", historia_id=historia_id)
+    return redirect("detalle_historia_con_historial", historia_id=historia_id)
 
 
 from django.views.decorators.http import require_POST
