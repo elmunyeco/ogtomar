@@ -22,14 +22,6 @@ def logout_view(request):
     return redirect("login")
 
 
-def landing_page(request):
-    return render(request, "landing_page.html")
-
-
-def landing_page_dropdown(request):
-    return render(request, "landing_page_dropdown.html")
-
-
 def buscador(request):
     return render(request, "buscador.html")
 
@@ -393,26 +385,6 @@ def eliminar_paciente(request, pk):
             return redirect('listar_buscar_pacientes')
     
     return render(request, 'eliminar_paciente.html', {'paciente': paciente, 'historias': tiene_historias})
-
-
-def detalle_historia(request, historia_id):
-    historia = get_object_or_404(HistoriaClinica, id=historia_id)
-    paciente = historia.paciente
-
-    # Añade logs para debug
-    print(f"Historia ID: {historia_id}")
-    print(f"Historia encontrada: {historia}")
-    print(f"Paciente: {paciente}")
-
-    context = {
-        "historia": historia,
-        "paciente": paciente,
-    }
-
-    # Imprime el contexto completo
-    print(f"Contexto: {context}")
-
-    return render(request, "detalle_historia.html", context)
 
 
 def ordenes_medicas(request, paciente_id):
@@ -798,95 +770,6 @@ from .models import (
     CondicionMedicaHistoria,
     CondicionMedica,
 )
-
-
-def get_historia_data(request, historia_id):
-    historia = get_object_or_404(HistoriaClinica, pk=historia_id)
-    try:
-        signos_vitales = SignosVitales.objects.filter(historia=historia).latest("fecha")
-        condiciones = CondicionMedicaHistoria.objects.filter(historia=historia)
-
-        data = {
-            "signos_vitales": {
-                "presion_sistolica": signos_vitales.presion_sistolica,
-                "presion_diastolica": signos_vitales.presion_diastolica,
-                "peso": signos_vitales.peso,
-                "glucemia": signos_vitales.glucemia,
-                "colesterol": signos_vitales.colesterol,
-            },
-            "condiciones": list(condiciones.values("id")),
-        }
-        return JsonResponse(data)
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
-
-
-def detalle_historia_viejo(request, historia_id):
-    historia = get_object_or_404(HistoriaClinica, id=historia_id)
-    paciente = historia.paciente
-
-    # Obtener últimos signos vitales
-    signos_vitales = (
-        SignosVitales.objects.filter(historia=historia).order_by("-fecha").first()
-    )
-
-    # Obtener condiciones del paciente
-    condiciones_paciente = CondicionMedicaHistoria.objects.filter(
-        historia=historia
-    ).select_related("condicion")
-
-    # Obtener todas las condiciones posibles
-    todas_condiciones = CondicionMedica.objects.all()
-
-    # Obtener IDs de las condiciones actuales para marcar los checkboxes
-    condiciones_activas = condiciones_paciente.values_list("condicion_id", flat=True)
-
-    context = {
-        "historia": historia,
-        "paciente": paciente,
-        "signos_vitales": signos_vitales,
-        "todas_condiciones": todas_condiciones,
-        "condiciones_activas": condiciones_activas,
-    }
-
-    return render(request, "detalle_historia_t2.html", context)
-
-
-def detalle_historia(request, historia_id):
-    historia = get_object_or_404(HistoriaClinica, id=historia_id)
-    now = timezone.now()
-    local_now = timezone.localtime(now)
-    start_local = datetime.combine(local_now.date(), time.min).replace(tzinfo=local_now.tzinfo)
-    start_utc = start_local.astimezone(dt_timezone.utc)
-    end_utc = start_utc + timedelta(days=1)
-
-    # Obtener última visita (para cargar signos vitales y condiciones)
-    signos_vitales = SignosVitales.objects.filter(
-        historia=historia, fecha=local_now.date()
-    ).first()
-
-    # Obtener comentarios del día si existen
-    comentarios_hoy = ComentariosVisitas.objects.filter(
-        historia_clinica=historia,
-        fecha__gte=start_utc,
-        fecha__lt=end_utc,
-        tipo="EVOL",
-    ).first()
-
-    condiciones_paciente = CondicionMedicaHistoria.objects.filter(historia=historia)
-    todas_condiciones = CondicionMedica.objects.all()
-    condiciones_activas = condiciones_paciente.values_list("condicion_id", flat=True)
-
-    context = {
-        "historia": historia,
-        "paciente": historia.paciente,
-        "signos_vitales": signos_vitales,
-        "todas_condiciones": todas_condiciones,
-        "condiciones_activas": condiciones_activas,
-        "comentarios_hoy": comentarios_hoy.comentarios if comentarios_hoy else "",
-    }
-
-    return render(request, "detalle_historia_t3.html", context)
 
 
 from .models import ComentariosVisitas
@@ -1565,25 +1448,6 @@ def imprimir_historia_clinica(request, historia_id):
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = f"inline; filename={filename}"
     return response
-
-
-def h1_html(request):
-    """
-    Vista para la página "Uno" en el submenú de Historias
-    """
-    return render(request, 'historial_medico/h1.html')
-
-def h2_html(request):
-    """
-    Vista para la página "Dos" en el submenú de Historias
-    """
-    return render(request, 'historial_medico/h2.html')
-
-def h3_html(request):
-    """
-    Vista para la página "Tres" en el submenú de Historias
-    """
-    return render(request, 'historial_medico/h3.html')
 
 
 def historia_estudios_nuevo(request, historia_id):

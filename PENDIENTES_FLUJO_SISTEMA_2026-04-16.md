@@ -280,7 +280,7 @@ Avance implementado en `refactor/flujo-clinico-integral`:
 
 #### 4.2 Eliminar rutas y vistas de ejemplo o legacy que ya no aportan
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
