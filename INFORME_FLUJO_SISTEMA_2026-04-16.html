@@ -337,6 +337,53 @@ seguimiento.</li>
 <li>Si no hay visitas, mostrar "Sin visitas registradas" o la fecha de
 apertura de historia con rotulo correcto.</li>
 </ul>
+<h4
+id="33-cancelar-en-altaedicion-de-paciente-no-debe-relanzar-la-misma-operacion">3.3
+Cancelar en alta/edicion de paciente no debe relanzar la misma
+operacion</h4>
+<p>Problema:</p>
+<p>El comportamiento de <code>Cancelar</code> no es consistente entre
+alta y edicion de paciente.</p>
+<p>Referencias:</p>
+<ul>
+<li><code>hhcc/main/templates/crear_paciente.html:186</code></li>
+<li><code>hhcc/main/templates/editar_paciente.html:361</code></li>
+</ul>
+<p>Estado actual observado:</p>
+<ul>
+<li>En <code>crear_paciente</code>, <code>Cancelar</code> ya abandona el
+alta y vuelve al listado de pacientes.</li>
+<li>En <code>editar_paciente</code>, <code>Cancelar</code> vuelve a la
+misma pantalla de edicion, generando un bucle sin salida real.</li>
+</ul>
+<p>Impacto:</p>
+<ul>
+<li>En edicion, <code>Cancelar</code> no cancela nada.</li>
+<li>El usuario queda forzado a salir por otro camino que no es el
+control esperado.</li>
+<li>La interfaz contradice la semantica del boton.</li>
+</ul>
+<p>Solucion propuesta:</p>
+<ul>
+<li>Mantener el criterio de que <code>Cancelar</code> debe abandonar la
+operacion actual.</li>
+<li>En <code>editar_paciente</code>, hacer que <code>Cancelar</code>
+vuelva a una pantalla neutra o de contexto.</li>
+</ul>
+<p>Recomendacion:</p>
+<ul>
+<li>opcion minima y consistente: volver a
+<code>listar_buscar_pacientes</code></li>
+<li>opcion contextual mas rica: volver a la historia clinica del
+paciente si existe</li>
+</ul>
+<p>Conclusion funcional:</p>
+<ul>
+<li>La idea correcta no es necesariamente "volver a una pantalla blanca"
+literal.</li>
+<li>La idea correcta es salir de la operacion en curso y no reingresar a
+la misma vista.</li>
+</ul>
 <h3 id="4-baja">4. Baja</h3>
 <h4 id="41-terminologia-inconsistente-en-la-historia-clinica">4.1
 Terminologia inconsistente en la historia clinica</h4>

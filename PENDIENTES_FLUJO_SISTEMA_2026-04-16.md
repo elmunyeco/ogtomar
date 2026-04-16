@@ -198,6 +198,31 @@ Criterio de aceptacion:
 
 - la fecha mostrada representa actividad clinica real
 
+#### 3.3 Corregir comportamiento de `Cancelar` en alta/edicion de paciente
+
+Estado: pendiente
+
+Archivos a revisar:
+
+- `hhcc/main/templates/crear_paciente.html`
+- `hhcc/main/templates/editar_paciente.html`
+
+Trabajo esperado:
+
+- confirmar y mantener que `Cancelar` en alta abandona la operacion
+- corregir `Cancelar` en edicion para que no vuelva a la misma vista
+- unificar criterio de salida de la operacion
+
+Criterio de aceptacion:
+
+- `Cancelar` nunca relanza la misma pantalla de alta/edicion
+- el usuario sale de la operacion actual hacia una pantalla neutra o de contexto
+
+Nota funcional:
+
+- hoy el problema real esta en `editar_paciente`
+- `crear_paciente` ya abandona el alta y vuelve al listado de pacientes
+
 #### 4.1 Limpiar terminologia en historia clinica
 
 Estado: pendiente
