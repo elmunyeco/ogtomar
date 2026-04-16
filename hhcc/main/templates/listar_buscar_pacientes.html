@@ -82,6 +82,15 @@
                     <td class="px-4 py-2 border border-gray-300">DNI {{ paciente.numDoc }}</td>
                     <td class="px-4 py-2 border border-gray-300">
                         <div class="flex justify-center space-x-4">
+                            {% if paciente.historia_principal_id %}
+                            <a href="{% url 'detalle_historia_con_historial' historia_id=paciente.historia_principal_id %}" 
+                               class="text-green-600 hover:text-green-800 transition-colors flex items-center" 
+                               title="Abrir historia clínica">
+                                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586A1 1 0 0113.293 3.293l4.414 4.414A1 1 0 0118 8.414V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </a>
+                            {% endif %}
                             <!-- Botón Editar con icono -->
                             <a href="{% url 'editar_paciente' paciente.id %}" 
                                class="text-blue-600 hover:text-blue-800 transition-colors flex items-center" 

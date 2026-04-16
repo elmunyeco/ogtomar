@@ -506,6 +506,10 @@ document.addEventListener('alpine:init', () => {
                 const resultado = await this.guardarDatos(true);
                 if (resultado.success) {
                     this.mostrarMensaje('Estudio ecocardiográfico guardado', 'success');
+                    const editUrl = `{% url 'ecocardiograma:estudio_editar' 0 %}`.replace('0', this.estudio.id);
+                    if (window.location.pathname !== new URL(editUrl, window.location.origin).pathname) {
+                        window.history.replaceState({}, '', editUrl);
+                    }
                     // Abrir ventana de impresión
                     let url = `{% url 'ecocardiograma:imprimir_estudio' 0 %}`.replace('0', this.estudio.id);
                     if (this.firmar) {
@@ -1399,7 +1403,7 @@ document.addEventListener('alpine:init', () => {
             </svg>
             <span x-text="guardando ? 'Guardando...' : 'Guardar'"></span>
         </button>
-        <a href="{% url 'listar_buscar_historias' %}" class="text-sm text-gray-600 hover:text-gray-800">Volver</a>
+        <a href="{% url 'listar_estudios_historia' historia_id=historia.id %}" class="text-sm text-gray-600 hover:text-gray-800">Volver</a>
     </div>
 
     <!-- Modal para selección de segmentos -->

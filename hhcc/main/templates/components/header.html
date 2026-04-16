@@ -7,7 +7,7 @@ templates/components/header.html
 <header class="header-container">
     <div class="header-main">
         <div class="logo-section">
-            <a href="{% url 'cambiar_nombre' %}" class="logo-link" aria-label="Editar perfil">
+            <a href="{% url 'index' %}" class="logo-link" aria-label="Ir al inicio">
                 <img src="{% static 'main/images/logo.png' %}" alt="Logo Dr. Omar Prieto">
             </a>
             <div class="doctor-title">
@@ -17,7 +17,7 @@ templates/components/header.html
         </div>
         <div class="user-actions">
             <div class="user-info">
-                <span>{{ user.get_full_name|default:user.username }}</span>
+                <a href="{% url 'cambiar_nombre' %}" class="user-name-link">{{ user.get_full_name|default:user.username }}</a>
             </div>
             <a href="{% url 'logout' %}" class="logout-btn">Cerrar Sesión</a>
         </div>

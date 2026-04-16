@@ -107,6 +107,18 @@
             font-size: 0.9rem;
             color: #6c757d;
         }
+
+        .user-name-link {
+            color: #495057;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .user-name-link:hover {
+            color: #9a4035;
+            text-decoration: underline;
+        }
         
         .user-name {
             font-weight: 500;

@@ -185,11 +185,18 @@ Solucion propuesta:
 
 - Hacer que el logo lleve al inicio real del sistema.
 - Mantener perfil/cambio de nombre como accion de usuario, no como home implicita.
-- Evaluar agregar al header accesos directos a:
+- Mantener por ahora la arquitectura de dos objetos principales del sistema:
   - Pacientes
   - Historias
-  - Buscador
-  - Estudios
+- Por ahora no introducir un item global `Buscador`, porque hoy los buscadores vigentes son el de pacientes y el de historias.
+- No introducir un item global `Estudios`, porque estudios no tiene entrada directa autonoma; se accede desde paciente/historia.
+
+Definicion funcional confirmada:
+
+- `Pacientes` y `Historias` deben conservar el mismo nivel de importancia en la navegacion.
+- El sistema no debe sugerir que `Historias` está por encima de `Pacientes`.
+- Por ahora el header debe respetar el esquema de dos objetos principales.
+- Esto no descarta que exista mas adelante un buscador global como tercer entrada, pero todavia no corresponde diseñar el header como si ya estuviera resuelto.
 
 #### 2.3 Dos modelos de acceso a estudios compiten entre si
 
@@ -256,6 +263,43 @@ Solucion propuesta:
 
 - Mostrar la fecha del ultimo comentario/visita real.
 - Si no hay visitas, mostrar "Sin visitas registradas" o la fecha de apertura de historia con rotulo correcto.
+
+#### 3.3 Cancelar en alta/edicion de paciente no debe relanzar la misma operacion
+
+Problema:
+
+El comportamiento de `Cancelar` no es consistente entre alta y edicion de paciente.
+
+Referencias:
+
+- `hhcc/main/templates/crear_paciente.html:186`
+- `hhcc/main/templates/editar_paciente.html:361`
+
+Estado actual observado:
+
+- En `crear_paciente`, `Cancelar` ya abandona el alta y vuelve al listado de pacientes.
+- En `editar_paciente`, `Cancelar` vuelve a la misma pantalla de edicion, generando un bucle sin salida real.
+
+Impacto:
+
+- En edicion, `Cancelar` no cancela nada.
+- El usuario queda forzado a salir por otro camino que no es el control esperado.
+- La interfaz contradice la semantica del boton.
+
+Solucion propuesta:
+
+- Mantener el criterio de que `Cancelar` debe abandonar la operacion actual.
+- En `editar_paciente`, hacer que `Cancelar` vuelva a una pantalla neutra o de contexto.
+
+Recomendacion:
+
+- opcion minima y consistente: volver a `listar_buscar_pacientes`
+- opcion contextual mas rica: volver a la historia clinica del paciente si existe
+
+Conclusion funcional:
+
+- La idea correcta no es necesariamente "volver a una pantalla blanca" literal.
+- La idea correcta es salir de la operacion en curso y no reingresar a la misma vista.
 
 ### 4. Baja
 

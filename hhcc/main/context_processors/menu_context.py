@@ -35,12 +35,6 @@ def menu_context(request):
         # Subpáginas de historias
         if 'listar_buscar_historias' in current_path:
             breadcrumbs.append({'label': 'Buscar Historias', 'url': None})
-        elif 'h1_html' in current_path:
-            breadcrumbs.append({'label': 'Uno', 'url': None})
-        elif 'h2_html' in current_path:
-            breadcrumbs.append({'label': 'Dos', 'url': None})
-        elif 'h3_html' in current_path:
-            breadcrumbs.append({'label': 'Tres', 'url': None})
     
     elif active_section == 'ordenes':
         breadcrumbs.append({'label': 'Órdenes', 'url': '/ordenes/'})

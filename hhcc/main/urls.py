@@ -10,8 +10,6 @@ urlpatterns = [
     path("password/", auth_views.PasswordChangeView.as_view(template_name="password_change_form.html"), name="password_change"),
     path("password/done/", auth_views.PasswordChangeDoneView.as_view(template_name="password_change_done.html"), name="password_change_done"),
     path("", login_required(views.index), name="index"),
-    path("landing/", login_required(views.landing_page), name="landing"),
-    path("landing_dropdown/", login_required(views.landing_page_dropdown), name="landing_dropdown"),
     path("buscador/", login_required(views.buscador), name="buscador"),
     path("pacientes/", login_required(views.listar_buscar_pacientes), name="listar_buscar_pacientes"),
     path('pacientes/crear/', login_required(views.crear_paciente), name='crear_paciente'),
@@ -84,10 +82,4 @@ urlpatterns = [
         name="imprimir_historia_clinica",
     ),
     path("eliminar-comentario/", login_required(views.eliminar_comentario), name="eliminar_comentario"),
-    
-    
-    # Nuevas URLs para las páginas de ejemplo
-    path('h1/', login_required(views.h1_html), name='h1_html'),
-    path('h2/', login_required(views.h2_html), name='h2_html'),
-    path('h3/', login_required(views.h3_html), name='h3_html')
 ]

@@ -8,6 +8,7 @@ urlpatterns = [
     path('<int:historia_id>/', views.nuevo_estudio, name='nuevo_estudio_form'),
     path('<int:historia_id>/estudios/', views.listar_estudios, name='listar_estudios'),
     path('<int:historia_id>/nuevo/', views.nuevo_estudio, name='nuevo_estudio'),
+    path('estudio/<int:estudio_id>/', views.editar_estudio, name='estudio_editar'),
     
     # Guardar todo via AJAX (Alpine.js)
     path('guardar_todo_ajax/<int:historia_id>/', views.guardar_todo_ajax, name='guardar_todo_ajax'),

@@ -8,7 +8,7 @@
     {% csrf_token %}
 
     <div class="bg-white rounded-lg shadow-lg p-4">
-      <h2 class="text-xl font-bold text-gray-800">Historial de Visitas Médicas</h2>
+      <h2 class="text-xl font-bold text-gray-800">Historial de Evolución</h2>
       <div class="flex space-x-2 mt-2">
         <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[#9a4035] text-white">
           <span class="w-3 h-3 mr-1 rounded-full bg-white"></span>
@@ -214,7 +214,7 @@
                 <div class="bg-gray-50 rounded-lg p-4">
                   <h3
                     class="text-lg font-semibold text-[#9a4035] mb-3 pb-2 border-b border-[#d1b0ab] flex items-center">
-                    <span class="mr-2">Visitas</span>
+                    <span class="mr-2">Evolución</span>
                     <span class="text-xs font-normal bg-[#f8e1de] text-[#9a4035] px-2 py-1 rounded ml-auto">
                       <span x-text="visita.comments?.length || 0"></span>
                       <span x-text="(visita.comments?.length || 0) === 1 ? ' comentario' : ' comentarios'"></span>

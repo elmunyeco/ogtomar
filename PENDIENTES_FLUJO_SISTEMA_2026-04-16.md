@@ -28,9 +28,9 @@ Principio operativo:
 
 ### Bloque 1. Estabilizacion inmediata
 
-#### 1. Corregir redirects legacy a `detalle_historia`
+#### 1.1 Corregir redirects legacy a `detalle_historia`
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
@@ -47,9 +47,9 @@ Criterio de aceptacion:
 - no quedan referencias activas a `detalle_historia`
 - actualizar condiciones y guardar signos vitales vuelven correctamente a la historia clinica
 
-#### 2. Unificar comportamiento de "guardar estudio"
+#### 1.4 Unificar comportamiento de "guardar estudio"
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
@@ -72,9 +72,9 @@ Criterio de aceptacion:
 
 - MMII, Ecostress, Carotidas y Ecocardiograma reaccionan igual despues de guardar
 
-#### 3. Corregir todos los botones "Volver" en estudios
+#### 2.1 Corregir todos los botones "Volver" en estudios
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
@@ -94,16 +94,15 @@ Criterio de aceptacion:
 
 ### Bloque 2. Consolidacion de arquitectura
 
-#### 4. Elegir una sola implementacion del listado de estudios
+#### 1.2 Elegir una sola implementacion del listado de estudios
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
 - `hhcc/main/views.py`
 - `hhcc/main/urls.py`
 - `hhcc/main/templates/listar_estudios_historia.html`
-- `hhcc/main/templates/ver_estudios.html`
 
 Trabajo esperado:
 
@@ -116,9 +115,9 @@ Criterio de aceptacion:
 - una sola URL y una sola vista resuelven el listado de estudios por historia
 - no quedan caminos duplicados en `main/views.py`
 
-#### 5. Separar claramente "nuevo estudio" de "estudio existente"
+#### 1.3 Separar claramente "nuevo estudio" de "estudio existente"
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
@@ -139,9 +138,9 @@ Criterio de aceptacion:
 - desde el listado de estudios se entra a una ruta explicita de estudio existente
 - el usuario puede distinguir semantica y tecnicamente entre alta y edicion
 
-#### 6. Revisar si conviene mantener listados por modulo
+#### 2.3 Revisar si conviene mantener listados por modulo
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
@@ -163,9 +162,9 @@ Criterio de aceptacion:
 
 ### Bloque 3. Mejora de experiencia de uso
 
-#### 7. Dar acceso directo a historia desde listado de pacientes
+#### 3.1 Dar acceso directo a historia desde listado de pacientes
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
@@ -181,9 +180,9 @@ Criterio de aceptacion:
 
 - desde el listado de pacientes se puede ir directo a la historia clinica
 
-#### 8. Corregir el significado de "Ultima visita"
+#### 3.2 Corregir el significado de "Ultima visita"
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
@@ -199,9 +198,34 @@ Criterio de aceptacion:
 
 - la fecha mostrada representa actividad clinica real
 
-#### 9. Limpiar terminologia en historia clinica
+#### 3.3 Corregir comportamiento de `Cancelar` en alta/edicion de paciente
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
+
+Archivos a revisar:
+
+- `hhcc/main/templates/crear_paciente.html`
+- `hhcc/main/templates/editar_paciente.html`
+
+Trabajo esperado:
+
+- confirmar y mantener que `Cancelar` en alta abandona la operacion
+- corregir `Cancelar` en edicion para que no vuelva a la misma vista
+- unificar criterio de salida de la operacion
+
+Criterio de aceptacion:
+
+- `Cancelar` nunca relanza la misma pantalla de alta/edicion
+- el usuario sale de la operacion actual hacia una pantalla neutra o de contexto
+
+Nota funcional:
+
+- hoy el problema real esta en `editar_paciente`
+- `crear_paciente` ya abandona el alta y vuelve al listado de pacientes
+
+#### 4.1 Limpiar terminologia en historia clinica
+
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 
@@ -218,7 +242,7 @@ Criterio de aceptacion:
 
 - la interfaz usa un lenguaje consistente
 
-#### 10. Mejorar header y navegacion global
+#### 2.2 Mejorar header y navegacion global
 
 Estado: pendiente
 
@@ -229,17 +253,34 @@ Archivos a revisar:
 Trabajo esperado:
 
 - hacer que el logo lleve al inicio
-- evaluar accesos principales adicionales
+- preservar por ahora la arquitectura de dos objetos principales:
+  - `Pacientes`
+  - `Historias`
+- no agregar por ahora un item global `Buscador`
+- no agregar un item global `Estudios`
 
 Criterio de aceptacion:
 
 - el header sirve como ancla real de navegacion
+- `Pacientes` y `Historias` mantienen igual jerarquia visual y conceptual
+- no aparecen por ahora categorias globales que rompan el esquema vigente de dos objetos principales
+
+Nota funcional fijada:
+
+- hoy los buscadores vigentes del sistema son el de pacientes y el de historias
+- puede existir a futuro un buscador global como tercer entrada, pero todavia no debe condicionar el diseño actual del header
+- estudios se navega desde paciente o historia, no como objeto principal autonomo
+
+Avance implementado en `refactor/flujo-clinico-integral`:
+
+- el logo ya navega a `Inicio`
+- el nombre del usuario ya funciona como link directo a perfil (`cambiar_nombre`)
 
 ### Bloque 4. Limpieza tecnica
 
-#### 11. Eliminar rutas y vistas de ejemplo o legacy que ya no aportan
+#### 4.2 Eliminar rutas y vistas de ejemplo o legacy que ya no aportan
 
-Estado: pendiente
+Estado: resuelto en `refactor/flujo-clinico-integral`
 
 Archivos a revisar:
 

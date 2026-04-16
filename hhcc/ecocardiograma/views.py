@@ -128,6 +128,28 @@ def _map_csv_choices(value, mapping):
     return labels
 
 
+def _build_form_context(historia, estudio=None):
+    conclusion = None
+    if estudio:
+        try:
+            conclusion = estudio.conclusion
+        except ConclusiónEcocardiograma.DoesNotExist:
+            conclusion = None
+
+    segmentos = []
+    if estudio:
+        segmentos = list(estudio.segmentos.all().values('numero_segmento', 'estado'))
+
+    return {
+        'historia': historia,
+        'paciente': historia.paciente,
+        'estudio_id': estudio.id if estudio else 0,
+        'estudio': model_to_dict(estudio) if estudio else None,
+        'conclusion': model_to_dict(conclusion) if conclusion else None,
+        'segmentos': segmentos,
+    }
+
+
 @sandbox_or_login
 def nuevo_estudio(request, historia_id):
     """Vista principal para mostrar el formulario de ecocardiograma"""
@@ -144,37 +166,17 @@ def nuevo_estudio(request, historia_id):
     if not estudio and not force_new:
         estudio = EstudioEcocardiograma.objects.filter(historia=historia).first()
     
-    # Buscar conclusión existente
-    conclusion = None
-    if estudio:
-        try:
-            conclusion = estudio.conclusion
-        except ConclusiónEcocardiograma.DoesNotExist:
-            conclusion = None
-    
-    # Buscar segmentos existentes
-    segmentos = []
-    if estudio:
-        segmentos = list(estudio.segmentos.all().values('numero_segmento', 'estado'))
-    
-    estudio_json = None
-    if estudio:
-        estudio_json = model_to_dict(estudio)
+    return render(request, 'ecocardiograma/eco_form.html', _build_form_context(historia, estudio))
 
-    conclusion_json = None
-    if conclusion:
-        conclusion_json = model_to_dict(conclusion)
 
-    context = {
-        'historia': historia,
-        'paciente': historia.paciente,
-        'estudio_id': estudio.id if estudio else 0,
-        'estudio': estudio_json,
-        'conclusion': conclusion_json,
-        'segmentos': segmentos,
-    }
-    
-    return render(request, 'ecocardiograma/eco_form.html', context)
+@sandbox_or_login
+def editar_estudio(request, estudio_id):
+    estudio = get_object_or_404(EstudioEcocardiograma, pk=estudio_id)
+    return render(
+        request,
+        'ecocardiograma/eco_form.html',
+        _build_form_context(estudio.historia, estudio),
+    )
 
 
 @sandbox_or_login
