@@ -26,32 +26,30 @@ DEFAULT_CONCLUSION = "Estudio arterial de miembros inferiores dentro de límites
 def nuevo_estudio(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, pk=historia_id)
     action = (request.GET.get("action") or "").lower()
-    force_new = action in ("crear", "nuevo")
-    estudio = None
     if action == "recuperar":
         estudio_id = request.GET.get("estudio")
         if estudio_id:
             estudio = MmiiEstudio.objects.filter(pk=estudio_id, historia=historia).first()
-    if not estudio and not force_new:
-        estudio = MmiiEstudio.objects.filter(historia=historia).first()
+            if estudio:
+                return redirect("mmii:estudio_editar", estudio_id=estudio.pk)
 
     initial = {"historia": historia}
-    if not estudio:
-        initial.update(
-            {
-                "art_fem_comun_derecha": DEFAULT_ARTERIA,
-                "art_fem_superficial_derecha": DEFAULT_ARTERIA,
-                "art_fem_profunda_derecha": DEFAULT_ARTERIA,
-                "art_poplitea_derecha": DEFAULT_ARTERIA,
-                "art_infrapatelares_derecha": DEFAULT_ARTERIA,
-                "art_fem_comun_izquierda": DEFAULT_ARTERIA,
-                "art_fem_superficial_izquierda": DEFAULT_ARTERIA,
-                "art_fem_profunda_izquierda": DEFAULT_ARTERIA,
-                "art_poplitea_izquierda": DEFAULT_ARTERIA,
-                "art_infrapatelares_izquierda": DEFAULT_ARTERIA,
-                "conclusion": DEFAULT_CONCLUSION,
-            }
-        )
+    estudio = None
+    initial.update(
+        {
+            "art_fem_comun_derecha": DEFAULT_ARTERIA,
+            "art_fem_superficial_derecha": DEFAULT_ARTERIA,
+            "art_fem_profunda_derecha": DEFAULT_ARTERIA,
+            "art_poplitea_derecha": DEFAULT_ARTERIA,
+            "art_infrapatelares_derecha": DEFAULT_ARTERIA,
+            "art_fem_comun_izquierda": DEFAULT_ARTERIA,
+            "art_fem_superficial_izquierda": DEFAULT_ARTERIA,
+            "art_fem_profunda_izquierda": DEFAULT_ARTERIA,
+            "art_poplitea_izquierda": DEFAULT_ARTERIA,
+            "art_infrapatelares_izquierda": DEFAULT_ARTERIA,
+            "conclusion": DEFAULT_CONCLUSION,
+        }
+    )
 
     if request.method == "POST":
         form = MmiiForm(request.POST, instance=estudio, initial=initial)

@@ -206,7 +206,7 @@ document.addEventListener('alpine:init', () => {
         },
         
         // Inicialización
-        inicializar(historiaId, estudioId, datosEstudio, datosConclusion, datosSegmentos) {
+        inicializar(historiaId, estudioId, datosEstudio, datosConclusion, datosSegmentos, defaultConclusionB) {
             this.historiaId = historiaId;
             if (!this.historiaId || this.historiaId === 'null' || this.historiaId === 'None') {
                 const rootId = this.$root?.dataset?.historiaId;
@@ -254,6 +254,10 @@ document.addEventListener('alpine:init', () => {
                 if (!this.segmentos[i]) {
                     this.segmentos[i] = '1';
                 }
+            }
+
+            if (!this.estudio.id && !this.conclusiones.conclusion_texto && defaultConclusionB) {
+                this.conclusiones.conclusion_texto = defaultConclusionB;
             }
 
             // Hook para recibir cambios desde la miniapp (iframe)
@@ -706,7 +710,7 @@ document.addEventListener('alpine:init', () => {
 {% block content %}
 <div 
     x-data="ecocardiogramaSistema" 
-    x-init="inicializar('{{ historia.id }}', '{{ estudio_id|default:'0' }}', JSON.parse('{{ estudio|default:'null'|to_json|escapejs }}'), JSON.parse('{{ conclusion|default:'null'|to_json|escapejs }}'), JSON.parse('{{ segmentos|default:'[]'|to_json|escapejs }}'))"
+    x-init="inicializar('{{ historia.id }}', '{{ estudio_id|default:'0' }}', JSON.parse('{{ estudio|default:'null'|to_json|escapejs }}'), JSON.parse('{{ conclusion|default:'null'|to_json|escapejs }}'), JSON.parse('{{ segmentos|default:'[]'|to_json|escapejs }}'), JSON.parse('{{ default_conclusion_b|to_json|escapejs }}'))"
     data-historia-id="{{ historia.id }}"
     class="space-y-6"
 >

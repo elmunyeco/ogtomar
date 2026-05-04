@@ -37,26 +37,24 @@ DEFAULT_CONCLUSION = "Estudio negativo para isquemia miocárdica hasta la frecue
 def nuevo_estudio(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, pk=historia_id)
     action = (request.GET.get("action") or "").lower()
-    force_new = action in ("crear", "nuevo")
-    estudio = None
     if action == "recuperar":
         estudio_id = request.GET.get("estudio")
         if estudio_id:
             estudio = EcostressEstudio.objects.filter(pk=estudio_id, historia=historia).first()
-    if not estudio and not force_new:
-        estudio = EcostressEstudio.objects.filter(historia=historia).first()
+            if estudio:
+                return redirect("ecostress:estudio_editar", estudio_id=estudio.pk)
 
     initial = {"historia": historia}
-    if not estudio:
-        initial.update(
-            {
-                "informe_ergometria": DEFAULT_INFORME_ERGOMETRIA,
-                "datos_ecocardiograficos_basales": DEFAULT_DATOS_ECO,
-                "datos_ecocardiograficos_post_esfuerzo_inmediato": DEFAULT_DATOS_ECO,
-                "conclusion": DEFAULT_CONCLUSION,
-                "tipo_apremio": "Físico",
-            }
-        )
+    estudio = None
+    initial.update(
+        {
+            "informe_ergometria": DEFAULT_INFORME_ERGOMETRIA,
+            "datos_ecocardiograficos_basales": DEFAULT_DATOS_ECO,
+            "datos_ecocardiograficos_post_esfuerzo_inmediato": DEFAULT_DATOS_ECO,
+            "conclusion": DEFAULT_CONCLUSION,
+            "tipo_apremio": "Físico",
+        }
+    )
 
     if request.method == "POST":
         form = EcostressForm(request.POST, instance=estudio, initial=initial)
@@ -79,8 +77,7 @@ def nuevo_estudio(request, historia_id):
             return JsonResponse({"success": False, "errors": form.errors}, status=400)
     else:
         form = EcostressForm(instance=estudio, initial=initial)
-        if not estudio:
-            form.initial["fecha_estudio"] = timezone.localdate()
+        form.initial["fecha_estudio"] = timezone.localdate()
 
     return render(
         request,
