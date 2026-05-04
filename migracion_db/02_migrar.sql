@@ -3,6 +3,7 @@
 
 SET FOREIGN_KEY_CHECKS=0;
 USE cardioprieto;
+SET SESSION group_concat_max_len = 1024 * 1024 * 32;
 
 -- Tipos de documento
 INSERT INTO cardioprieto.tipos_documentos (id, nombre, descripcion)
@@ -82,22 +83,33 @@ ON DUPLICATE KEY UPDATE
   presion_sistolica=VALUES(presion_sistolica), presion_diastolica=VALUES(presion_diastolica),
   peso=VALUES(peso), glucemia=VALUES(glucemia), colesterol=VALUES(colesterol), historia_id=VALUES(historia_id);
 
--- Comentarios (concatenados por historia y tipo)
+-- Comentarios
+-- Regla correcta: un registro por visita, agrupando por fecha + historia + tipo.
+-- Cada bloque concatena los comentarios legacy del mismo grupo con '\n' entre
+-- filas, preservando intacto el contenido original de cada comentario, incluidos
+-- posibles '<br>' existentes dentro del texto.
 INSERT INTO cardioprieto.comentarios_visitas (fecha, comentarios, idHistoriaClinica, tipo)
 SELECT
-  CAST(CONCAT(MAX(c.fecha), ' 00:00:00') AS DATETIME),
-  GROUP_CONCAT(c.comentario ORDER BY c.id SEPARATOR '\n'),
+  CAST(CONCAT(c.fecha, ' 00:00:00') AS DATETIME),
+  GROUP_CONCAT(
+    REPLACE(
+      REPLACE(
+        REPLACE(c.comentario, '<br/>', '\n'),
+        '<br />', '\n'
+      ),
+      '<br>', '\n'
+    )
+    ORDER BY c.id SEPARATOR '\n'
+  ),
   c.idHistoriaClinica,
-  CASE tc.descripcion
-    WHEN 'Indicaciones' THEN 'INDIC'
+  CASE c.idTipoComentario
+    WHEN 2 THEN 'INDIC'
     ELSE 'EVOL'
   END AS tipo
 FROM cardioprieto_old.comentarios c
-JOIN cardioprieto_old.tipocomentario tc ON tc.id = c.idTipoComentario
-WHERE c.eliminado IS NULL OR c.eliminado = 0
-GROUP BY c.idHistoriaClinica, c.idTipoComentario
-ON DUPLICATE KEY UPDATE
-  comentarios=VALUES(comentarios), fecha=VALUES(fecha);
+WHERE (c.eliminado IS NULL OR c.eliminado = 0)
+  AND c.idTipoComentario IN (1, 2)
+GROUP BY c.fecha, c.idHistoriaClinica, c.idTipoComentario;
 
 -- Stress
 INSERT INTO cardioprieto.stress (

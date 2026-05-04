@@ -97,6 +97,7 @@ Thumbs.db
 *.xls
 *.xlsx
 *.pdf
+*.png
 *.zip
 *.tar.gz
 *.tgz
@@ -104,3 +105,12 @@ Thumbs.db
 *.log.*
 
 cookies.txt
+
+# Notas operativas locales
+instrucciones.md
+
+# Dumps y respaldos locales de migracion
+migracion_db/data/*.sql
+migracion_db/data/*.sql.gz
+cardioprieto_*.sql
+cardioprieto_*.sql.gz

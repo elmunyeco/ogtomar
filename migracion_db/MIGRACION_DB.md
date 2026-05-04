@@ -10,6 +10,12 @@
 - `01_load_old.sh`: carga dump en 3307 como `cardioprieto_old`.
 - `02_migrar.sql`: inserta datos en `cardioprieto` (nuevo schema).
 
+## Ubicacion recomendada del dump legacy
+- Guardar el `.sql` de origen en `migracion_db/data/`.
+- Naming sugerido: `migracion_db/data/cardioprieto_old_YYYYMMDD.sql`.
+- Si se quiere mantener una referencia estable para los scripts/manuales, usar o regenerar `migracion_db/data/cardioprieto_old.sql`.
+- Evitar dejar dumps sueltos en la raiz del repo o mezclados con artefactos de deploy.
+
 ## Pasos
 1. Dump desde la instancia vieja:
    ```sh
@@ -36,17 +42,30 @@
 - `stress` agrega `fecha_estudio`
 - `ecocardiograma` -> `estudios_ecocardiograma` (mapeo parcial)
 
-## Comentarios multiples (concatenacion)
-En el schema viejo, `comentarios` tiene multiples filas por historia y tipo:
+## Comentarios multiples
+En el schema viejo, `comentarios` tiene multiples filas por visita:
 - `comentarios.idHistoriaClinica`
+- `comentarios.fecha`
 - `comentarios.idTipoComentario` (1=Visita, 2=Indicaciones)
 
-En el schema nuevo, `comentarios_visitas` espera un solo campo `comentarios` por historia+tipo.
-La migracion concatena los comentarios con `\n`, usando `GROUP_CONCAT` ordenado por `id`:
-- Tipo `Visita` -> `EVOL`
-- Tipo `Indicaciones` -> `INDIC`
+El error que habia en la migracion era asumir que `comentarios_visitas` debia quedar
+consolidada por historia+tipo. Eso estaba mal y terminaba fusionando visitas distintas
+de una misma historia en un solo bloque.
 
-La fecha se toma como `MAX(fecha)` del grupo.
+La regla correcta es:
+- migrar **una fila nueva por cada visita**;
+- agrupar por `fecha + idHistoriaClinica + idTipoComentario`;
+- mapear `idTipoComentario=1` a `EVOL`;
+- mapear `idTipoComentario=2` a `INDIC`;
+- usar `fecha 00:00:00` como `datetime` de destino;
+- concatenar las filas del grupo con `\n` usando `GROUP_CONCAT(... ORDER BY id SEPARATOR '\n')`;
+- normalizar saltos HTML del legacy: `<br>`, `<br/>` y `<br />` deben migrarse como `\n`;
+- **no** usar `MAX(fecha)`;
+- **no** agrupar solo por `idHistoriaClinica` ni solo por tipo.
+
+Si se agrupa, se destruye la granularidad original y aparecen bloques unificados
+como el caso de HC `10254`, donde varias visitas distintas terminan en una
+sola fila de `comentarios_visitas` cuando deberian ser `5` bloques, uno por fecha.
 
 ## Advertencias / TODO
 - `eco_conclusiones`, `eco_conclusionB`, `eco_analisis*`, `eco_segmentos` requieren mapeo detallado.
@@ -85,7 +104,9 @@ new_ecocardiograma     12592
 ```
 
 Notas:
-- `comentarios_visitas` baja por consolidacion (1 fila por historia+tipo).
+- `comentarios_visitas` debe bajar respecto de `comentarios` porque varios comentarios
+  de una misma visita se concatenan en un solo bloque. Pero no debe bajar hasta
+  `1` fila por historia+tipo.
 - `signos_vitales` duplico vs old porque la tabla nueva no tiene restriccion de unicidad por (`historia_id`, `fecha`). Si se necesita 1 registro por historia+fecha, agregar unique o deduplicar.
 
 ## Signos vitales: comportamiento actual de UI y riesgo de duplicados
@@ -104,10 +125,28 @@ Notas:
   - `signos_vitales.peso` limita valores fuera de rango (>999.99 o negativos) a NULL.
   - `estudios_ecocardiograma.peso` idem.
   - `estudios_ecocardiograma.talla`: si viene en cm (>10) se divide por 100; fuera de rango se setea NULL.
+- Carga final definitiva ejecutada desde `migracion_db/data/cardioprieto_old_20260415.sql` sobre la instancia `3307`.
+- En esa carga final se preservo el circuito `auth_*` / `django_*` del sistema nuevo y solo se reseteo el bloque de datos de negocio migrables.
 
 ## Notas operativas
 - Para repetir la migracion desde cero, limpiar `cardioprieto` y volver a ejecutar `02_migrar.sql`.
 - Si se re-ejecuta la migracion sin limpiar, `signos_vitales` puede duplicar (sin UNIQUE).
+
+## Regla de reseteo previo a una nueva migracion
+- Antes de migrar nuevamente datos legacy al sistema nuevo, borrar o recrear **solo los datos de negocio migrables**.
+- El circuito de usuarios/permisos/configuracion del sistema nuevo **no debe migrarse desde legacy**.
+- La fuente de verdad para usuarios en el sistema actual es el circuito Django/auth del proyecto nuevo, no las tablas legacy `usuarios`/`roles`.
+- En consecuencia:
+  - si se hace una limpieza selectiva, preservar `auth_*`, `django_*` y cualquier tabla/configuracion propia del sistema nuevo ligada a autenticacion o administracion;
+  - si se usa un reset total de `cardioprieto`, asumir que el circuito de usuarios se repone desde el entorno nuevo y **nunca** desde el dump legacy.
+- `04_full_reset.sh` sirve para reconstruccion integral de la base objetivo, pero no cambia esta regla: el legacy no manda sobre usuarios.
+
+## Usuarios operativos fijos
+- Despues de cada `full reset`, el sistema debe recrear estos usuarios locales del entorno nuevo:
+- `eze` / `Furosemida`
+- `omar` / `Corbis5`
+- Las passwords son case sensitive.
+- No deben migrarse desde legacy ni quedar sujetas al contenido de `cardioprieto_old`.
 
 
 ## Diff inteligente (conteos)
@@ -121,7 +160,7 @@ enfermedades -> condiciones_medicas	enfermedades	25	condiciones_medicas	25
 hclinica_enfermedades -> condiciones_medicas_historias	hclinica_enfermedades	645	condiciones_medicas_historias	645	
 indicaciones -> indicaciones_visitas	indicaciones	17908	indicaciones_visitas	17908	
 signosvitales -> signos_vitales	signosvitales	11921	signos_vitales	11921	
-comentarios -> comentarios_visitas	comentarios	79468	comentarios_visitas	8266	concat por historia+tipo; MAX(fecha), GROUP_CONCAT
+comentarios -> comentarios_visitas	comentarios	79468	comentarios_visitas	8266	1 fila nueva por visita (fecha+historia+tipo), concatenada con \n
 carotidas -> carotidas	carotidas	3968	carotidas	3968	
 stress -> stress	stress	107	stress	107	
 ecocardiograma -> estudios_ecocardiograma	ecocardiograma	12592	estudios_ecocardiograma	12592	
@@ -167,7 +206,7 @@ enfermedades -> condiciones_medicas	enfermedades	25	condiciones_medicas	25
 hclinica_enfermedades -> condiciones_medicas_historias	hclinica_enfermedades	645	condiciones_medicas_historias	645	
 indicaciones -> indicaciones_visitas	indicaciones	17908	indicaciones_visitas	17908	
 signosvitales -> signos_vitales	signosvitales	11921	signos_vitales	11921	
-comentarios -> comentarios_visitas	comentarios	79468	comentarios_visitas	8266	concat por historia+tipo; MAX(fecha), GROUP_CONCAT
+comentarios -> comentarios_visitas	comentarios	79468	comentarios_visitas	8266	1 fila nueva por visita (fecha+historia+tipo), concatenada con \n
 carotidas -> carotidas	carotidas	3968	carotidas	3968	
 stress -> stress	stress	107	stress	107	
 ecocardiograma -> estudios_ecocardiograma	ecocardiograma	12592	estudios_ecocardiograma	12592	
@@ -209,7 +248,7 @@ enfermedades -> condiciones_medicas	enfermedades	25	condiciones_medicas	25
 hclinica_enfermedades -> condiciones_medicas_historias	hclinica_enfermedades	645	condiciones_medicas_historias	645	
 indicaciones -> indicaciones_visitas	indicaciones	17908	indicaciones_visitas	17908	
 signosvitales -> signos_vitales	signosvitales	11921	signos_vitales	11921	
-comentarios -> comentarios_visitas	comentarios	79468	comentarios_visitas	8266	concat por historia+tipo; MAX(fecha), GROUP_CONCAT
+comentarios -> comentarios_visitas	comentarios	79468	comentarios_visitas	8266	1 fila nueva por visita (fecha+historia+tipo), concatenada con \n
 carotidas -> carotidas	carotidas	3968	carotidas	3968	
 stress -> stress	stress	107	stress	107	
 ecocardiograma -> estudios_ecocardiograma	ecocardiograma	12592	estudios_ecocardiograma	12592	

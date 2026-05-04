@@ -51,23 +51,67 @@ SELECT
 FROM cardioprieto_old.eco_segmentos;
 
 -- Segmentos ecocardiograma
+-- Una sola pasada sobre el join evita repetir 16 veces el mismo plan.
 INSERT IGNORE INTO cardioprieto.segmentos_ecocardiograma (numero_segmento, estado, estudio_id)
-SELECT 1, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s1 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s1 IS NOT NULL
-UNION ALL SELECT 2, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s2 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s2 IS NOT NULL
-UNION ALL SELECT 3, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s3 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s3 IS NOT NULL
-UNION ALL SELECT 4, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s4 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s4 IS NOT NULL
-UNION ALL SELECT 5, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s5 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s5 IS NOT NULL
-UNION ALL SELECT 6, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s6 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s6 IS NOT NULL
-UNION ALL SELECT 7, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s7 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s7 IS NOT NULL
-UNION ALL SELECT 8, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s8 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s8 IS NOT NULL
-UNION ALL SELECT 9, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s9 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s9 IS NOT NULL
-UNION ALL SELECT 10, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s10 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s10 IS NOT NULL
-UNION ALL SELECT 11, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s11 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s11 IS NOT NULL
-UNION ALL SELECT 12, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s12 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s12 IS NOT NULL
-UNION ALL SELECT 13, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s13 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s13 IS NOT NULL
-UNION ALL SELECT 14, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s14 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s14 IS NOT NULL
-UNION ALL SELECT 15, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s15 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s15 IS NOT NULL
-UNION ALL SELECT 16, CASE WHEN s.all_zero=1 THEN 1 ELSE s.s16 END, m.new_id FROM tmp_eco_segmentos s JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco WHERE s.all_zero=1 OR s.s16 IS NOT NULL;
+SELECT
+  n.numero_segmento,
+  CASE
+    WHEN s.all_zero = 1 THEN 1
+    WHEN n.numero_segmento = 1 THEN s.s1
+    WHEN n.numero_segmento = 2 THEN s.s2
+    WHEN n.numero_segmento = 3 THEN s.s3
+    WHEN n.numero_segmento = 4 THEN s.s4
+    WHEN n.numero_segmento = 5 THEN s.s5
+    WHEN n.numero_segmento = 6 THEN s.s6
+    WHEN n.numero_segmento = 7 THEN s.s7
+    WHEN n.numero_segmento = 8 THEN s.s8
+    WHEN n.numero_segmento = 9 THEN s.s9
+    WHEN n.numero_segmento = 10 THEN s.s10
+    WHEN n.numero_segmento = 11 THEN s.s11
+    WHEN n.numero_segmento = 12 THEN s.s12
+    WHEN n.numero_segmento = 13 THEN s.s13
+    WHEN n.numero_segmento = 14 THEN s.s14
+    WHEN n.numero_segmento = 15 THEN s.s15
+    WHEN n.numero_segmento = 16 THEN s.s16
+  END AS estado,
+  m.new_id
+FROM tmp_eco_segmentos s
+JOIN tmp_ecos_map m ON m.old_id = s.idEstudioeco
+JOIN (
+  SELECT 1 AS numero_segmento UNION ALL
+  SELECT 2 UNION ALL
+  SELECT 3 UNION ALL
+  SELECT 4 UNION ALL
+  SELECT 5 UNION ALL
+  SELECT 6 UNION ALL
+  SELECT 7 UNION ALL
+  SELECT 8 UNION ALL
+  SELECT 9 UNION ALL
+  SELECT 10 UNION ALL
+  SELECT 11 UNION ALL
+  SELECT 12 UNION ALL
+  SELECT 13 UNION ALL
+  SELECT 14 UNION ALL
+  SELECT 15 UNION ALL
+  SELECT 16
+) n
+WHERE s.all_zero = 1
+   OR (n.numero_segmento = 1 AND s.s1 IS NOT NULL)
+   OR (n.numero_segmento = 2 AND s.s2 IS NOT NULL)
+   OR (n.numero_segmento = 3 AND s.s3 IS NOT NULL)
+   OR (n.numero_segmento = 4 AND s.s4 IS NOT NULL)
+   OR (n.numero_segmento = 5 AND s.s5 IS NOT NULL)
+   OR (n.numero_segmento = 6 AND s.s6 IS NOT NULL)
+   OR (n.numero_segmento = 7 AND s.s7 IS NOT NULL)
+   OR (n.numero_segmento = 8 AND s.s8 IS NOT NULL)
+   OR (n.numero_segmento = 9 AND s.s9 IS NOT NULL)
+   OR (n.numero_segmento = 10 AND s.s10 IS NOT NULL)
+   OR (n.numero_segmento = 11 AND s.s11 IS NOT NULL)
+   OR (n.numero_segmento = 12 AND s.s12 IS NOT NULL)
+   OR (n.numero_segmento = 13 AND s.s13 IS NOT NULL)
+   OR (n.numero_segmento = 14 AND s.s14 IS NOT NULL)
+   OR (n.numero_segmento = 15 AND s.s15 IS NOT NULL)
+   OR (n.numero_segmento = 16 AND s.s16 IS NOT NULL);
 
 -- Conclusiones ecocardiograma
 INSERT INTO cardioprieto.conclusiones_ecocardiograma (

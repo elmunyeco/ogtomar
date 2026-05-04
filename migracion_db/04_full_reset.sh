@@ -12,6 +12,13 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SCHEMA_FILE="$ROOT_DIR/new_schema.sql"
 MIGR_02="$ROOT_DIR/02_migrar.sql"
 MIGR_03="$ROOT_DIR/03_migrar_pendientes.sql"
+MANAGE_PY="$ROOT_DIR/../hhcc/manage.py"
+APP_DIR="$(cd "$ROOT_DIR/../hhcc" && pwd)"
+
+APP_USER_1="${APP_USER_1:-eze}"
+APP_PASS_1="${APP_PASS_1:-Furosemida}"
+APP_USER_2="${APP_USER_2:-omar}"
+APP_PASS_2="${APP_PASS_2:-Corbis5}"
 
 mariadb_cmd=(mariadb -h "$DB_HOST" -P "$DB_PORT" -u"$DB_USER" -p"$DB_PASS")
 
@@ -27,6 +34,11 @@ fi
 
 if [[ ! -f "$MIGR_02" || ! -f "$MIGR_03" ]]; then
   echo "ERROR: faltan scripts de migracion (02/03)" >&2
+  exit 1
+fi
+
+if [[ ! -f "$MANAGE_PY" ]]; then
+  echo "ERROR: no existe $MANAGE_PY" >&2
   exit 1
 fi
 
@@ -46,5 +58,32 @@ ${mariadb_cmd[@]} ${DB_NEW} < "$SCHEMA_FILE"
 # Migrar datos
 ${mariadb_cmd[@]} < "$MIGR_02"
 ${mariadb_cmd[@]} < "$MIGR_03"
+
+# Reponer usuarios operativos del sistema nuevo
+(
+  cd "$APP_DIR"
+  DB_ENGINE=django.db.backends.mysql \
+  DB_NAME="$DB_NEW" \
+  DB_HOST="$DB_HOST" \
+  DB_PORT="$DB_PORT" \
+  DB_USER="$DB_USER" \
+  DB_PASSWORD="$DB_PASS" \
+  python3 manage.py shell -c "
+from django.contrib.auth import get_user_model
+User = get_user_model()
+users = [
+    ('${APP_USER_1}', '${APP_PASS_1}'),
+    ('${APP_USER_2}', '${APP_PASS_2}'),
+]
+for username, password in users:
+    user, _ = User.objects.get_or_create(username=username)
+    user.is_active = True
+    user.is_staff = True
+    user.is_superuser = True
+    user.set_password(password)
+    user.save()
+print('OK: usuarios operativos recreados')
+"
+)
 
 echo "OK: ${DB_NEW} recreada y migrada desde ${DB_OLD}"
