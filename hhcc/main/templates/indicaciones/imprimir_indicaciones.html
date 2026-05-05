@@ -1,0 +1,94 @@
+{% extends "print_base.html" %}
+
+{% block title %}Indicaciones de medicación{% endblock %}
+
+{% block extra_css %}
+<style>
+  .medication-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    font-size: 11px;
+  }
+
+  .medication-table th,
+  .medication-table td {
+    border: 1px solid #d1d5db;
+    padding: 7px 8px;
+    vertical-align: top;
+  }
+
+  .medication-table th {
+    background: #f8fafc;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .medication-table td.center {
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .medication-comment {
+    margin-top: 18px;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .medication-comment p {
+    margin: 0;
+    white-space: pre-wrap;
+  }
+</style>
+{% endblock %}
+
+{% block meta %}
+  <div>Nombre y apellido: {{ paciente.nombre }} {{ paciente.apellido }}</div>
+  <div>Historia Clínica: {{ historia.id|stringformat:"05d" }}</div>
+  <div>Fecha de emisión: {% now "j \\d\\e F \\d\\e Y" %}</div>
+{% endblock %}
+
+{% block titles %}
+  <h1>Indicaciones de medicación</h1>
+{% endblock %}
+
+{% block content %}
+  <div class="section">
+    <h3>Listado completo</h3>
+    <table class="medication-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Medicamento</th>
+          <th>08:00 hs</th>
+          <th>12:00 hs</th>
+          <th>18:00 hs</th>
+          <th>21:00 hs</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for indicacion in indicaciones %}
+          <tr>
+            <td class="center">{{ indicacion.fecha|date:"d/m/Y" }}</td>
+            <td>{{ indicacion.medicamento }}</td>
+            <td class="center">{{ indicacion.ochoHoras|default:"-" }}</td>
+            <td class="center">{{ indicacion.doceHoras|default:"-" }}</td>
+            <td class="center">{{ indicacion.dieciochoHoras|default:"-" }}</td>
+            <td class="center">{{ indicacion.veintiunaHoras|default:"-" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="center">No hay indicaciones registradas.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if comentario_indicaciones %}
+    <div class="section medication-comment">
+      <h3>Comentario</h3>
+      <p>{{ comentario_indicaciones|linebreaksbr }}</p>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -24,6 +24,27 @@ from .models import (
 from main.models import HistoriaClinica, Paciente
 
 
+DEFAULT_CONCLUSION_B = (
+    "Situs solitus\n"
+    "Vasos Normoimplantados.\n"
+    "Concordancia atrioventricular\n"
+    "Cavidad ventricular izquierda de dimensiones normales.\n"
+    "Ventrículo izquierdo con grosor parietal normal\n"
+    "Función sistólica del ventrículo izquierdo conservada . Fracción de eyección estimada por método de Simpson en %\n"
+    "Sin alteraciones segmentarias de la contracción.\n"
+    "Strain longitudinal global del ventrículo izquierdo dentro de limites normales.\n"
+    "Patrón de relajación normal.\n"
+    "Aurícula izquierda no dilatada.\n"
+    "Presiones pulmonares normales.\n"
+    "Cavidad ventricular derecha de dimensiones normales.\n"
+    "Ventrículo derecho con grosor parietal y función sistólica normales. Tapse : mm, Onda S tisular de la pared libre del Ventrículo derecho : m/s , Strain de Pared libre del Ventrículo derecho dentro de limites normales.\n"
+    "Aurícula derecha no dilatada.\n"
+    "Válvulas morfológicamente normales, sin evidencias de disfunción.\n"
+    "No se observa derrarme pericárdico.\n"
+    "No se evidencian imágenes compatibles con trombos, tumores o vegetaciones al momento del estudio."
+)
+
+
 def sandbox_or_login(view_func):
     if getattr(settings, 'USE_SANDBOX_DB', False):
         return view_func
@@ -75,10 +96,10 @@ def _get_estudio_from_post(request):
             pass
     historia = _get_historia_from_post(request)
     if historia:
-        estudio = EstudioEcocardiograma.objects.filter(historia=historia).first()
-        if estudio:
-            return estudio
-        return EstudioEcocardiograma.objects.create(historia=historia)
+        return EstudioEcocardiograma.objects.create(
+            historia=historia,
+            fecha=timezone.localdate(),
+        )
     return None
 
 
@@ -147,6 +168,7 @@ def _build_form_context(historia, estudio=None):
         'estudio': model_to_dict(estudio) if estudio else None,
         'conclusion': model_to_dict(conclusion) if conclusion else None,
         'segmentos': segmentos,
+        'default_conclusion_b': DEFAULT_CONCLUSION_B,
     }
 
 
@@ -154,19 +176,17 @@ def _build_form_context(historia, estudio=None):
 def nuevo_estudio(request, historia_id):
     """Vista principal para mostrar el formulario de ecocardiograma"""
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
-    
-    # Buscar estudio existente o crear contexto para uno nuevo
-    action = (request.GET.get("action") or "").lower()
-    force_new = action in ("crear", "nuevo")
-    estudio = None
-    if action == "recuperar":
+
+    # Compatibilidad hacia atrás: cualquier intento de "recuperar" desde la
+    # ruta de alta debe resolver a la ruta explícita de edición.
+    if (request.GET.get("action") or "").lower() == "recuperar":
         estudio_id = request.GET.get("estudio")
         if estudio_id:
             estudio = EstudioEcocardiograma.objects.filter(pk=estudio_id, historia=historia).first()
-    if not estudio and not force_new:
-        estudio = EstudioEcocardiograma.objects.filter(historia=historia).first()
-    
-    return render(request, 'ecocardiograma/eco_form.html', _build_form_context(historia, estudio))
+            if estudio:
+                return redirect("ecocardiograma:estudio_editar", estudio_id=estudio.pk)
+
+    return render(request, 'ecocardiograma/eco_form.html', _build_form_context(historia))
 
 
 @sandbox_or_login
@@ -198,7 +218,10 @@ def guardar_todo_ajax(request, historia_id):
             if estudio_id and estudio_id != 'null':
                 estudio = get_object_or_404(EstudioEcocardiograma, id=estudio_id)
             else:
-                estudio = EstudioEcocardiograma(historia=historia)
+                estudio = EstudioEcocardiograma(
+                    historia=historia,
+                    fecha=timezone.localdate(),
+                )
             
             # Actualizar campos del estudio
             campos_estudio = [

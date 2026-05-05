@@ -21,7 +21,7 @@ document.addEventListener('alpine:init', () => {
             { id: 'doppler', label: 'Análisis Doppler & Speckel' },
             { id: 'segmentos', label: 'Motilidad Segmentaria' },
             { id: 'conclusiones', label: 'Conclusiones' },
-            { id: 'conclusion_b', label: 'Conclusión B' },
+            { id: 'conclusion_b', label: 'Conclusiones B' },
             { id: 'comentario_final', label: 'Comentario Final' }
         ],
         
@@ -206,7 +206,7 @@ document.addEventListener('alpine:init', () => {
         },
         
         // Inicialización
-        inicializar(historiaId, estudioId, datosEstudio, datosConclusion, datosSegmentos) {
+        inicializar(historiaId, estudioId, datosEstudio, datosConclusion, datosSegmentos, defaultConclusionB) {
             this.historiaId = historiaId;
             if (!this.historiaId || this.historiaId === 'null' || this.historiaId === 'None') {
                 const rootId = this.$root?.dataset?.historiaId;
@@ -254,6 +254,10 @@ document.addEventListener('alpine:init', () => {
                 if (!this.segmentos[i]) {
                     this.segmentos[i] = '1';
                 }
+            }
+
+            if (!this.estudio.id && !this.conclusiones.conclusion_texto && defaultConclusionB) {
+                this.conclusiones.conclusion_texto = defaultConclusionB;
             }
 
             // Hook para recibir cambios desde la miniapp (iframe)
@@ -489,7 +493,7 @@ document.addEventListener('alpine:init', () => {
             add('Válvula pulmonar', this.textoDesdeOpciones(this.opcionesValvula, this.conclusiones.valvula_pulmonar), this.conclusiones.comentario_valvula_pulmonar);
             add('Pericardio', this.textoDesdeOpciones(this.opcionesPericardio, this.conclusiones.pericardio), this.conclusiones.comentario_pericardio);
             add('Imágenes agregadas y/o defectos congénitos', this.textoDesdeOpciones(this.opcionesSiNo, this.conclusiones.defectos_congenitos), this.conclusiones.comentario_defectos);
-            add('Conclusión B', this.conclusiones.conclusion_texto);
+            add('Conclusiones', this.conclusiones.conclusion_texto);
             add('Comentario final', this.conclusiones.comentario_final);
 
             return items;
@@ -706,7 +710,7 @@ document.addEventListener('alpine:init', () => {
 {% block content %}
 <div 
     x-data="ecocardiogramaSistema" 
-    x-init="inicializar('{{ historia.id }}', '{{ estudio_id|default:'0' }}', JSON.parse('{{ estudio|default:'null'|to_json|escapejs }}'), JSON.parse('{{ conclusion|default:'null'|to_json|escapejs }}'), JSON.parse('{{ segmentos|default:'[]'|to_json|escapejs }}'))"
+    x-init="inicializar('{{ historia.id }}', '{{ estudio_id|default:'0' }}', JSON.parse('{{ estudio|default:'null'|to_json|escapejs }}'), JSON.parse('{{ conclusion|default:'null'|to_json|escapejs }}'), JSON.parse('{{ segmentos|default:'[]'|to_json|escapejs }}'), JSON.parse('{{ default_conclusion_b|to_json|escapejs }}'))"
     data-historia-id="{{ historia.id }}"
     class="space-y-6"
 >
@@ -1353,11 +1357,11 @@ document.addEventListener('alpine:init', () => {
             </div>
         </div>
 
-        <!-- TAB: Conclusión B -->
+        <!-- TAB: Conclusiones -->
         <div x-show="activeTab === 'conclusion_b'" class="fade-in">
             <div class="bg-white shadow-md rounded-lg overflow-hidden">
                 <div class="bg-gray-200 px-6 py-4">
-                    <h4 class="text-lg font-semibold">Conclusión B:</h4>
+                    <h4 class="text-lg font-semibold">Conclusiones B:</h4>
                 </div>
                 
                 <div class="p-6">

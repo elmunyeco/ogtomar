@@ -17,14 +17,13 @@ from .models import CarotidasEstudio
 def nuevo_estudio(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, pk=historia_id)
     action = (request.GET.get("action") or "").lower()
-    force_new = action in ("crear", "nuevo")
-    estudio = None
     if action == "recuperar":
         estudio_id = request.GET.get("estudio")
         if estudio_id:
             estudio = CarotidasEstudio.objects.filter(pk=estudio_id, historia=historia).first()
-    if not estudio and not force_new:
-        estudio = CarotidasEstudio.objects.filter(historia=historia).first()
+            if estudio:
+                return redirect("carotidas:estudio_editar", estudio_id=estudio.pk)
+    estudio = None
 
     if request.method == "POST":
         form = CarotidasForm(request.POST, instance=estudio, initial={"historia": historia})

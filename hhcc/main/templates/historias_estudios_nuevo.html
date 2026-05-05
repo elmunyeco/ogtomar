@@ -20,25 +20,25 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <a href="{% url 'ecocardiograma:nuevo_estudio' historia.id %}"
+        <a href="{% url 'ecocardiograma:nuevo_estudio' historia.id %}?action=nuevo"
            class="border rounded-lg p-5 hover:shadow-md transition-shadow bg-white">
             <div class="text-lg font-semibold text-gray-800 mb-2">Ecocardiograma</div>
             <div class="text-sm text-gray-600">Crear un estudio de ecocardiograma completo.</div>
         </a>
 
-        <a href="{% url 'ecostress:ecostress_nuevo' historia.id %}"
+        <a href="{% url 'ecostress:ecostress_nuevo' historia.id %}?action=nuevo"
            class="border rounded-lg p-5 hover:shadow-md transition-shadow bg-white">
             <div class="text-lg font-semibold text-gray-800 mb-2">Ecostress</div>
             <div class="text-sm text-gray-600">Registrar un estudio de ecostress cardíaco.</div>
         </a>
 
-        <a href="{% url 'carotidas:carotidas_nuevo' historia.id %}"
+        <a href="{% url 'carotidas:carotidas_nuevo' historia.id %}?action=nuevo"
            class="border rounded-lg p-5 hover:shadow-md transition-shadow bg-white">
             <div class="text-lg font-semibold text-gray-800 mb-2">Carótidas</div>
             <div class="text-sm text-gray-600">Doppler de vasos del cuello / QIMT.</div>
         </a>
 
-        <a href="{% url 'mmii:mmii_nuevo' historia.id %}"
+        <a href="{% url 'mmii:mmii_nuevo' historia.id %}?action=nuevo"
            class="border rounded-lg p-5 hover:shadow-md transition-shadow bg-white">
             <div class="text-lg font-semibold text-gray-800 mb-2">MMII</div>
             <div class="text-sm text-gray-600">Doppler arterial de miembros inferiores.</div>

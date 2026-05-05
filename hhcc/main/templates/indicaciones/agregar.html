@@ -1,54 +1,7 @@
 {# templates/indicaciones/agregar.html #}
 {% extends "base.html" %}
 {% block content %}
-<main class="container mx-auto p-6 max-w-6xl" x-data="{
-    indicacion: {
-        medicamento: '',
-        ochoHoras: '',
-        doceHoras: '',
-        dieciochoHoras: '',
-        veintiunaHoras: '',
-        fecha: new Date().toISOString().split('T')[0]
-    },
-    errorMessage: '',
-    successMessage: '',
-    isSubmitting: false,
-    
-    async guardarIndicacion() {
-        if (!this.indicacion.medicamento.trim()) {
-            this.errorMessage = 'El nombre del medicamento es obligatorio';
-            return;
-        }
-        
-        this.isSubmitting = true;
-        
-        try {
-            const response = await fetch('{% url 'indicacion_agregar' historia_id=historia.id %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify(this.indicacion)
-            })
-
-            const data = await response.json();
-            if (response.ok) {
-                this.successMessage = 'Indicación guardada correctamente';
-                // Redirigir después de un breve retraso para que el usuario vea el mensaje
-                setTimeout(() => {
-                    window.location.href = '{% url 'indicaciones' historia_id=historia.id %}';
-                }, 1500);
-            } else {
-                this.errorMessage = data.message || 'Error al guardar';
-                this.isSubmitting = false;
-            }
-        } catch (error) {
-            this.errorMessage = 'Error de conexión';
-            this.isSubmitting = false;
-        }
-    }
-}">
+<main class="container mx-auto p-6 max-w-6xl" x-data="indicacionForm()">
     <div class="bg-white rounded-lg shadow-sm p-6">
         <!-- Mensajes de error/éxito -->
         <div x-show="errorMessage" x-transition class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -61,8 +14,7 @@
         </div>
 
         <div class="mb-6">
-            <h2 class="text-lg font-medium text-gray-900">Nueva Indicación</h2>
-            <p class="text-sm text-gray-600">Complete los datos de la indicación</p>
+            <h2 class="text-lg font-medium text-gray-900">{% if is_edit_mode %}Editar Indicación{% else %}Nueva Indicación{% endif %}</h2>
         </div>
 
         <form @submit.prevent="guardarIndicacion" class="space-y-6">
@@ -112,10 +64,82 @@
                     <span x-show="isSubmitting" class="inline-block mr-2">
                         <i class="fas fa-spinner fa-spin"></i>
                     </span>
-                    <span x-text="isSubmitting ? 'Guardando...' : 'Guardar Indicación'"></span>
+                    <span x-text="isSubmitting ? '{% if is_edit_mode %}Actualizando...{% else %}Guardando...{% endif %}' : '{% if is_edit_mode %}Actualizar Indicación{% else %}Guardar Indicación{% endif %}'"></span>
                 </button>
             </div>
         </form>
     </div>
 </main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function indicacionForm() {
+    return {
+        indicacion: JSON.parse('{{ indicacion_json|escapejs }}'),
+        errorMessage: '',
+        successMessage: '',
+        isSubmitting: false,
+        submitUrl: '{% if is_edit_mode %}{% url 'indicacion_editar' historia_id=historia.id id=indicacion.id %}{% else %}{% url 'indicacion_agregar' historia_id=historia.id %}{% endif %}',
+
+        getCsrfToken() {
+            const cookie = document.cookie
+                .split('; ')
+                .find((item) => item.startsWith('csrftoken='));
+            if (cookie) {
+                return decodeURIComponent(cookie.split('=').slice(1).join('='));
+            }
+            return '{{ csrf_token }}';
+        },
+
+        marcarHistoriaComoModificada() {
+            sessionStorage.setItem('historia_refresh_{{ historia.id }}', '1');
+        },
+
+        async parseResponse(response) {
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                return await response.json();
+            }
+            const text = await response.text();
+            return { message: text || 'Respuesta inválida del servidor' };
+        },
+        
+        async guardarIndicacion() {
+            if (!this.indicacion.medicamento.trim()) {
+                this.errorMessage = 'El nombre del medicamento es obligatorio';
+                return;
+            }
+            
+            this.isSubmitting = true;
+            
+            try {
+                const response = await fetch(this.submitUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': this.getCsrfToken()
+                    },
+                    body: JSON.stringify(this.indicacion)
+                });
+
+                const data = await this.parseResponse(response);
+                if (response.ok) {
+                    this.marcarHistoriaComoModificada();
+                    this.successMessage = '{% if is_edit_mode %}Indicación actualizada correctamente{% else %}Indicación guardada correctamente{% endif %}';
+                    setTimeout(() => {
+                        window.location.href = '{% url 'indicaciones' historia_id=historia.id %}';
+                    }, 1500);
+                } else {
+                    this.errorMessage = data.message || 'Error al guardar';
+                    this.isSubmitting = false;
+                }
+            } catch (error) {
+                this.errorMessage = 'Error de conexión';
+                this.isSubmitting = false;
+            }
+        }
+    };
+}
+</script>
 {% endblock %}

@@ -42,4 +42,6 @@ class CarotidasForm(forms.ModelForm):
                     cleaned[field] = Decimal(val)
                 except InvalidOperation:
                     self.add_error(field, "Por favor, escriba un número válido.")
+            else:
+                cleaned[field] = None
         return cleaned
