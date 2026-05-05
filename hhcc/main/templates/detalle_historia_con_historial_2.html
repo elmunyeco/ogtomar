@@ -514,6 +514,36 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+    (() => {
+        const refreshKey = 'historia_refresh_{{ historia.id }}';
+
+        const shouldRefresh = () => sessionStorage.getItem(refreshKey) === '1';
+        const consumeRefresh = () => sessionStorage.removeItem(refreshKey);
+
+        window.addEventListener('pageshow', (event) => {
+            const navEntry = performance.getEntriesByType('navigation')[0];
+            const isBackForward =
+                event.persisted ||
+                (navEntry && navEntry.type === 'back_forward');
+
+            if (isBackForward && shouldRefresh()) {
+                consumeRefresh();
+                window.location.reload();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const navEntry = performance.getEntriesByType('navigation')[0];
+            const isBackForward = navEntry && navEntry.type === 'back_forward';
+
+            if (isBackForward && shouldRefresh()) {
+                consumeRefresh();
+                window.location.reload();
+            }
+        });
+    })();
+</script>
 <!-- Alpine initialization script for historialMedico component -->
 <script>
     document.addEventListener('alpine:init', () => {

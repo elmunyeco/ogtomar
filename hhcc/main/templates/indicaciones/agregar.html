@@ -24,6 +24,10 @@
         return '{{ csrf_token }}';
     },
 
+    marcarHistoriaComoModificada() {
+        sessionStorage.setItem('historia_refresh_{{ historia.id }}', '1');
+    },
+
     async parseResponse(response) {
         const contentType = response.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
@@ -53,6 +57,7 @@
 
             const data = await this.parseResponse(response);
             if (response.ok) {
+                this.marcarHistoriaComoModificada();
                 this.successMessage = 'Indicación guardada correctamente';
                 // Redirigir después de un breve retraso para que el usuario vea el mensaje
                 setTimeout(() => {

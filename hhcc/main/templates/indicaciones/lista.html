@@ -20,6 +20,10 @@
         return '{{ csrf_token }}';
     },
 
+    marcarHistoriaComoModificada() {
+        sessionStorage.setItem('historia_refresh_{{ historia.id }}', '1');
+    },
+
     async parseResponse(response) {
         const contentType = response.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
@@ -50,6 +54,7 @@
 
             const data = await this.parseResponse(response);
             if (response.ok) {
+                this.marcarHistoriaComoModificada();
                 this.indicaciones = this.indicaciones.filter(i => i.id !== id);
                 this.successMessage = 'Indicación eliminada correctamente';
                 this.errorMessage = '';
@@ -81,6 +86,7 @@
             
             if (response.ok) {
                 console.log('Guardado exitoso');
+                this.marcarHistoriaComoModificada();
                 this.successMessage = 'Comentario guardado correctamente';
                 // Actualizar el comentario original para que coincida con el actual
                 this.comentarioOriginal.comentarios = this.comentario.comentarios;
