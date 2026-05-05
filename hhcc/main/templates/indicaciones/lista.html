@@ -155,6 +155,11 @@
                             <td class="p-3 border text-center" x-text="ind.fecha"></td>
                             <td class="p-3 border text-center">
                                 <div class="flex justify-center space-x-2">
+                                    <a :href="`{% url 'indicacion_editar' historia_id=historia.id id=0 %}`.replace('/0/editar/', `/${ind.id}/editar/`)"
+                                        class="text-slate-600 hover:text-slate-900"
+                                        title="Editar indicación">
+                                        <i class="fas fa-pen"></i>
+                                    </a>
                                     <button @click="eliminarIndicacion(ind.id)"
                                         class="text-[#9a4035] hover:text-[#7a332b]">
                                         <i class="fas fa-trash-alt"></i>

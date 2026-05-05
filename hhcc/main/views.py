@@ -1069,43 +1069,104 @@ def _get_indicaciones_activas(historia):
     ).order_by("-fecha", "medicamento", "id")
 
 
+def _parse_indicacion_payload(request):
+    data = json.loads(request.body)
+    required_fields = ["medicamento", "fecha"]
+    if not all(field in data for field in required_fields):
+        raise ValueError("Faltan campos requeridos")
+    return data
+
+
+def _save_indicacion_from_payload(indicacion, data, historia_id):
+    indicacion.historia_clinica_id = historia_id
+    indicacion.medicamento = data["medicamento"]
+    indicacion.ochoHoras = data.get("ochoHoras", "")
+    indicacion.doceHoras = data.get("doceHoras", "")
+    indicacion.dieciochoHoras = data.get("dieciochoHoras", "")
+    indicacion.veintiunaHoras = data.get("veintiunaHoras", "")
+    indicacion.fecha = datetime.strptime(data["fecha"], "%Y-%m-%d").date()
+    indicacion.eliminado = False
+    indicacion.save()
+    return indicacion
+
+
+def _render_indicacion_form(request, historia, indicacion=None):
+    indicacion_data = (
+        indicacion.to_dict()
+        if indicacion
+        else {
+            "medicamento": "",
+            "ochoHoras": "",
+            "doceHoras": "",
+            "dieciochoHoras": "",
+            "veintiunaHoras": "",
+            "fecha": timezone.localdate().strftime("%Y-%m-%d"),
+        }
+    )
+
+    return render(
+        request,
+        "indicaciones/agregar.html",
+        {
+            "historia": historia,
+            "indicacion_json": json.dumps(indicacion_data),
+            "indicacion": indicacion,
+            "is_edit_mode": indicacion is not None,
+        },
+    )
+
+
 @csrf_protect
 def indicacion_agregar(request, historia_id):
     if request.method == "POST":
         try:
-            data = json.loads(request.body)
-
-            # Validación básica
-            required_fields = ["medicamento", "fecha"]
-            if not all(field in data for field in required_fields):
-                return JsonResponse(
-                    {"status": "error", "message": "Faltan campos requeridos"},
-                    status=400,
-                )
-
-            indicacion = IndicacionesVisitas.objects.create(
-                historia_clinica_id=historia_id,
-                medicamento=data["medicamento"],
-                ochoHoras=data.get("ochoHoras", ""),
-                doceHoras=data.get("doceHoras", ""),
-                dieciochoHoras=data.get("dieciochoHoras", ""),
-                veintiunaHoras=data.get("veintiunaHoras", ""),
-                fecha=datetime.strptime(data["fecha"], "%Y-%m-%d").date(),
-                eliminado=False,
+            data = _parse_indicacion_payload(request)
+            indicacion = _save_indicacion_from_payload(
+                IndicacionesVisitas(),
+                data,
+                historia_id,
             )
             return JsonResponse({"status": "success", "data": indicacion.to_dict()})
         except json.JSONDecodeError:
             return JsonResponse(
                 {"status": "error", "message": "JSON inválido"}, status=400
             )
+        except ValueError as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
-    return render(
+    return _render_indicacion_form(
         request,
-        "indicaciones/agregar.html",
-        {"historia": get_object_or_404(HistoriaClinica, id=historia_id)},
+        get_object_or_404(HistoriaClinica, id=historia_id),
     )
+
+
+@csrf_protect
+def indicacion_editar(request, historia_id, id):
+    historia = get_object_or_404(HistoriaClinica, id=historia_id)
+    indicacion = get_object_or_404(
+        IndicacionesVisitas,
+        id=id,
+        historia_clinica=historia,
+        eliminado=False,
+    )
+
+    if request.method == "POST":
+        try:
+            data = _parse_indicacion_payload(request)
+            indicacion = _save_indicacion_from_payload(indicacion, data, historia_id)
+            return JsonResponse({"status": "success", "data": indicacion.to_dict()})
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {"status": "error", "message": "JSON inválido"}, status=400
+            )
+        except ValueError as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+    return _render_indicacion_form(request, historia, indicacion)
 
 
 @csrf_protect

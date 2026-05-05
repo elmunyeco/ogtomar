@@ -67,6 +67,11 @@ urlpatterns = [
         name="indicacion_agregar",
     ),
     path(
+        "historia/<int:historia_id>/indicaciones/<int:id>/editar/",
+        login_required(views.indicacion_editar),
+        name="indicacion_editar",
+    ),
+    path(
         "indicaciones/<int:id>/eliminar/",
         login_required(views.indicacion_eliminar),
         name="indicacion_eliminar",
