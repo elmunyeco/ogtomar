@@ -7,7 +7,7 @@ from .forms import PacienteForm
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.contrib import messages
 from datetime import date as date_cls
 
@@ -1036,12 +1036,7 @@ from django.views.decorators.csrf import csrf_protect
 def indicaciones_list(request, historia_id):
     historia = get_object_or_404(HistoriaClinica, id=historia_id)
 
-    indicaciones = [
-        ind.to_dict()
-        for ind in IndicacionesVisitas.objects.filter(
-            historia_clinica=historia, eliminado=False
-        ).order_by("-fecha")
-    ]
+    indicaciones = [ind.to_dict() for ind in _get_indicaciones_activas(historia)]
 
     ultimo_comentario = (
         ComentariosVisitas.objects.filter(historia_clinica=historia, tipo="INDIC")
@@ -1065,6 +1060,13 @@ def indicaciones_list(request, historia_id):
 
 
 from datetime import datetime
+
+
+def _get_indicaciones_activas(historia):
+    return IndicacionesVisitas.objects.filter(
+        historia_clinica=historia,
+        eliminado=False,
+    ).order_by("-fecha", "medicamento", "id")
 
 
 @csrf_protect
@@ -1107,20 +1109,17 @@ def indicacion_agregar(request, historia_id):
 
 
 @csrf_protect
+@require_POST
 def indicacion_eliminar(request, id):
-    if request.method == "POST":
-        try:
-            indicacion = get_object_or_404(IndicacionesVisitas, id=id)
-            indicacion.eliminado = True
-            indicacion.save()
-            return JsonResponse(
-                {"status": "success", "message": "Indicación eliminada correctamente"}
-            )
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=500)
-    return JsonResponse(
-        {"status": "error", "message": "Método no permitido"}, status=405
-    )
+    try:
+        indicacion = get_object_or_404(IndicacionesVisitas, id=id)
+        indicacion.eliminado = True
+        indicacion.save(update_fields=["eliminado"])
+        return JsonResponse(
+            {"status": "success", "message": "Indicación eliminada correctamente"}
+        )
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
 
 from django.utils import timezone
@@ -1150,6 +1149,39 @@ def guardar_comentarios_indicaciones(request, historia_id):
         return JsonResponse({"status": "success", "data": comentario.to_dict()})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+def imprimir_indicaciones(request, historia_id):
+    historia = get_object_or_404(HistoriaClinica, id=historia_id)
+    paciente = historia.paciente
+
+    indicaciones = _get_indicaciones_activas(historia)
+    ultimo_comentario = (
+        ComentariosVisitas.objects.filter(historia_clinica=historia, tipo="INDIC")
+        .order_by("-fecha")
+        .first()
+    )
+
+    context = {
+        "historia": historia,
+        "paciente": paciente,
+        "indicaciones": indicaciones,
+        "comentario_indicaciones": (
+            ultimo_comentario.comentarios if ultimo_comentario else ""
+        ),
+        "print_logo_path": static_file_url("main/images/logo_omar_prieto.svg"),
+        "print_site_text": "www.cardioprieto.com",
+        "print_header_text": "Consultorio Cardiológico Doctor Omar Prieto",
+        "print_css_path": static_file_url("main/css/print.css"),
+        "print_show_signature": request.GET.get("firma") == "1",
+    }
+
+    html = render_to_string("indicaciones/imprimir_indicaciones.html", context)
+    pdf = HTML(string=html).write_pdf()
+    filename = f"indicaciones_medicacion_{historia_id}.pdf"
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f"inline; filename={filename}"
+    return response
 
 
 @csrf_protect

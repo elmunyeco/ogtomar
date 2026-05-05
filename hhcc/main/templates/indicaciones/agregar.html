@@ -13,6 +13,25 @@
     errorMessage: '',
     successMessage: '',
     isSubmitting: false,
+
+    getCsrfToken() {
+        const cookie = document.cookie
+            .split('; ')
+            .find((item) => item.startsWith('csrftoken='));
+        if (cookie) {
+            return decodeURIComponent(cookie.split('=').slice(1).join('='));
+        }
+        return '{{ csrf_token }}';
+    },
+
+    async parseResponse(response) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            return await response.json();
+        }
+        const text = await response.text();
+        return { message: text || 'Respuesta inválida del servidor' };
+    },
     
     async guardarIndicacion() {
         if (!this.indicacion.medicamento.trim()) {
@@ -27,12 +46,12 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': this.getCsrfToken()
                 },
                 body: JSON.stringify(this.indicacion)
             })
 
-            const data = await response.json();
+            const data = await this.parseResponse(response);
             if (response.ok) {
                 this.successMessage = 'Indicación guardada correctamente';
                 // Redirigir después de un breve retraso para que el usuario vea el mensaje

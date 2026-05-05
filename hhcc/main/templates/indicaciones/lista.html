@@ -10,6 +10,25 @@
     successMessage: '',
     cambiosPendientes: false,
 
+    getCsrfToken() {
+        const cookie = document.cookie
+            .split('; ')
+            .find((item) => item.startsWith('csrftoken='));
+        if (cookie) {
+            return decodeURIComponent(cookie.split('=').slice(1).join('='));
+        }
+        return '{{ csrf_token }}';
+    },
+
+    async parseResponse(response) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            return await response.json();
+        }
+        const text = await response.text();
+        return { message: text || 'Respuesta inválida del servidor' };
+    },
+
     init() {
         this.$watch('comentario.comentarios', (value) => {
             this.cambiosPendientes = value !== this.comentarioOriginal.comentarios;
@@ -24,14 +43,16 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
+                    'X-CSRFToken': this.getCsrfToken()
+                },
+                body: JSON.stringify({})
             });
-            
-            const data = await response.json();
+
+            const data = await this.parseResponse(response);
             if (response.ok) {
                 this.indicaciones = this.indicaciones.filter(i => i.id !== id);
                 this.successMessage = 'Indicación eliminada correctamente';
+                this.errorMessage = '';
             } else {
                 this.errorMessage = data.message || 'Error al eliminar';
             }
@@ -51,12 +72,12 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
+                    'X-CSRFToken': this.getCsrfToken()
                 },
                 body: JSON.stringify(bodyData)
             });
-            
-            const data = await response.json();
+
+            const data = await this.parseResponse(response);
             
             if (response.ok) {
                 console.log('Guardado exitoso');
@@ -89,11 +110,18 @@
         <!-- Encabezado -->
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-lg font-medium text-gray-900">Listado de Indicaciones</h2>
-            <a href="{% url 'indicacion_agregar' historia_id=historia.id %}"
-                class="btn-hover-effect inline-flex items-center px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b]">
-                <i class="fas fa-plus mr-2"></i>
-                Agregar Indicación
-            </a>
+            <div class="flex items-center gap-3">
+                <a href="{% url 'imprimir_indicaciones' historia_id=historia.id %}" target="_blank" rel="noopener noreferrer"
+                    class="btn-hover-effect inline-flex items-center px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100">
+                    <i class="fas fa-print mr-2"></i>
+                    Imprimir
+                </a>
+                <a href="{% url 'indicacion_agregar' historia_id=historia.id %}"
+                    class="btn-hover-effect inline-flex items-center px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b]">
+                    <i class="fas fa-plus mr-2"></i>
+                    Agregar Indicación
+                </a>
+            </div>
         </div>
 
         <!-- Tabla de indicaciones -->

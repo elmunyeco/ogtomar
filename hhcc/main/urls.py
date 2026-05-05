@@ -57,6 +57,11 @@ urlpatterns = [
         name="indicaciones",
     ),
     path(
+        "historia/<int:historia_id>/indicaciones/imprimir/",
+        login_required(views.imprimir_indicaciones),
+        name="imprimir_indicaciones",
+    ),
+    path(
         "historia/<int:historia_id>/indicaciones/agregar/",
         login_required(views.indicacion_agregar),
         name="indicacion_agregar",
