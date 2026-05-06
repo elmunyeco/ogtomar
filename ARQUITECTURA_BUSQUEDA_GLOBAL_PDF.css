@@ -1,0 +1,111 @@
+@page {
+  size: A4;
+  margin: 22mm 18mm 20mm 18mm;
+  @bottom-right {
+    content: counter(page);
+    color: #6b7280;
+    font-size: 9px;
+  }
+}
+
+html {
+  color: #1f2933;
+  font-family: "DejaVu Sans", "Liberation Sans", sans-serif;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+body {
+  margin: 0;
+}
+
+h1 {
+  color: #7a332b;
+  font-size: 28px;
+  line-height: 1.15;
+  margin: 0 0 10mm;
+  padding-bottom: 5mm;
+  border-bottom: 2px solid #9a4035;
+}
+
+h2 {
+  color: #7a332b;
+  font-size: 16px;
+  margin: 9mm 0 3mm;
+  padding-bottom: 1.5mm;
+  border-bottom: 1px solid #d7b8b3;
+}
+
+h3 {
+  color: #334155;
+  font-size: 13px;
+  margin: 6mm 0 2mm;
+}
+
+p {
+  margin: 0 0 3.2mm;
+}
+
+ul {
+  margin: 0 0 3.5mm 5mm;
+  padding: 0;
+}
+
+li {
+  margin: 0 0 1.2mm;
+}
+
+code {
+  color: #7a332b;
+  font-family: "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 10px;
+}
+
+pre {
+  background: #f6f2f1;
+  border: 1px solid #e3cfcb;
+  border-left: 4px solid #9a4035;
+  border-radius: 4px;
+  margin: 3.5mm 0;
+  padding: 3mm 3.5mm;
+  white-space: pre-wrap;
+}
+
+pre code {
+  color: #1f2933;
+  font-size: 9.4px;
+}
+
+blockquote {
+  border-left: 4px solid #9a4035;
+  color: #475569;
+  margin: 4mm 0;
+  padding: 1mm 0 1mm 4mm;
+}
+
+table {
+  border-collapse: collapse;
+  margin: 4mm 0;
+  width: 100%;
+}
+
+th,
+td {
+  border: 1px solid #d7dde5;
+  padding: 2mm;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #f6f2f1;
+  color: #7a332b;
+}
+
+.title {
+  color: #7a332b;
+}
+
+.subtitle {
+  color: #475569;
+}
