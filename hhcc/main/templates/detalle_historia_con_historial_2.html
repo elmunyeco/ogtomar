@@ -123,14 +123,16 @@
 
     <div class="container mx-auto p-6 max-w-7xl">
         <!-- Patient Header -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center space-x-4">
-                    <span class="text-xl font-medium text-gray-900">{{ paciente.nombre }} {{ paciente.apellido }}</span>
-                    <span class="text-gray-500">{{ paciente.idTipoDoc.nombre }} {{ paciente.numDoc }}</span>
+        <div class="bg-white rounded-lg shadow-sm px-6 py-4 mb-6">
+            <div class="flex flex-col xl:flex-row xl:justify-between xl:items-center gap-4">
+                <div>
+                    <p class="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-1">Historia clínica</p>
+                    <h1 class="text-xl font-semibold text-gray-900 leading-tight">
+                        {{ paciente.nombre|default:"Sin datos" }} {{ paciente.apellido|default:"" }}
+                    </h1>
                 </div>
 
-                <div class="flex items-center space-x-6">
+                <div class="flex items-center flex-wrap gap-5 xl:justify-end">
                     <button @click="window.location.href='{% url 'listar_estudios_historia' historia_id=historia.id %}'"
                         class="btn-hover-effect flex flex-col items-center text-[#9a4035] hover:text-[#7a332b] transition-colors">
                         <i class="fas fa-notes-medical text-xl mb-1"></i>
@@ -158,33 +160,63 @@
                     </a>
                 </div>
             </div>
-
-            <div class="flex flex-wrap gap-4 text-sm mt-2">
-                <div>
-                    <span class="text-gray-500 mr-2">Nacimiento:</span>
-                    <span>{{ paciente.fechaNac|date:"d/m/Y" }} ({{ paciente.fechaNac|timesince|truncatewords:1 }} años)</span>
-                </div>
-                <div>
-                    <span class="text-gray-500 mr-2">Teléfono:</span>
-                    <span>{{ paciente.telefono }}</span>
-                </div>
-                <div>
-                    <span class="text-gray-500 mr-2">Última visita:</span>
-                    <span>
-                        {% if ultima_visita_real %}
-                            {{ ultima_visita_real|date:"d/m/Y" }}
-                        {% else %}
-                            Sin visitas registradas
-                        {% endif %}
-                    </span>
-                </div>
-            </div>
         </div>
 
         <!-- Main Content -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Left Column -->
             <div class="space-y-6">
+                <!-- Datos del paciente -->
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h3 class="text-sm font-medium text-gray-700 mb-3">Datos del paciente</h3>
+                    <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2 text-sm">
+                        <div class="flex gap-2 min-w-0">
+                            <dt class="w-28 shrink-0 text-gray-500">Paciente:</dt>
+                            <dd class="min-w-0 text-gray-900 font-medium break-words">{{ paciente.nombre|default:"Sin datos" }} {{ paciente.apellido|default:"" }}</dd>
+                        </div>
+                        <div class="flex gap-2 min-w-0">
+                            <dt class="w-28 shrink-0 text-gray-500">Documento:</dt>
+                            <dd class="min-w-0 text-gray-900 break-words">{{ paciente.idTipoDoc.nombre|default:"Sin datos" }} {{ paciente.numDoc|default:"" }}</dd>
+                        </div>
+                        <div class="flex gap-2 min-w-0">
+                            <dt class="w-28 shrink-0 text-gray-500">Nacimiento:</dt>
+                            <dd class="min-w-0 text-gray-900 break-words">
+                                {% if paciente.fechaNac %}
+                                    {{ paciente.fechaNac|date:"d/m/Y" }} ({{ paciente.fechaNac|timesince|truncatewords:1 }} años)
+                                {% else %}
+                                    Sin datos
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div class="flex gap-2 min-w-0">
+                            <dt class="w-28 shrink-0 text-gray-500">Teléfono:</dt>
+                            <dd class="min-w-0 text-gray-900 break-words">{{ paciente.telefono|default:"Sin datos" }}</dd>
+                        </div>
+                        <div class="flex gap-2 min-w-0">
+                            <dt class="w-28 shrink-0 text-gray-500">Obra social:</dt>
+                            <dd class="min-w-0 text-gray-900 break-words">{{ paciente.obraSocial|default:"Sin datos" }}</dd>
+                        </div>
+                        <div class="flex gap-2 min-w-0">
+                            <dt class="w-28 shrink-0 text-gray-500">Plan:</dt>
+                            <dd class="min-w-0 text-gray-900 break-words">{{ paciente.plan|default:"Sin datos" }}</dd>
+                        </div>
+                        <div class="flex gap-2 min-w-0">
+                            <dt class="w-28 shrink-0 text-gray-500">Afiliado:</dt>
+                            <dd class="min-w-0 text-gray-900 break-words">{{ paciente.afiliado|default:"Sin datos" }}</dd>
+                        </div>
+                        <div class="flex gap-2 min-w-0">
+                            <dt class="w-28 shrink-0 text-gray-500">Última visita:</dt>
+                            <dd class="min-w-0 text-gray-900 break-words">
+                                {% if ultima_visita_real %}
+                                    {{ ultima_visita_real|date:"d/m/Y" }}
+                                {% else %}
+                                    Sin visitas registradas
+                                {% endif %}
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+
                 <!-- Signos Vitales -->
                 <div class="bg-white rounded-lg shadow-sm p-6">
                     <h3 class="text-sm font-medium text-gray-700 mb-4">Signos Vitales</h3>
