@@ -1,5 +1,9 @@
 {# templates/indicaciones/lista.html #}
-{% extends "indicaciones/base.html" %}
+{% extends "base.html" %}
+{% block title %}Indicaciones{% endblock %}
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+{% endblock %}
 {% block content %}
 <main class="container mx-auto p-6 max-w-6xl" x-data="{
     indicaciones: {{ indicaciones_json }},
@@ -101,6 +105,11 @@
         }
     }
 }">
+    <div class="mb-4">
+        {% url 'detalle_historia_con_historial' historia_id=historia.id as historia_url %}
+        {% include 'components/context_back.html' with back_url=historia_url back_label='Historia' back_title='Volver a historia clínica' %}
+    </div>
+
     <!-- Mensajes de error/éxito -->
     <div x-show="errorMessage" x-transition class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
         <span x-text="errorMessage"></span>

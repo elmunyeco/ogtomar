@@ -14,7 +14,7 @@
         padding: 0 !important;
         margin: 0 !important;
     }
-    
+
     .page-content {
         padding-top: 0 !important;
         background-color: #f5f7f8 !important;
@@ -26,14 +26,14 @@
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 0.5rem;
     }
-    
+
     .diagnostico-item {
         display: flex;
         align-items: center;
         gap: 0.5rem;
         padding: 0.5rem;
     }
-    
+
     .btn-hover-effect {
         transition: all 0.2s ease-in-out;
     }
@@ -106,7 +106,7 @@
             }
 
             const data = await response.json();
-            
+
             if (data.error) {
                 this.estado.errorMessage = data.error;
             } else {
@@ -493,22 +493,25 @@
         </div>
 
         <!-- Bottom Action Bar -->
-        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
-            <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
-                <button
-                    @click="if(!estado.cambios_pendientes || confirm('¿Descartar cambios?')) window.location.href='{% url 'listar_buscar_historias' %}'"
-                    class="px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors">
-                    Cancelar
-                </button>
-                <button 
-                    @click="guardarCambios()" 
-                    x-show="estado.cambios_pendientes"
-                    class="px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-colors">
-                    Guardar cambios
-                </button>
+        <div class="sticky-action-bar">
+            <div class="sticky-action-bar-inner">
+                {% include 'components/context_back.html' with back_url=historia_return_url back_label=historia_return_label back_title=historia_return_title %}
+                <div class="sticky-action-bar-actions">
+                    <button
+                        @click="if(!estado.cambios_pendientes || confirm('¿Descartar cambios?')) window.location.href='{{ historia_return_url|escapejs }}'"
+                        class="px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors">
+                        Cancelar
+                    </button>
+                    <button
+                        @click="guardarCambios()"
+                        x-show="estado.cambios_pendientes"
+                        class="px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-colors">
+                        Guardar cambios
+                    </button>
+                </div>
             </div>
         </div>
-        <div class="pb-20"></div> <!-- Padding para que el zocalo de botones no pise el ultimo registro-->
+        <div class="sticky-action-bar-spacer"></div> <!-- Padding para que el zocalo de botones no pise el ultimo registro-->
     </div>
 </div>
 {% endblock %}
@@ -598,16 +601,16 @@
                 formatDate(dateString) {
                     try {
                         if (!dateString) return '-';
-                        
+
                         // Separar la fecha en sus componentes
                         const parts = dateString.split('-');  // "2019-02-21" -> ["2019", "02", "21"]
                         const year = parseInt(parts[0]);      // 2019
                         const month = parseInt(parts[1]) - 1; // 1 (febrero es 1 porque en JS los meses van de 0-11)
                         const day = parseInt(parts[2]);       // 21
-                        
+
                         // Crear fecha con componentes específicos (año, mes, día)
                         const date = new Date(year, month, day);
-                        
+
                         // Formatear la fecha al estilo español (día/mes/año)
                         return date.toLocaleDateString('es-ES', {
                             day: '2-digit',
@@ -619,7 +622,7 @@
                         return dateString || '-';
                     }
                 },
-                
+
                 getTimeRange(dateString) {
                     try {
                         const today = new Date();

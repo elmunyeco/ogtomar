@@ -99,7 +99,12 @@ def listar_buscar_pacientes(request):
     return render(
         request,
         "listar_buscar_pacientes.html",
-        {"page_obj": page_obj, "query": query, "tipo": tipo},
+        {
+            "page_obj": page_obj,
+            "query": query,
+            "tipo": tipo,
+            "current_path": request.get_full_path(),
+        },
     )
 
 
@@ -193,6 +198,7 @@ def listar_buscar_historias(request):
             "page_obj": page_obj,
             "query": query,
             "tipo": tipo,
+            "current_path": request.get_full_path(),
         },
     )
 
@@ -389,10 +395,22 @@ def eliminar_paciente(request, pk):
 
 def ordenes_medicas(request, paciente_id):
     paciente = get_object_or_404(Paciente, id=paciente_id)
+    historia = HistoriaClinica.objects.filter(paciente=paciente).order_by("-id").first()
     context = {
         "paciente": paciente,
+        "historia": historia,
     }
     return render(request, "ordenes_medicas.html", context)
+
+
+def _resolve_historia_return(request):
+    return_label = request.GET.get("return_label")
+    return_to = request.GET.get("return_to", "")
+    if return_label == "Pacientes" and return_to.startswith("/pacientes/"):
+        return return_to, return_label, "Volver al listado de pacientes"
+    if return_label == "Historias" and return_to.startswith("/historias/"):
+        return return_to, return_label, "Volver al listado de historias"
+    return reverse("listar_buscar_historias"), "Historias", "Volver al listado de historias"
 
 
 from reportlab.lib.pagesizes import A4
@@ -1509,6 +1527,7 @@ def detalle_historia_con_historial(request, historia_id):
     import json
 
     historial_json = json.dumps({"visitas": visitas_json})
+    historia_return_url, return_label, historia_return_title = _resolve_historia_return(request)
 
     context = {
         "historia": historia,
@@ -1520,6 +1539,9 @@ def detalle_historia_con_historial(request, historia_id):
         "ultima_visita_real": ultima_visita_real.fecha if ultima_visita_real else None,
         "historial_json": historial_json,
         "debug": settings.DEBUG,
+        "historia_return_url": historia_return_url,
+        "historia_return_label": return_label,
+        "historia_return_title": historia_return_title,
     }
 
     return render(request, "detalle_historia_con_historial_2.html", context)

@@ -218,22 +218,28 @@
       </div>
     </section>
 
-    <div class="flex flex-wrap items-center justify-center gap-4">
-      <label class="flex items-center gap-2 text-sm text-slate-600">
-        <input type="checkbox" x-model="firmar" class="rounded border-slate-300 text-red-600">
-        Firmar PDF
-      </label>
-      <button
-        type="submit"
-        class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
-        :disabled="guardando"
-      >
-        <span x-show="!guardando">Guardar</span>
-        <span x-show="guardando">Guardando...</span>
-      </button>
-      <a href="{% url 'listar_estudios_historia' historia_id=historia.id %}" class="text-sm text-slate-500 hover:text-slate-700">Volver</a>
+    <div class="sticky-action-bar">
+      <div class="sticky-action-bar-inner">
+        {% url 'listar_estudios_historia' historia_id=historia.id as estudios_url %}
+        {% include 'components/context_back.html' with back_url=estudios_url back_label='Estudios' back_title='Volver al listado de estudios' %}
+        <div class="sticky-action-bar-actions">
+          <label class="flex items-center gap-2 text-sm text-slate-600">
+            <input type="checkbox" x-model="firmar" class="rounded border-slate-300 text-red-600">
+            Firmar PDF
+          </label>
+          <button
+            type="submit"
+            class="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            :disabled="guardando"
+          >
+            <span x-show="!guardando">Guardar</span>
+            <span x-show="guardando">Guardando...</span>
+          </button>
+        </div>
+      </div>
     </div>
   </form>
+  <div class="sticky-action-bar-spacer"></div>
 </div>
 
 <script>

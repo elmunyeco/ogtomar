@@ -1,5 +1,9 @@
 {# templates/indicaciones/agregar.html #}
 {% extends "base.html" %}
+{% block title %}{% if is_edit_mode %}Editar Indicación{% else %}Nueva Indicación{% endif %}{% endblock %}
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+{% endblock %}
 {% block content %}
 <main class="container mx-auto p-6 max-w-6xl" x-data="indicacionForm()">
     <div class="bg-white rounded-lg shadow-sm p-6">
@@ -52,23 +56,30 @@
                 </div>
             </div>
 
-            <div class="flex justify-end space-x-4">
-                <a href="{% url 'indicaciones' historia_id=historia.id %}"
-                    class="btn-hover-effect px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white">
-                    Cancelar
-                </a>
-                <button type="submit"
-                    class="btn-hover-effect px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b]"
-                    :disabled="isSubmitting"
-                    :class="{'opacity-70 cursor-not-allowed': isSubmitting}">
-                    <span x-show="isSubmitting" class="inline-block mr-2">
-                        <i class="fas fa-spinner fa-spin"></i>
-                    </span>
-                    <span x-text="isSubmitting ? '{% if is_edit_mode %}Actualizando...{% else %}Guardando...{% endif %}' : '{% if is_edit_mode %}Actualizar Indicación{% else %}Guardar Indicación{% endif %}'"></span>
-                </button>
+            <div class="sticky-action-bar">
+                <div class="sticky-action-bar-inner">
+                    {% url 'indicaciones' historia_id=historia.id as indicaciones_url %}
+                    {% include 'components/context_back.html' with back_url=indicaciones_url back_label='Indicaciones' back_title='Volver al listado de indicaciones' %}
+                    <div class="sticky-action-bar-actions">
+                        <a href="{% url 'indicaciones' historia_id=historia.id %}"
+                            class="btn-hover-effect px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white">
+                            Cancelar
+                        </a>
+                        <button type="submit"
+                            class="btn-hover-effect px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b]"
+                            :disabled="isSubmitting"
+                            :class="{'opacity-70 cursor-not-allowed': isSubmitting}">
+                            <span x-show="isSubmitting" class="inline-block mr-2">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </span>
+                            <span x-text="isSubmitting ? '{% if is_edit_mode %}Actualizando...{% else %}Guardando...{% endif %}' : '{% if is_edit_mode %}Actualizar Indicación{% else %}Guardar Indicación{% endif %}'"></span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </form>
     </div>
+    <div class="sticky-action-bar-spacer"></div>
 </main>
 {% endblock %}
 

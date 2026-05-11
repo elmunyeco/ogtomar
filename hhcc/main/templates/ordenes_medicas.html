@@ -1,20 +1,13 @@
-<!DOCTYPE html>
-<html lang="es">
+{% extends "base.html" %}
+{% load static %}
 
-<head>{% load static %}
-    
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitudes</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
+{% block title %}Solicitudes{% endblock %}
 
-    <!-- Enlace al CSS centralizado -->
-    <link rel="stylesheet" href="{% static 'main/css/style.css' %}"></head>
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+{% endblock %}
 
-<body class="bg-gray-100">
+{% block content %}
     <div x-data="{
        pacienteId: {{ paciente.id }},
        showError: false,
@@ -647,21 +640,33 @@
                 rows="3" placeholder="Ingrese otros estudios adicionales..."></textarea>
         </div>
         <!-- Barra de acciones -->
-        <div class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4">
-            <div class="container mx-auto max-w-6xl flex justify-end space-x-4">
-                <button
-                    class="px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors"
-                    onclick="window.history.back()">
+        <div class="sticky-action-bar">
+            <div class="sticky-action-bar-inner">
+                {% if historia %}
+                    {% url 'detalle_historia_con_historial' historia_id=historia.id as historia_url %}
+                    {% include 'components/context_back.html' with back_url=historia_url back_label='Historia' back_title='Volver a historia clínica' %}
+                {% else %}
+                    {% url 'listar_buscar_pacientes' as pacientes_url %}
+                    {% include 'components/context_back.html' with back_url=pacientes_url back_label='Pacientes' back_title='Volver al listado de pacientes' %}
+                {% endif %}
+                <div class="sticky-action-bar-actions">
+                {% if historia %}
+                <a href="{% url 'detalle_historia_con_historial' historia_id=historia.id %}"
+                    class="px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors">
                     Cancelar
-                </button>
+                </a>
+                {% else %}
+                <a href="{% url 'listar_buscar_pacientes' %}"
+                    class="px-4 py-2 text-[#9a4035] border border-[#9a4035] rounded-lg hover:bg-[#9a4035] hover:text-white transition-colors">
+                    Cancelar
+                </a>
+                {% endif %}
                 <button @click="imprimirOrdenes()"
                     class="px-4 py-2 bg-[#9a4035] text-white rounded-lg hover:bg-[#7a332b] transition-colors">
                     Imprimir Órdenes
                 </button>
+                </div>
             </div>
         </div>
     </div>
-</body>
-
-</html>
-```
+{% endblock %}

@@ -13,7 +13,7 @@ document.addEventListener('alpine:init', () => {
         debounceTimer: null,
         mensaje: { texto: '', tipo: '' },
         firmar: false,
-        
+
         // Pestañas
         activeTab: 'bidimensional',
         tabs: [
@@ -24,7 +24,7 @@ document.addEventListener('alpine:init', () => {
             { id: 'conclusion_b', label: 'Conclusiones B' },
             { id: 'comentario_final', label: 'Comentario Final' }
         ],
-        
+
         // Datos del estudio
         estudio: {
             id: null,
@@ -52,7 +52,7 @@ document.addEventListener('alpine:init', () => {
             onda_a_tricuspidea: '',
             strain_longitudinal: ''
         },
-        
+
         // Conclusiones
         conclusiones: {
             situs: '',
@@ -82,16 +82,16 @@ document.addEventListener('alpine:init', () => {
             conclusion_texto: '',
             comentario_final: ''
         },
-        
+
         // Segmentos
         segmentos: {},
-        
+
         // Modal de segmentos
         modalSegmento: {
             abierto: false,
             numero: null
         },
-        
+
         // Valores calculados
         bmiCalculado: '',
         fraccionAcortamiento: '',
@@ -102,7 +102,7 @@ document.addEventListener('alpine:init', () => {
             mitral: '',
             tricuspidea: ''
         },
-        
+
         // Opciones para conclusiones
         opcionesAuriculaIzq: [
             { valor: '1', texto: 'Normal' },
@@ -167,7 +167,7 @@ document.addEventListener('alpine:init', () => {
             { valor: '3', texto: 'Derrame de grado moderado' },
             { valor: '4', texto: 'Derrame de grado severo' }
         ],
-        
+
         // Estados de segmentos
         estadosSegmentos: {
             '0': 'No evaluado',
@@ -176,7 +176,7 @@ document.addEventListener('alpine:init', () => {
             '3': 'Aquinético',
             '4': 'Disquinético'
         },
-        
+
         coloresSegmentos: {
             '0': '#FFFFFF',
             '1': '#FFFF00',
@@ -204,7 +204,7 @@ document.addEventListener('alpine:init', () => {
             15: [[299,80,306,85,310,90,314,95,317,102,318,106,318,113,337,113,337,103,334,93,330,84,325,77,317,69,309,64,299,80], [645,56,649,68,653,81,655,91,674,88,671,70,665,52,661,45,645,56]],
             16: [[620,13,620,31,629,33,640,45,645,56,662,45,654,34,642,21,632,16,624,14,620,13]]
         },
-        
+
         // Inicialización
         inicializar(historiaId, estudioId, datosEstudio, datosConclusion, datosSegmentos, defaultConclusionB) {
             this.historiaId = historiaId;
@@ -214,15 +214,15 @@ document.addEventListener('alpine:init', () => {
                     this.historiaId = rootId;
                 }
             }
-            
+
             if (estudioId && estudioId !== '0') {
                 this.estudio.id = estudioId;
             }
-            
+
             if (datosEstudio && datosEstudio !== 'null') {
                 Object.assign(this.estudio, datosEstudio);
             }
-            
+
             if (datosConclusion && datosConclusion !== 'null') {
                 Object.assign(this.conclusiones, datosConclusion);
                 // Convertir strings de conclusiones múltiples a arrays
@@ -242,13 +242,13 @@ document.addEventListener('alpine:init', () => {
                     }
                 });
             }
-            
+
             if (datosSegmentos && datosSegmentos !== '[]') {
                 datosSegmentos.forEach(seg => {
                     this.segmentos[seg.numero_segmento] = seg.estado.toString();
                 });
             }
-            
+
             // Inicializar segmentos vacíos (legacy: Normal por defecto)
             for (let i = 1; i <= 16; i++) {
                 if (!this.segmentos[i]) {
@@ -270,7 +270,7 @@ document.addEventListener('alpine:init', () => {
                 this.segmentos = normalizados;
                 this.debouncedSave();
             };
-            
+
             // Realizar cálculos iniciales
             this.$nextTick(() => {
                 this.calcularBMI();
@@ -313,33 +313,33 @@ document.addEventListener('alpine:init', () => {
             }
             this.segmentos = normalizados;
         },
-        
+
         // Cálculos automáticos
         calcularBMI() {
             const peso = parseFloat(this.estudio.peso) || 0;
             const talla = parseFloat(this.estudio.talla) || 0;
-            
+
             if (peso > 0 && talla > 0) {
                 this.bmiCalculado = Math.ceil(peso / (talla * talla));
             } else {
                 this.bmiCalculado = '';
             }
         },
-        
+
         calcularFraccionAcortamiento() {
             const diastolico = parseFloat(this.estudio.vent_izq_diastolico) || 0;
             const sistolico = parseFloat(this.estudio.vent_izq_sistolico) || 0;
-            
+
             if (diastolico > 0 && sistolico > 0) {
                 this.fraccionAcortamiento = Math.ceil(((diastolico - sistolico) / diastolico) * 100);
             } else {
                 this.fraccionAcortamiento = '';
             }
         },
-        
+
         calcularGradiente(tipo) {
             let valor = 0;
-            
+
             switch (tipo) {
                 case 'pulmonar':
                     valor = parseFloat(this.estudio.valvula_pulmonar) || 0;
@@ -357,25 +357,25 @@ document.addEventListener('alpine:init', () => {
                     valor = parseFloat(this.estudio.onda_e_tricuspidea) || 0;
                     break;
             }
-            
+
             if (valor > 0) {
                 this.gradientes[tipo] = Math.ceil(valor * valor * 4) + ' mmHg';
             } else {
                 this.gradientes[tipo] = '';
             }
         },
-        
+
         // Manejo de segmentos
         abrirModalSegmento(numero) {
             this.modalSegmento.numero = numero;
             this.modalSegmento.abierto = true;
         },
-        
+
         cerrarModalSegmento() {
             this.modalSegmento.abierto = false;
             this.modalSegmento.numero = null;
         },
-        
+
         seleccionarSegmento(valor) {
             if (this.modalSegmento.numero) {
                 this.segmentos[this.modalSegmento.numero] = valor.toString();
@@ -384,7 +384,7 @@ document.addEventListener('alpine:init', () => {
             }
             this.cerrarModalSegmento();
         },
-        
+
         marcarTodoNormal(normal) {
             const valor = normal ? '1' : '0';
             for (let i = 1; i <= 16; i++) {
@@ -393,60 +393,60 @@ document.addEventListener('alpine:init', () => {
             this.dibujarSegmentos();
             this.debouncedSave();
         },
-        
+
         dibujarSegmentos() {
             const canvas = this.$refs.segmentosCanvas;
             const imagen = this.$refs.segmentosImagen;
-            
+
             if (!canvas || !imagen) return;
-            
+
             // Ajustar el canvas al tamaño de la imagen
             const rect = imagen.getBoundingClientRect();
             canvas.width = imagen.naturalWidth;
             canvas.height = imagen.naturalHeight;
             canvas.style.width = imagen.offsetWidth + 'px';
             canvas.style.height = imagen.offsetHeight + 'px';
-            
+
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             // Dibujar cada segmento
             for (let i = 1; i <= 16; i++) {
                 const estado = this.segmentos[i] || '0';
                 const color = this.coloresSegmentos[estado];
                 const coordenadas = this.coordinadasSegmentos[i];
-                
+
                 if (coordenadas && color && estado !== '0') {
                     ctx.fillStyle = color;
                     ctx.strokeStyle = '#000000';
                     ctx.lineWidth = 1;
                     ctx.globalAlpha = 0.6;
-                    
+
                     // Dibujar todos los polígonos para este segmento
                     coordenadas.forEach(coords => {
                         ctx.beginPath();
                         ctx.moveTo(coords[0], coords[1]);
-                        
+
                         for (let j = 2; j < coords.length; j += 2) {
                             ctx.lineTo(coords[j], coords[j + 1]);
                         }
-                        
+
                         ctx.closePath();
                         ctx.fill();
                         ctx.stroke();
                     });
-                    
+
                     ctx.globalAlpha = 1;
                 }
             }
         },
-        
+
         // Manejo de conclusiones
         actualizarConclusionMultiple(campo, valor, checked) {
             if (!Array.isArray(this.conclusiones[campo])) {
                 this.conclusiones[campo] = [];
             }
-            
+
             if (checked) {
                 if (!this.conclusiones[campo].includes(valor)) {
                     this.conclusiones[campo].push(valor);
@@ -498,7 +498,7 @@ document.addEventListener('alpine:init', () => {
 
             return items;
         },
-        
+
         // Guardado
         debouncedSave() {
             // Autoguardado desactivado: no-op
@@ -530,7 +530,7 @@ document.addEventListener('alpine:init', () => {
                 this.guardando = false;
             }
         },
-        
+
         async guardarDatos(completo = false) {
             if (!this.historiaId || this.historiaId === 'null' || this.historiaId === 'None') {
                 this.mostrarMensaje('Estudio ecocardiográfico no se pudo guardar por error', 'error');
@@ -546,11 +546,11 @@ document.addEventListener('alpine:init', () => {
                 conclusiones: {
                     ...this.conclusiones,
                     // Convertir arrays a strings separados por comas
-                    auricula_izq: Array.isArray(this.conclusiones.auricula_izq) 
-                        ? this.conclusiones.auricula_izq.join(',') 
+                    auricula_izq: Array.isArray(this.conclusiones.auricula_izq)
+                        ? this.conclusiones.auricula_izq.join(',')
                         : this.conclusiones.auricula_izq,
-                    ventriculo_izq: Array.isArray(this.conclusiones.ventriculo_izq) 
-                        ? this.conclusiones.ventriculo_izq.join(',') 
+                    ventriculo_izq: Array.isArray(this.conclusiones.ventriculo_izq)
+                        ? this.conclusiones.ventriculo_izq.join(',')
                         : this.conclusiones.ventriculo_izq,
                     valvula_aortica: Array.isArray(this.conclusiones.valvula_aortica)
                         ? this.conclusiones.valvula_aortica.join(',')
@@ -568,7 +568,7 @@ document.addEventListener('alpine:init', () => {
                 segmentos: this.segmentos,
                 completo: completo
             };
-            
+
             const response = await fetch('{% url "ecocardiograma:guardar_todo_ajax" 0 %}'.replace('0', this.historiaId), {
                 method: 'POST',
                 headers: {
@@ -577,20 +577,20 @@ document.addEventListener('alpine:init', () => {
                 },
                 body: JSON.stringify(payload)
             });
-            
+
             if (!response.ok) {
                 throw new Error('Error en la respuesta del servidor');
             }
-            
+
             const resultado = await response.json();
-            
+
             if (resultado.success && resultado.estudio_id) {
                 this.estudio.id = resultado.estudio_id;
             }
-            
+
             return resultado;
         },
-        
+
         mostrarMensaje(texto, tipo) {
             this.mensaje = { texto, tipo };
             if (tipo === 'error') {
@@ -609,23 +609,23 @@ document.addEventListener('alpine:init', () => {
 {% block extra_css %}
 <style>
     /* Estilos específicos manteniendo el canon estético original */
-    .analisisBidimensional h4, 
-    .analisisCopplerSpeckel h4, 
-    .analisisMotilidadSegmentaria h4, 
-    .conclusiones h4, 
-    .comentarioFinal h4, 
+    .analisisBidimensional h4,
+    .analisisCopplerSpeckel h4,
+    .analisisMotilidadSegmentaria h4,
+    .conclusiones h4,
+    .comentarioFinal h4,
     .conclusionesB h4 {
         @apply font-bold;
     }
-    
+
     .lblUnidad {
         @apply text-sm text-gray-600 ml-2;
     }
-    
+
     .divConclusiones {
         @apply ml-12;
     }
-    
+
     .form-input, .form-select, .form-textarea {
         @apply w-full rounded border border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2;
     }
@@ -648,35 +648,35 @@ document.addEventListener('alpine:init', () => {
     .conclusiones .form-checkbox {
         margin-top: 0.2rem;
     }
-    
+
     .segment-overlay {
         position: absolute;
         pointer-events: none;
         top: 0;
         left: 0;
     }
-    
+
     .segment-color-0 { background-color: #FFFFFF; border: 1px solid #000; opacity: 0.6; }
     .segment-color-1 { background-color: #FFFF00; border: 1px solid #000; opacity: 0.6; }
     .segment-color-2 { background-color: #FF7700; border: 1px solid #000; opacity: 0.6; }
     .segment-color-3 { background-color: #FF0000; border: 1px solid #000; opacity: 0.6; }
     .segment-color-4 { background-color: #0000FF; border: 1px solid #000; opacity: 0.6; }
-    
+
     .referencias ol li {
         position: relative;
         left: 1em;
-        padding-right: 1em;    
+        padding-right: 1em;
     }
-    
+
     /* Transiciones suaves para mejor UX */
     .tab-content {
         transition: all 0.3s ease-in-out;
     }
-    
+
     .fade-in {
         animation: fadeIn 0.3s ease-in-out;
     }
-    
+
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -690,7 +690,7 @@ document.addEventListener('alpine:init', () => {
         border: 2px solid transparent;
         transition: all 0.2s ease;
     }
-    
+
     .segment-area:hover {
         border-color: rgba(59, 130, 246, 0.8);
         background: rgba(59, 130, 246, 0.1);
@@ -708,8 +708,8 @@ document.addEventListener('alpine:init', () => {
 {% endblock %}
 
 {% block content %}
-<div 
-    x-data="ecocardiogramaSistema" 
+<div
+    x-data="ecocardiogramaSistema"
     x-init="inicializar('{{ historia.id }}', '{{ estudio_id|default:'0' }}', JSON.parse('{{ estudio|default:'null'|to_json|escapejs }}'), JSON.parse('{{ conclusion|default:'null'|to_json|escapejs }}'), JSON.parse('{{ segmentos|default:'[]'|to_json|escapejs }}'), JSON.parse('{{ default_conclusion_b|to_json|escapejs }}'))"
     data-historia-id="{{ historia.id }}"
     class="space-y-6"
@@ -718,7 +718,7 @@ document.addEventListener('alpine:init', () => {
     <div hidden>
         {% csrf_token %}
     </div>
-    
+
     <div class="flex items-start justify-between">
         <div class="text-left">
             <h1 class="text-2xl font-semibold text-slate-900 text-left">Estudio ecocardiográfico doppler color</h1>
@@ -742,12 +742,12 @@ document.addEventListener('alpine:init', () => {
             <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Peso (Kg)</label>
-                    <input type="number" step="0.1" x-model="estudio.peso" @input="calcularBMI(); debouncedSave()" 
+                    <input type="number" step="0.1" x-model="estudio.peso" @input="calcularBMI(); debouncedSave()"
                            class="form-input mt-1" placeholder="0.0">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Talla (m)</label>
-                    <input type="number" step="0.01" x-model="estudio.talla" @input="calcularBMI(); debouncedSave()" 
+                    <input type="number" step="0.01" x-model="estudio.talla" @input="calcularBMI(); debouncedSave()"
                            class="form-input mt-1" placeholder="0.00">
                 </div>
                 <div>
@@ -765,7 +765,7 @@ document.addEventListener('alpine:init', () => {
                            class="form-input mt-1" placeholder="0">
                 </div>
             </div>
-            
+
             <!-- Mensajes de estado -->
             <div x-show="mensaje.texto"
                  :style="mensaje.tipo === 'error' ? 'background:#fef2f2;border:1px solid #fecaca;color:#991b1b;' : 'background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;'"
@@ -778,7 +778,7 @@ document.addEventListener('alpine:init', () => {
     <div class="border-b border-gray-200">
         <nav class="-mb-px flex space-x-8">
             <template x-for="tab in tabs" :key="tab.id">
-                <button @click="activeTab = tab.id" 
+                <button @click="activeTab = tab.id"
                         :class="activeTab === tab.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
                         class="whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors">
                     <span x-text="tab.label"></span>
@@ -794,7 +794,7 @@ document.addEventListener('alpine:init', () => {
                 <div class="bg-gray-200 px-6 py-4">
                     <h4 class="text-center text-lg font-semibold">Análisis Bidimensional</h4>
                 </div>
-                
+
                 <div class="p-6">
                     <div class="overflow-x-auto">
                         <table class="w-full border-collapse border border-gray-300">
@@ -866,7 +866,7 @@ document.addEventListener('alpine:init', () => {
                                     <td class="border border-gray-300 px-4 py-2">Diámetro VI diastólico</td>
                                     <td class="border border-gray-300 px-4 py-2">
                                         <div class="flex items-center">
-                                            <input type="number" step="0.1" x-model="estudio.vent_izq_diastolico" 
+                                            <input type="number" step="0.1" x-model="estudio.vent_izq_diastolico"
                                                    @input="calcularFraccionAcortamiento(); debouncedSave()"
                                                    class="form-input w-24" placeholder="0.0">
                                             <span class="lblUnidad">mm</span>
@@ -878,7 +878,7 @@ document.addEventListener('alpine:init', () => {
                                     <td class="border border-gray-300 px-4 py-2">Diámetro VI sistólico</td>
                                     <td class="border border-gray-300 px-4 py-2">
                                         <div class="flex items-center">
-                                            <input type="number" step="0.1" x-model="estudio.vent_izq_sistolico" 
+                                            <input type="number" step="0.1" x-model="estudio.vent_izq_sistolico"
                                                    @input="calcularFraccionAcortamiento(); debouncedSave()"
                                                    class="form-input w-24" placeholder="0.0">
                                             <span class="lblUnidad">mm</span>
@@ -952,7 +952,7 @@ document.addEventListener('alpine:init', () => {
                 <div class="bg-gray-200 px-6 py-4">
                     <h4 class="text-center text-lg font-semibold">Análisis Doppler Color & Speckel Tracking</h4>
                 </div>
-                
+
                 <div class="p-6">
                     <div class="overflow-x-auto">
                         <table class="w-full border-collapse border border-gray-300">
@@ -970,7 +970,7 @@ document.addEventListener('alpine:init', () => {
                                     <td class="border border-gray-300 px-4 py-2">Válvula pulmonar</td>
                                     <td class="border border-gray-300 px-4 py-2">
                                         <div class="flex items-center">
-                                            <input type="number" step="0.1" x-model="estudio.valvula_pulmonar" 
+                                            <input type="number" step="0.1" x-model="estudio.valvula_pulmonar"
                                                    @input="calcularGradiente('pulmonar'); debouncedSave()"
                                                    class="form-input w-24" placeholder="0.0">
                                             <span class="lblUnidad">m/seg</span>
@@ -985,7 +985,7 @@ document.addEventListener('alpine:init', () => {
                                     <td class="border border-gray-300 px-4 py-2">Válvula aórtica</td>
                                     <td class="border border-gray-300 px-4 py-2">
                                         <div class="flex items-center">
-                                            <input type="number" step="0.1" x-model="estudio.valvula_aortica" 
+                                            <input type="number" step="0.1" x-model="estudio.valvula_aortica"
                                                    @input="calcularGradiente('aortica'); debouncedSave()"
                                                    class="form-input w-24" placeholder="0.0">
                                             <span class="lblUnidad">m/seg</span>
@@ -1000,7 +1000,7 @@ document.addEventListener('alpine:init', () => {
                                     <td class="border border-gray-300 px-4 py-2">Tracto de salida ventrículo izquierdo</td>
                                     <td class="border border-gray-300 px-4 py-2">
                                         <div class="flex items-center">
-                                            <input type="number" step="0.1" x-model="estudio.tracto_vent_izq" 
+                                            <input type="number" step="0.1" x-model="estudio.tracto_vent_izq"
                                                    @input="calcularGradiente('tracto'); debouncedSave()"
                                                    class="form-input w-24" placeholder="0.0">
                                             <span class="lblUnidad">m/seg</span>
@@ -1017,7 +1017,7 @@ document.addEventListener('alpine:init', () => {
                                         <div class="space-y-2">
                                             <div class="flex items-center">
                                                 <label class="w-16 text-sm">Onda E:</label>
-                                                <input type="number" step="0.1" x-model="estudio.onda_e_mitral" 
+                                                <input type="number" step="0.1" x-model="estudio.onda_e_mitral"
                                                        @input="calcularGradiente('mitral'); debouncedSave()"
                                                        class="form-input w-20" placeholder="0.0">
                                                 <span class="lblUnidad">m/seg</span>
@@ -1041,7 +1041,7 @@ document.addEventListener('alpine:init', () => {
                                         <div class="space-y-2">
                                             <div class="flex items-center">
                                                 <label class="w-16 text-sm">Onda E:</label>
-                                                <input type="number" step="0.1" x-model="estudio.onda_e_tricuspidea" 
+                                                <input type="number" step="0.1" x-model="estudio.onda_e_tricuspidea"
                                                        @input="calcularGradiente('tricuspidea'); debouncedSave()"
                                                        class="form-input w-20" placeholder="0.0">
                                                 <span class="lblUnidad">m/seg</span>
@@ -1159,7 +1159,7 @@ document.addEventListener('alpine:init', () => {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <template x-for="opcion in opcionesAuriculaIzq" :key="opcion.valor">
                                 <label class="checkbox-row">
-                                    <input type="checkbox" 
+                                    <input type="checkbox"
                                            :value="opcion.valor"
                                            @change="actualizarConclusionMultiple('auricula_izq', opcion.valor, $event.target.checked); debouncedSave()"
                                            :checked="conclusiones.auricula_izq.includes(opcion.valor)"
@@ -1176,7 +1176,7 @@ document.addEventListener('alpine:init', () => {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <template x-for="opcion in opcionesVentriculoIzq" :key="opcion.valor">
                                 <label class="checkbox-row">
-                                    <input type="checkbox" 
+                                    <input type="checkbox"
                                            :value="opcion.valor"
                                            @change="actualizarConclusionMultiple('ventriculo_izq', opcion.valor, $event.target.checked); debouncedSave()"
                                            :checked="conclusiones.ventriculo_izq.includes(opcion.valor)"
@@ -1186,7 +1186,7 @@ document.addEventListener('alpine:init', () => {
                             </template>
                         </div>
                     </div>
-                    
+
                     <!-- Función sistólica -->
                     <div class="divConclusiones">
                         <label class="block font-medium text-gray-700 mb-2">Función sistólica del ventrículo izquierdo:</label>
@@ -1220,7 +1220,7 @@ document.addEventListener('alpine:init', () => {
                                 <option value="2">Anormal</option>
                             </select>
                             <div x-show="conclusiones.motilidad_segmentaria === '2'" class="mt-2">
-                                <textarea x-model="conclusiones.comentario_motilidad" @input="debouncedSave()" 
+                                <textarea x-model="conclusiones.comentario_motilidad" @input="debouncedSave()"
                                           class="form-textarea w-full" rows="5" maxlength="512"
                                           placeholder="Descripción de la anomalía..."></textarea>
                             </div>
@@ -1294,7 +1294,7 @@ document.addEventListener('alpine:init', () => {
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Pericardio -->
                     <div class="divConclusiones">
                         <label class="block font-medium text-gray-700 mb-2">Pericardio:</label>
@@ -1307,7 +1307,7 @@ document.addEventListener('alpine:init', () => {
                                 <option value="4">Derrame de grado severo</option>
                             </select>
                             <div x-show="conclusiones.pericardio && conclusiones.pericardio !== '1'" class="mt-2">
-                                <textarea x-model="conclusiones.comentario_pericardio" @input="debouncedSave()" 
+                                <textarea x-model="conclusiones.comentario_pericardio" @input="debouncedSave()"
                                           class="form-textarea w-full" rows="5" maxlength="512"
                                           placeholder="Comentario adicional..."></textarea>
                             </div>
@@ -1324,7 +1324,7 @@ document.addEventListener('alpine:init', () => {
                                 <option value="2">Sí</option>
                             </select>
                             <div x-show="conclusiones.defectos_congenitos === '2'" class="mt-2">
-                                <textarea x-model="conclusiones.comentario_defectos" @input="debouncedSave()" 
+                                <textarea x-model="conclusiones.comentario_defectos" @input="debouncedSave()"
                                           class="form-textarea w-full" rows="5" maxlength="512"
                                           placeholder="Descripción de los defectos..."></textarea>
                             </div>
@@ -1363,11 +1363,11 @@ document.addEventListener('alpine:init', () => {
                 <div class="bg-gray-200 px-6 py-4">
                     <h4 class="text-lg font-semibold">Conclusiones B:</h4>
                 </div>
-                
+
                 <div class="p-6">
                     <textarea x-model="conclusiones.conclusion_texto" @input="debouncedSave()"
-                              maxlength="8000" 
-                              rows="15" 
+                              maxlength="8000"
+                              rows="15"
                               class="form-textarea w-full"
                               placeholder="Escriba aquí la conclusión detallada..."></textarea>
                 </div>
@@ -1380,11 +1380,11 @@ document.addEventListener('alpine:init', () => {
                 <div class="bg-gray-200 px-6 py-4">
                     <h4 class="text-lg font-semibold">Comentario Final:</h4>
                 </div>
-                
+
                 <div class="p-6">
                     <textarea x-model="conclusiones.comentario_final" @input="debouncedSave()"
-                              maxlength="8000" 
-                              rows="8" 
+                              maxlength="8000"
+                              rows="8"
                               class="form-textarea w-full"
                               placeholder="Escriba aquí el comentario final..."></textarea>
                 </div>
@@ -1392,27 +1392,32 @@ document.addEventListener('alpine:init', () => {
         </div>
     </div>
 
-    <!-- Botones de acción -->
-    <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
-        <label class="flex items-center gap-2 text-sm text-gray-600">
-            <input type="checkbox" x-model="firmar" class="rounded border-gray-300 text-red-600">
-            Firmar PDF
-        </label>
-        <button @click="guardarCompleto()" 
-                :disabled="guardando" 
-                class="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded inline-flex items-center">
-            <svg x-show="guardando" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span x-text="guardando ? 'Guardando...' : 'Guardar'"></span>
-        </button>
-        <a href="{% url 'listar_estudios_historia' historia_id=historia.id %}" class="text-sm text-gray-600 hover:text-gray-800">Volver</a>
+    <div class="sticky-action-bar">
+        <div class="sticky-action-bar-inner">
+            {% url 'listar_estudios_historia' historia_id=historia.id as estudios_url %}
+            {% include 'components/context_back.html' with back_url=estudios_url back_label='Estudios' back_title='Volver al listado de estudios' %}
+            <div class="sticky-action-bar-actions">
+                <label class="flex items-center gap-2 text-sm text-gray-600">
+                    <input type="checkbox" x-model="firmar" class="rounded border-gray-300 text-red-600">
+                    Firmar PDF
+                </label>
+                <button @click="guardarCompleto()"
+                        :disabled="guardando"
+                        class="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded inline-flex items-center">
+                    <svg x-show="guardando" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-text="guardando ? 'Guardando...' : 'Guardar'"></span>
+                </button>
+            </div>
+        </div>
     </div>
+    <div class="sticky-action-bar-spacer"></div>
 
     <!-- Modal para selección de segmentos -->
-    <div x-show="modalSegmento.abierto" 
-         class="fixed inset-0 z-50 overflow-y-auto" 
+    <div x-show="modalSegmento.abierto"
+         class="fixed inset-0 z-50 overflow-y-auto"
          x-cloak>
         <div class="flex items-center justify-center min-h-screen px-4">
             <div class="fixed inset-0 bg-black opacity-50" @click="cerrarModalSegmento()"></div>
@@ -1421,7 +1426,7 @@ document.addEventListener('alpine:init', () => {
                 <div class="space-y-3">
                     <template x-for="(descripcion, valor) in estadosSegmentos" :key="valor">
                         <label class="flex items-center cursor-pointer">
-                            <input type="radio" 
+                            <input type="radio"
                                    :name="`segmento_${modalSegmento.numero}`"
                                    :value="valor"
                                    @change="seleccionarSegmento(valor)"

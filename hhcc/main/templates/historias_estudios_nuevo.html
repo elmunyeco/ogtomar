@@ -4,18 +4,18 @@
 
 {% block content %}
 <div class="container mx-auto p-6 max-w-5xl">
+    <div class="mb-4 text-left">
+        {% url 'listar_estudios_historia' historia_id=historia.id as estudios_url %}
+        {% include 'components/context_back.html' with back_url=estudios_url back_label='Estudios' back_title='Volver al listado de estudios' %}
+    </div>
     <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
             <div>
                 <h1 class="text-2xl font-semibold text-gray-800">Nuevo estudio</h1>
                 <div class="text-sm text-gray-600 mt-1">
                     {{ paciente.nombre }} {{ paciente.apellido }} · Historia {{ historia.id }}
                 </div>
             </div>
-            <a href="{% url 'listar_estudios_historia' historia_id=historia.id %}"
-               class="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
-                Volver a estudios
-            </a>
         </div>
     </div>
 

@@ -1,0 +1,9 @@
+{% if back_url and back_label %}
+<a href="{{ back_url }}"
+   class="context-back-btn"
+   title="{{ back_title|default:back_label }}"
+   aria-label="{{ back_title|default:back_label }}">
+    <span aria-hidden="true">&larr;</span>
+    <span>{{ back_label }}</span>
+</a>
+{% endif %}

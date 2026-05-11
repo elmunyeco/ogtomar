@@ -83,7 +83,7 @@
                     <td class="px-4 py-2 border border-gray-300">
                         <div class="flex justify-center space-x-4">
                             {% if paciente.historia_principal_id %}
-                            <a href="{% url 'detalle_historia_con_historial' historia_id=paciente.historia_principal_id %}" 
+                            <a href="{% url 'detalle_historia_con_historial' historia_id=paciente.historia_principal_id %}?return_label=Pacientes&return_to={{ current_path|urlencode }}"
                                class="text-green-600 hover:text-green-800 transition-colors flex items-center" 
                                title="Abrir historia clínica">
                                 <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

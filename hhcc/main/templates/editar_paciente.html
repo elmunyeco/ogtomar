@@ -356,17 +356,23 @@
                 </div>
             </div>
             
-            <!-- Botones de acción -->
-            <div class="btn-actions">
-                <a href="{% url 'listar_buscar_pacientes' %}" class="btn btn-cancel">
-                    Cancelar
-                </a>
-                <button type="submit" class="btn btn-save">
-                    Guardar Cambios
-                </button>
+            <div class="sticky-action-bar">
+                <div class="sticky-action-bar-inner">
+                    {% url 'listar_buscar_pacientes' as pacientes_url %}
+                    {% include 'components/context_back.html' with back_url=pacientes_url back_label='Pacientes' back_title='Volver al listado de pacientes' %}
+                    <div class="sticky-action-bar-actions">
+                        <a href="{% url 'listar_buscar_pacientes' %}" class="btn btn-cancel">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-save">
+                            Guardar Cambios
+                        </button>
+                    </div>
+                </div>
             </div>
         </form>
     </div>
+    <div class="sticky-action-bar-spacer"></div>
 </div>
 {% endblock %}
 
