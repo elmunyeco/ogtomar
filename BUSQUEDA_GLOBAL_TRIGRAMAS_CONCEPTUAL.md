@@ -129,7 +129,7 @@ La busqueda global se marca como experimental porque todavia debe evaluarse con 
 observar:
 
 - Si los resultados mas utiles aparecen suficientemente arriba.
-- Si Omar se pone maniaco o depresivo.
+- Si Omar se pone maniaco.
 - Si la busqueda por apellido responde como se espera.
 - Si Omar se deprime.
 - Si los fragmentos numericos generan demasiados resultados.
