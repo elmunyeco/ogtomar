@@ -11,6 +11,7 @@ urlpatterns = [
     path("password/done/", auth_views.PasswordChangeDoneView.as_view(template_name="password_change_done.html"), name="password_change_done"),
     path("", login_required(views.index), name="index"),
     path("buscador/", login_required(views.buscador), name="buscador"),
+    path("docs/busqueda-trigramas/", login_required(views.documento_trigramas), name="documento_trigramas"),
     path("pacientes/", login_required(views.listar_buscar_pacientes), name="listar_buscar_pacientes"),
     path('pacientes/crear/', login_required(views.crear_paciente), name='crear_paciente'),
     path('pacientes/<int:pk>/editar/', login_required(views.editar_paciente), name='editar_paciente'),

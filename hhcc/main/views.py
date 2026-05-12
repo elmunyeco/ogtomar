@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from django.urls import reverse
 from django.utils.dateparse import parse_date
 from .models import Paciente, HistoriaClinica, TipoDocumento, IndicacionesVisitas
@@ -13,7 +13,21 @@ from datetime import date as date_cls
 
 
 def index(request):
-    return render(request, "index.html")
+    from .global_search import global_search
+
+    query = request.GET.get("q", "").strip()
+    page = request.GET.get("page", 1)
+    search_context = None
+    if query:
+        search_context = global_search(query, page=page)
+    return render(
+        request,
+        "index.html",
+        {
+            "query": query,
+            "search_context": search_context,
+        },
+    )
 
 
 @require_http_methods(["GET", "POST"])
@@ -24,6 +38,23 @@ def logout_view(request):
 
 def buscador(request):
     return render(request, "buscador.html")
+
+
+def documento_trigramas(request):
+    from pathlib import Path
+    from django.conf import settings
+
+    filename = "BUSQUEDA_GLOBAL_TRIGRAMAS_CONCEPTUAL.pdf"
+    candidates = [
+        Path(settings.BASE_DIR) / filename,
+        Path(settings.BASE_DIR).parent / filename,
+    ]
+    doc_path = next(path for path in candidates if path.exists())
+    return FileResponse(
+        open(doc_path, "rb"),
+        content_type="application/pdf",
+        filename=filename,
+    )
 
 
 from django.core.paginator import Paginator
