@@ -2,21 +2,26 @@
 title: "Busqueda global por trigramas"
 subtitle: "Explicacion conceptual para uso clinico y administrativo"
 date: "2026-05-12"
+author: "Ezequiel Rodrigo Bergonzi"
 ---
 
 # Busqueda global por trigramas
+
+## Este paper conceptual
+
+Aclara como funcionan las busquedas identificatorias basadas en la teoria de segmentacion de vectores con pesos asignados. Puede ser una buena introduccion a los grafos porque explica con ejemplos las vecindades y las fuerzas de las conexiones entre elementos. De ninguna forma se busca mostrar una implementacion actual.
 
 ## Proposito
 
 La busqueda global permite encontrar rapidamente un paciente, su historia clinica y sus estudios asociados desde una unica caja de texto.
 
-El objetivo principal es resolver busquedas identificatorias frecuentes en un consultorio medico. Por ejemplo, cuando se recuerda una parte del apellido, una parte del nombre, algunos numeros del documento o algunos numeros del identificador de historia.
+El objetivo principal es resolver busquedas identificatiorias en el consultorio condensando el criterio. Por ejemplo, cuando se recuerda una parte del apellido, una parte del nombre, algunos numeros del documento o algunos numeros del identificador de historia.
 
-Esta busqueda no reemplaza la historia clinica ni interpreta contenido medico. Su funcion es localizar registros y ofrecer accesos directos.
+Esta busqueda no reemplaza la de historia clinica ni paciente. No interpreta contenido medico (busqueda semantica). Su funcion es solamente localizar registros y ofrecer accesos directos. No somos google, pero andamos mejor que otros sistemas, incluso de grandes centros, jeje!
 
 ## Que informacion utiliza
 
-La primera version utiliza solamente datos identificatorios:
+La primera version utiliza solamente:
 
 - Identificador del paciente.
 - Identificador de la historia clinica.
@@ -24,7 +29,6 @@ La primera version utiliza solamente datos identificatorios:
 - Apellido del paciente.
 - Nombre del paciente.
 
-Tambien muestra accesos a los estudios ya cargados para esa historia, separados por tipo y fecha.
 
 ## Que informacion no utiliza
 
@@ -37,15 +41,14 @@ Esta version no busca dentro de:
 - Medicacion.
 - Otros textos medicos extensos.
 
-Es una busqueda de identificacion y acceso, no una busqueda clinica de contenido.
 
 ## Por que no se usa una busqueda de texto tradicional
 
-Una busqueda de texto tradicional funciona bien cuando se busca una palabra completa o casi completa. Sin embargo, en el uso cotidiano del consultorio muchas veces se busca con fragmentos.
+Una busqueda de texto tradicional funciona bien cuando se busca una palabra completa o casi completa. Sin embargo, supongo que en el uso cotidiano del consultorio muchas veces se busca con fragmentos.
 
-Un usuario puede recordar solamente una parte de un apellido, una parte de un nombre o tres numeros del documento. En esos casos, una busqueda tradicional puede no ser suficiente o puede obligar a revisar demasiados registros.
+Uno puede recordar solamente una parte de un apellido, una parte de un nombre o tres numeros del documento. En esos casos, una busqueda tradicional puede no ser suficiente o puede obligar a revisar demasiados registros.
 
-La busqueda global se disena para reconocer fragmentos dentro de los datos identificatorios.
+reconocer fragmentos trisimbólicos dentro de los datos identificatorios. (trigramas)
 
 ## Que es un trigrama
 
@@ -55,7 +58,14 @@ Si una palabra o numero se divide en fragmentos de tres caracteres, una busqueda
 
 Esto permite encontrar coincidencias aunque el usuario no escriba el dato completo.
 
+'''
+ezequiel: eze, zeq, equ, qui, uie, iel .... 2023101065: 202,023,231, bergonzi: ber, erg, ... , nzi. etc.... etc...
+prieto manuel califica fuerte con "pri man", "man pri", "anu rie", por ejemplo. No califica tan arriba solo con "pri", como es claro.
+'''
+
 ## Por que se eligieron trigramas
+
+Es una eleccion completamente explicada en la teoria de los cientificos que estudiaron el tema y realmente saben. Y tiene que ver no solo con el contenido sino con el idioma. Es la mejor combinacion para castellano y combinado con numeros.
 
 La longitud de tres caracteres ofrece un equilibrio adecuado.
 
@@ -69,7 +79,7 @@ Los trigramas permiten buscar desde tres caracteres, mantienen una cantidad razo
 
 La busqueda global requiere al menos tres caracteres.
 
-Con uno o dos caracteres hay demasiadas coincidencias posibles. En esos casos el sistema no ejecuta la busqueda global y recomienda usar las busquedas clasicas de pacientes o historias.
+Con uno o dos caracteres hay demasiadas coincidencias posibles. En esos casos el sistema no ejecuta la busqueda global. recomiendo usar las busquedas clasicas de pacientes o historias.
 
 Esta restriccion evita resultados excesivos y mantiene la busqueda global como una herramienta precisa.
 
@@ -77,9 +87,9 @@ Esta restriccion evita resultados excesivos y mantiene la busqueda global como u
 
 No todos los campos tienen la misma importancia.
 
-Los identificadores de paciente, historia y documento son datos muy precisos. Por eso reciben la mayor prioridad cuando coinciden.
+Los identificadores de paciente e historia (que son el mismo) y el documento son datos muy precisos. Por eso reciben la mayor prioridad cuando coinciden.
 
-El apellido tambien tiene alta prioridad porque en un consultorio medico es una forma habitual de buscar pacientes.
+El apellido tambien tiene alta prioridad porque en el consultorio medico yo supongo que es la forma mas habitual de buscar a los pacientes.
 
 El nombre tambien es importante, aunque por lo general es menos especifico que el apellido.
 
@@ -114,14 +124,18 @@ Cuando hay muchos resultados, se usa paginacion. Esto permite mantener la pantal
 
 ## Estado experimental
 
-La busqueda global se marca como experimental porque todavia debe evaluarse con uso real.
+La busqueda global se marca como experimental porque todavia debe evaluarse con uso real de este consultorio en particular e ir ajustando a medida que Omar vaya puteando o poniendose contento.
 
-Durante esta etapa conviene observar:
+observar:
 
 - Si los resultados mas utiles aparecen suficientemente arriba.
+- Si Omar se pone maniaco o depresivo.
 - Si la busqueda por apellido responde como se espera.
+- Si Omar se deprime.
 - Si los fragmentos numericos generan demasiados resultados.
+- Si Omar agarra el cigarrillo o el alcohol.
 - Si la cantidad de resultados por pagina es adecuada.
+- Si Omar deja la medicina y se hace linyera.
 - Si los accesos a historia y estudios son claros.
 
 La evaluacion con usuarios reales es necesaria antes de considerar esta funcion como estable.
@@ -132,12 +146,4 @@ Esta version no intenta responder preguntas clinicas.
 
 No permite buscar conceptos medicos dentro de textos largos. Tampoco identifica sinonimos, relaciones clinicas ni significado medico.
 
-Para ese tipo de necesidad se requerira una etapa posterior con un motor de busqueda clinica mas amplio.
-
-## Resumen
-
-La busqueda global por trigramas es una herramienta de localizacion rapida.
-
-Su funcion es encontrar pacientes e historias a partir de fragmentos identificatorios y ofrecer accesos directos al trabajo clinico.
-
-La decision de usar trigramas busca equilibrar sensibilidad, precision y velocidad sin introducir todavia una infraestructura de busqueda externa.
+Para ese tipo de necesidad se requerira una etapa posterior con elasticsearch como motor serio de busqueda.
