@@ -227,3 +227,53 @@ class IndicacionesVisitas(models.Model):
     
     def __str__(self):
         return f"Indicaciones - Historia {self.historia_clinica_id} - {self.fecha.strftime('%Y-%m-%d')}"
+
+
+class GlobalSearchDocument(models.Model):
+    document_key = models.CharField(max_length=80, unique=True)
+    paciente = models.ForeignKey(
+        Paciente,
+        on_delete=models.CASCADE,
+        related_name="global_search_documents",
+    )
+    historia = models.ForeignKey(
+        HistoriaClinica,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="global_search_documents",
+    )
+    title = models.CharField(max_length=255)
+    subtitle = models.CharField(max_length=255, null=True, blank=True)
+    search_text_normalized = models.TextField()
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "global_search_documents"
+        indexes = [
+            models.Index(fields=["paciente"], name="global_search_doc_paciente_idx"),
+            models.Index(fields=["historia"], name="global_search_doc_historia_idx"),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
+class GlobalSearchGram(models.Model):
+    document = models.ForeignKey(
+        GlobalSearchDocument,
+        on_delete=models.CASCADE,
+        related_name="grams",
+    )
+    gram = models.CharField(max_length=3)
+    weight = models.PositiveSmallIntegerField(default=1)
+
+    class Meta:
+        db_table = "global_search_grams"
+        unique_together = [("document", "gram")]
+        indexes = [
+            models.Index(fields=["gram"], name="global_search_gram_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.gram} -> {self.document_id}"

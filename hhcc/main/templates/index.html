@@ -4,7 +4,79 @@
 {% block title %}Dr. Omar Prieto - Cardiología Integral{% endblock %}
 
 {% block content %}
-<!-- Contenido vacío intencionalmente -->
+<section class="global-search-page {% if search_context %}has-results{% endif %}">
+    <div class="global-search-shell">
+        <div class="global-search-brand">
+            <span class="global-search-kicker">Cardiología integral</span>
+            <h1>Buscar en Omar</h1>
+        </div>
+
+        <form method="GET" action="{% url 'index' %}" class="global-search-form">
+            <label for="global-search-input" class="sr-only">Buscar paciente, documento o historia</label>
+            <div class="global-search-input-wrap">
+                <svg class="global-search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                    type="text"
+                    name="q"
+                    id="global-search-input"
+                    value="{{ query }}"
+                    placeholder="Apellido, nombre, DNI, paciente o historia"
+                    autocomplete="off"
+                    autofocus
+                />
+                <button type="submit">Buscar</button>
+            </div>
+        </form>
+
+        {% if search_context and search_context.error %}
+            <div class="global-search-alert" role="alert">
+                {{ search_context.error }}
+            </div>
+        {% endif %}
+
+        {% if search_context and not search_context.error %}
+            <div class="global-search-summary">
+                {% if search_context.results %}
+                    {{ search_context.results|length }} resultado{% if search_context.results|length != 1 %}s{% endif %} para <strong>{{ query }}</strong>
+                {% else %}
+                    No se encontraron resultados para <strong>{{ query }}</strong>
+                {% endif %}
+            </div>
+
+            <div class="global-search-results">
+                {% for result in search_context.results %}
+                    <article class="global-result">
+                        <div class="global-result-main">
+                            <div>
+                                <h2>{{ result.document.title }}</h2>
+                                <p>{{ result.document.subtitle }}</p>
+                            </div>
+                            {% if result.historia %}
+                                <span class="global-result-badge">Historia #{{ result.historia.id }}</span>
+                            {% else %}
+                                <span class="global-result-badge">Sin historia</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="global-result-actions">
+                            {% for action in result.actions %}
+                                <a href="{{ action.url }}" class="global-result-link">
+                                    <span class="global-result-link-kind">{{ action.kind }}</span>
+                                    <span class="global-result-link-text">
+                                        <strong>{{ action.label }}</strong>
+                                        <small>{{ action.description }}</small>
+                                    </span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</section>
 {% endblock %}
 
 {% block extra_js %}{% endblock %}
