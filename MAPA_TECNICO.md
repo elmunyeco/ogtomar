@@ -386,6 +386,10 @@ Archivos clave:
 
 ## Infraestructura y despliegue
 
+### Ambientes
+- QA: `129.212.132.248`
+- Produccion: `107.170.65.67`
+
 ### Runtime local / deploy
 - Base MariaDB: contenedor `nuevo_cardioprieto`
 - App Django: contenedor `hhcc_app`
