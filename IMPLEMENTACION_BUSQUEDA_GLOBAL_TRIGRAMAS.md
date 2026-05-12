@@ -82,6 +82,7 @@ La plantilla `index.html` deja de estar vacia y pasa a mostrar:
 - Caja unica de busqueda.
 - Mensaje de error si la query tiene menos de 3 caracteres.
 - Resultados agrupados por paciente/historia.
+- El indicador `Historia #...` tambien es link directo a la historia clinica.
 - Enlaces accionables a:
   - Edicion de paciente.
   - Historia clinica.

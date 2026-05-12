@@ -1309,6 +1309,13 @@ h3 {
     font-size: 0.78rem;
     font-weight: 700;
     padding: 0.25rem 0.65rem;
+    text-decoration: none;
+}
+
+a.global-result-badge:hover {
+    border-color: #9a4035;
+    background: rgba(154, 64, 53, 0.08);
+    color: #7a332b;
 }
 
 .global-result-actions {

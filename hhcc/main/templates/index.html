@@ -49,7 +49,7 @@
                                 <p>{{ result.document.subtitle }}</p>
                             </div>
                             {% if result.historia %}
-                                <span class="global-result-badge">Historia #{{ result.historia.id }}</span>
+                                <a href="{% url 'detalle_historia_con_historial' historia_id=result.historia.id %}" class="global-result-badge">Historia #{{ result.historia.id }}</a>
                             {% else %}
                                 <span class="global-result-badge">Sin historia</span>
                             {% endif %}
