@@ -1,7 +1,7 @@
 ---
 title: "Arquitectura de Busqueda Global Clinica"
 subtitle: "Propuesta tecnica para evolucionar desde busquedas separadas a un subsistema extensible"
-date: "2026-05-05"
+date: "2026-05-08"
 ---
 
 # Arquitectura de Busqueda Global Clinica
@@ -45,59 +45,87 @@ Ese enfoque tiene varios limites:
 - No permite construir un ranking global coherente.
 - No permite evolucionar facilmente hacia busqueda semantica real.
 
+## Decision actualizada 2026-05-08
+
+La decision cambio a partir de una definicion funcional nueva: Omar quiere aprovechar la base de historias clinicas como base para un sistema de investigacion medica.
+
+Con ese objetivo, Elasticsearch si tiene sentido como componente central. No debe usarse solamente como "otro buscador" paralelo, sino como fuente canonica del indice de busqueda textual.
+
+La separacion correcta es:
+
+```text
+MySQL / Django
+Fuente de verdad clinica y transaccional.
+
+Elasticsearch
+Fuente de verdad de busqueda textual, FTS, ranking e investigacion medica.
+```
+
+MySQL sigue mandando para datos clinicos, relaciones, usuarios, permisos, integridad y operaciones CRUD. Elasticsearch no reemplaza esa verdad. Es un indice secundario, reconstruible desde MySQL.
+
+La consecuencia practica es importante: no conviene hacer crecer dos motores FTS distintos. Si se introduce Elasticsearch, la busqueda textual operativa y la busqueda de investigacion deben consultar el mismo backend.
+
 ## Recomendacion
 
-La recomendacion es crear una app Django nueva, por ejemplo `search`, con una tabla propia de documentos de busqueda denormalizados.
+La recomendacion es crear una app Django nueva, por ejemplo `search`, pero orientada desde el inicio a Elasticsearch como backend principal de busqueda.
 
 Primera etapa recomendada:
 
 ```text
 Django search app
-+ MariaDB FULLTEXT
-+ tabla denormalizada search_documents
-+ servicio central de busqueda
++ Elasticsearch
++ documentos clinicos denormalizados
++ indexadores por dominio
++ cola/outbox de indexacion
++ comando de reconstruccion completa
 ```
 
-No recomiendo empezar por Elasticsearch, OpenSearch, Meilisearch, Typesense ni embeddings. Todos pueden tener lugar mas adelante, pero introducirlos desde el primer paso agregaria operacion, complejidad y puntos de falla antes de validar el uso real.
+MariaDB `FULLTEXT` puede quedar como fallback transitorio o como apoyo durante una etapa de migracion, pero no debe ser la estrategia principal si el sistema va a evolucionar hacia investigacion medica.
 
 ## Modelo propuesto
 
-Crear una tabla similar a esta:
+El modelo conceptual sigue siendo el de documentos denormalizados, pero esos documentos viven en Elasticsearch.
+
+Documento base:
 
 ```text
-search_documents
-- id
+clinical_search_document
+- document_id
 - entity_type
 - entity_id
 - paciente_id
 - historia_id
+- paciente_nombre
+- paciente_apellido
+- paciente_documento
 - titulo
 - subtitulo
 - texto
 - texto_normalizado
 - fecha_relevante
-- metadata_json
+- tags
+- metadata
 - updated_at
+- deleted_at
 ```
 
 Campos principales:
 
+- `document_id`: identificador estable del documento de indice, por ejemplo `paciente:7544` o `comentario:24030`.
 - `entity_type`: identifica el tipo de entidad indexada.
-- `entity_id`: ID de la entidad original.
+- `entity_id`: ID de la entidad original en MySQL.
 - `paciente_id`: permite navegar o filtrar por paciente.
 - `historia_id`: permite volver al centro clinico del sistema.
+- `paciente_nombre`, `paciente_apellido`, `paciente_documento`: campos repetidos para busquedas y filtros sin joins.
 - `titulo`: texto corto visible en resultados.
 - `subtitulo`: contexto humano del resultado.
 - `texto`: cuerpo buscable.
 - `texto_normalizado`: version auxiliar para busqueda tolerante a acentos, mayusculas u otras variantes.
-- `metadata_json`: datos auxiliares para renderizar o filtrar sin hacer joins inmediatos.
+- `tags`: etiquetas clinicas o tecnicas derivadas.
+- `metadata`: datos auxiliares para renderizar, filtrar o depurar.
 - `fecha_relevante`: fecha clinica o administrativa util para ordenar.
 
-El indice `FULLTEXT` deberia aplicarse sobre una combinacion de:
-
-```text
-titulo, subtitulo, texto, texto_normalizado
-```
+La indexacion debe poder reconstruirse completa desde MySQL. Nunca debe existir informacion en Elasticsearch que sea irrecuperable desde la base principal.
 
 ## Entidades indexables
 
@@ -169,7 +197,7 @@ texto: "Funcion sistolica conservada. Valvula aortica..."
 
 ## Servicio de busqueda
 
-El buscador no deberia consultar directamente todas las tablas del sistema. Deberia consultar `search_documents`.
+El buscador no deberia consultar directamente todas las tablas del sistema. Deberia consultar el indice Elasticsearch a traves de un servicio Django estable.
 
 Propuesta de estructura:
 
@@ -178,18 +206,20 @@ hhcc/search/
 - models.py
 - services.py
 - indexers.py
+- tasks.py
 - views.py
 - urls.py
-- management/commands/rebuild_search_index.py
+- management/commands/reindex_all.py
 ```
 
 Responsabilidades:
 
-- `models.py`: define `SearchDocument`.
+- `models.py`: define modelos auxiliares locales si hacen falta, por ejemplo una outbox de indexacion.
 - `indexers.py`: transforma entidades del dominio en documentos buscables.
-- `services.py`: ejecuta busquedas, ranking, filtros y normalizacion.
+- `services.py`: ejecuta busquedas, ranking, filtros y normalizacion contra Elasticsearch.
+- `tasks.py`: procesa indexacion diferida o reintentos.
 - `views.py`: endpoint web/API del buscador.
-- `rebuild_search_index.py`: reconstruccion completa del indice.
+- `reindex_all.py`: reconstruccion completa del indice desde MySQL.
 
 ## Indexadores por dominio
 
@@ -209,6 +239,27 @@ MmiiIndexer
 ```
 
 Esto evita que el buscador conozca detalles internos de cada modelo. El buscador solo trabaja con documentos.
+
+## Indexacion background
+
+Las altas, ediciones y borrados no deben depender fuertemente de Elasticsearch dentro de la misma request.
+
+Flujo recomendado:
+
+```text
+Request Django
+  -> guarda en MySQL
+  -> registra tarea/outbox de indexacion
+  -> responde OK al usuario
+
+Worker background
+  -> procesa pendientes
+  -> actualiza Elasticsearch
+```
+
+Motivo: si Elasticsearch esta caido, el sistema clinico debe poder seguir cargando datos. Lo que queda degradado es la busqueda, no la operacion clinica principal.
+
+Debe existir un comando `reindex_all` que borre/recree o sincronice el indice completo desde MySQL. Ese comando es obligatorio para recuperacion, deploys y cambios de mapping.
 
 ## Tipos de busqueda
 
@@ -238,7 +289,7 @@ Casos:
 - Comentarios.
 - Conclusiones de estudios.
 
-Esto se resuelve bien con `FULLTEXT`, normalizacion y pesos por campo.
+Esto se resuelve bien con Elasticsearch, normalizacion, analyzers y pesos por campo.
 
 ### 3. Busqueda semantica futura
 
@@ -253,11 +304,11 @@ Esto no conviene resolver desde el primer dia con embeddings. Primero hay que co
 
 ## Ranking
 
-El ranking no debe depender solo del score de MariaDB.
+El ranking no debe depender solo del score bruto de Elasticsearch.
 
 Se recomienda combinar:
 
-- Score `FULLTEXT`.
+- Score de Elasticsearch.
 - Coincidencia exacta por ID o documento.
 - Peso por tipo de entidad.
 - Recencia.
@@ -304,35 +355,40 @@ Fecha: 05/05/2026
 Abrir historia
 ```
 
-## Evolucion futura del stack
+## Operacion de Elasticsearch
 
-La tabla `search_documents` permite empezar simple y migrar despues.
+Elasticsearch introduce costo operativo, pero queda justificado si el objetivo incluye investigacion medica sobre texto clinico libre.
 
-Si MariaDB alcanza:
+Requisitos minimos:
 
-- Se mantiene todo dentro de Django + MariaDB.
-- Menor operacion.
-- Menor riesgo.
+- Indice reconstruible desde MySQL.
+- Mapping versionado o documentado.
+- Comando `reindex_all`.
+- Tareas de indexacion con reintentos.
+- Health check del indice.
+- Modo degradado si Elasticsearch no responde.
+- Backups de MySQL como verdad principal; Elasticsearch se puede regenerar.
 
-Si se necesita busqueda mas potente:
+## Por que no mantener dos FTS principales
 
-- Typesense o Meilisearch para busqueda rapida, simple, tolerante a errores y con buena experiencia de usuario.
-- OpenSearch si se necesita control avanzado, analitica o queries mas complejas.
-- Qdrant o embeddings si se confirma una necesidad real de busqueda semantica por significado.
+No conviene que pacientes use MySQL `FULLTEXT` y que investigacion use Elasticsearch como caminos principales separados.
 
-La clave es disenar el buscador con una interfaz interna estable. El backend puede cambiar despues sin romper la UI.
+Motivos:
 
-## Por que no empezar con un motor externo
+- Los resultados pueden diferir para la misma busqueda.
+- El ranking tendria semanticas distintas.
+- La UI seria dificil de explicar y depurar.
+- La evolucion a sinonimos, analyzers o busqueda medica quedaria duplicada.
+- Cada fix de busqueda habria que resolverlo dos veces.
 
-No conviene empezar con Elasticsearch/OpenSearch/Meilisearch/Typesense porque:
+La regla recomendada es simple:
 
-- Todavia no esta validado el comportamiento real esperado del buscador.
-- Agrega servicios al deploy.
-- Agrega sincronizacion entre DB e indice externo.
-- Agrega nuevos modos de falla.
-- Aumenta complejidad operativa.
+```text
+Todo lo que sea busqueda textual usa Elasticsearch.
+Todo lo que sea persistencia clinica usa MySQL.
+```
 
-El sistema hoy necesita primero una abstraccion correcta, no necesariamente un motor mas grande.
+MySQL `FULLTEXT` queda como fallback transitorio, no como camino estrategico.
 
 ## Por que no migrar a PostgreSQL ahora
 
@@ -361,41 +417,48 @@ Una vez que eso existe, embeddings puede ser una extension, no el fundamento ini
 
 ## Plan incremental
 
-### Fase 1: Fundacion
+### Fase 1: Decision y contrato
 
-- Crear app `search`.
-- Crear modelo `SearchDocument`.
-- Crear comando `rebuild_search_index`.
-- Indexar pacientes e historias.
-- Crear endpoint o vista `/buscar/`.
+- Documentar que MySQL es verdad clinica/transaccional.
+- Documentar que Elasticsearch es verdad de busqueda textual e investigacion.
+- Definir interfaz interna `search.services` para que la UI no dependa directamente del cliente Elasticsearch.
+- Definir modo degradado si Elasticsearch esta caido.
 
-### Fase 2: Clinica basica
+### Fase 2: Documentos indexables
 
-- Agregar comentarios EVOL.
-- Agregar indicaciones.
-- Agregar condiciones medicas.
-- Ajustar ranking para que la historia clinica sea el destino principal.
+- Disenar mapping Elasticsearch.
+- Definir documentos para paciente, historia, visita/comentario, indicacion/medicacion y estudio.
+- Definir `document_id` estable por entidad.
+- Definir que campos son buscables, filtrables y mostrables.
 
-### Fase 3: Estudios
+### Fase 3: Reconstruccion completa
 
-- Agregar ecocardiograma.
-- Agregar carotidas.
-- Agregar ecostress.
-- Agregar mmii.
-- Definir que campos clinicos de cada estudio son realmente buscables.
+- Crear comando `reindex_all`.
+- Permitir reconstruir el indice completo desde MySQL.
+- Validar conteos por tipo de documento.
+- Dejar logs claros de errores de indexacion.
 
-### Fase 4: Experiencia de usuario
+### Fase 4: Indexacion background
 
-- Agrupar resultados por tipo.
-- Agregar highlights.
-- Agregar filtros por entidad, fecha o paciente.
-- Evaluar autocomplete.
+- Registrar pendientes de indexacion despues de altas, ediciones y borrados.
+- Procesar pendientes con worker o comando recurrente.
+- Reintentar errores sin bloquear la carga clinica.
+- Asegurar que borrados o cambios de estado se reflejen en el indice.
 
-### Fase 5: Motor externo si hace falta
+### Fase 5: Busqueda operativa
 
-- Medir uso y limites de MariaDB.
-- Elegir Typesense, Meilisearch, OpenSearch o vector search segun necesidad real.
-- Mantener estable la interfaz interna del servicio de busqueda.
+- Cambiar buscadores de pacientes e historias para consultar Elasticsearch.
+- Mantener MySQL como fallback temporal si se decide necesario.
+- Ordenar resultados con prioridad clinica: historia/paciente exacto primero, luego matches textuales.
+- Mostrar fragmentos, tipo de resultado, fecha relevante y accion principal.
+
+### Fase 6: Investigacion medica
+
+- Crear una pantalla o modulo de investigacion clinica.
+- Agregar filtros por edad, sexo, fechas, tipo de estudio, medicacion, diagnosticos y texto libre.
+- Agregar agregaciones utiles para cohortes y conteos.
+- Evaluar sinonimos/analyzers medicos.
+- Evaluar embeddings solo despues de consolidar el indice documental.
 
 ## Decision recomendada
 
@@ -403,19 +466,22 @@ La direccion arquitectonica recomendada es:
 
 ```text
 Django search app
-+ SearchDocument denormalizado
-+ MariaDB FULLTEXT
++ Elasticsearch como backend principal
++ documentos clinicos denormalizados
 + indexadores por dominio
 + servicio central de busqueda
-+ posibilidad futura de backend externo
++ indexacion background
++ reindex_all desde MySQL
 ```
 
-Esta decision respeta el estado actual del sistema, mantiene baja la complejidad inicial y crea una base solida para crecer hacia estudios y busqueda semantica real cuando tenga sentido.
+Esta decision acepta una complejidad operativa mayor porque el objetivo ya no es solamente buscar pacientes o historias, sino explotar clinicamente la base para investigacion medica.
+
+MySQL queda como verdad clinica. Elasticsearch queda como verdad de busqueda.
 
 ## Conclusion
 
 El buscador global debe convertirse en un subsistema propio, no en una vista gigante.
 
-La primera version debe vivir dentro del stack actual para reducir riesgo y acelerar aprendizaje. La arquitectura debe quedar preparada para crecer, pero sin introducir operacion innecesaria antes de tiempo.
+La primera version debe nacer con una abstraccion interna estable y con Elasticsearch como backend canonico de busqueda textual. Eso evita construir una solucion intermedia con MariaDB `FULLTEXT` que despues habria que reemplazar o mantener en paralelo.
 
-El objetivo no es solamente encontrar pacientes. El objetivo es permitir que cualquier dato clinicamente relevante lleve rapidamente al contexto correcto: la historia clinica del paciente.
+El objetivo no es solamente encontrar pacientes. El objetivo es permitir que cualquier dato clinicamente relevante lleve rapidamente al contexto correcto: la historia clinica del paciente, y que esos mismos datos puedan alimentar consultas de investigacion medica.

@@ -1,0 +1,11 @@
+Hola. Te paso capturas de la nueva navegación propuesta.
+
+La regla es esta:
+
+- En pantallas de listado o selección, el botón corto aparece arriba a la izquierda: por ejemplo "← Historia" o "← Estudios".
+- En pantallas de carga/edición largas, el retorno queda en la barra fija inferior, a la izquierda, junto con las acciones principales.
+- No se duplica el mismo retorno arriba y abajo.
+- El texto del botón es corto para no ocupar espacio: "← Pacientes", "← Historias", "← Historia", "← Estudios" o "← Indicaciones".
+- El destino depende del contexto. Si abrís una historia desde Pacientes, vuelve a Pacientes. Si la abrís desde Historias, vuelve a Historias.
+
+La idea es no depender del botón atrás del navegador y que siempre haya una salida clara sin perder el contexto de trabajo.

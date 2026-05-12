@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Comparativo de dominio y DNS para el sistema Dr. Omar Prieto</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm;
+    }
+
+    :root {
+      --ink: #18212b;
+      --muted: #5d6b7a;
+      --line: #d9e0e8;
+      --panel: #f5f7fa;
+      --accent: #155b75;
+      --accent-2: #0f766e;
+      --warn: #8a5a00;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "DejaVu Sans", "Liberation Sans", sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.42;
+      background: white;
+    }
+
+    h1, h2, h3, p {
+      margin-top: 0;
+    }
+
+    h1 {
+      font-size: 24pt;
+      line-height: 1.08;
+      margin-bottom: 8px;
+      letter-spacing: -0.4px;
+    }
+
+    h2 {
+      color: var(--accent);
+      font-size: 15pt;
+      margin: 24px 0 9px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid var(--line);
+    }
+
+    h3 {
+      font-size: 12pt;
+      margin: 14px 0 6px;
+    }
+
+    .cover {
+      padding: 18px 20px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #eef7f7 0%, #f7f9fb 52%, #edf2f8 100%);
+      border: 1px solid var(--line);
+      margin-bottom: 22px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 11pt;
+      max-width: 88%;
+      margin-bottom: 0;
+    }
+
+    .date {
+      color: var(--muted);
+      font-size: 9.5pt;
+      margin-top: 12px;
+    }
+
+    .recommendation {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 12px;
+      margin: 16px 0 20px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 13px 15px;
+    }
+
+    .card strong {
+      color: var(--accent-2);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 16px;
+      font-size: 9.4pt;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 7px 8px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #eaf1f5;
+      color: #143545;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+
+    .num {
+      white-space: nowrap;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tag {
+      display: inline-block;
+      border-radius: 999px;
+      background: #e0f2ef;
+      color: #0e5f58;
+      padding: 2px 8px;
+      font-size: 8.5pt;
+      font-weight: 700;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 9.3pt;
+    }
+
+    .warning {
+      border-left: 4px solid var(--warn);
+      background: #fff8e8;
+      padding: 10px 12px;
+      margin: 12px 0 16px;
+    }
+
+    ul {
+      margin: 7px 0 14px 18px;
+      padding: 0;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .sources {
+      font-size: 8.8pt;
+      color: var(--muted);
+    }
+
+    .sources li {
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <h1>Comparativo de dominio y DNS para el sistema Dr. Omar Prieto</h1>
+    <p class="subtitle">
+      Comparación práctica entre Cloudflare, NIC Argentina con Cloudflare DNS y Porkbun,
+      orientada a elegir un dominio estable para el sistema clínico.
+    </p>
+    <p class="date">Fecha de referencia: 6 de mayo de 2026. No incluye hosting/VPS, email profesional ni mantenimiento del servidor.</p>
+  </section>
+
+  <h2>Resumen ejecutivo</h2>
+  <div class="recommendation">
+    <div class="card">
+      <h3>Recomendación principal</h3>
+      <p>
+        Registrar <strong>omarprieto.com.ar</strong> o <strong>dromarprieto.com.ar</strong> en NIC Argentina
+        y usar <strong>Cloudflare DNS Free</strong>. Es la alternativa más barata, local, suficiente y operativamente prolija.
+      </p>
+    </div>
+    <div class="card">
+      <h3>Resguardo conveniente</h3>
+      <p>
+        Si el presupuesto no es problema, registrar también <strong>omarprieto.com</strong>.
+        Sirve para proteger marca, redirigir tráfico y evitar que lo tome un tercero.
+      </p>
+    </div>
+  </div>
+
+  <div class="warning">
+    <strong>Punto importante:</strong> los costos mensualizados son equivalentes matemáticos.
+    En dominios, el pago normalmente se hace anual. No conviene convertir USD a ARS dentro del documento porque el tipo de cambio cambia más rápido que el costo real del dominio.
+  </div>
+
+  <h2>Comparativo base</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Escenario</th>
+        <th>Qué incluye</th>
+        <th class="num">Costo anual</th>
+        <th class="num">Equivalente mensual</th>
+        <th>Lectura práctica</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag">Recomendado</span><br>NIC Argentina + Cloudflare DNS</td>
+        <td>Dominio .com.ar en NIC Argentina + DNS gratuito en Cloudflare</td>
+        <td class="num">ARS 8.500/año</td>
+        <td class="num">ARS 708/mes</td>
+        <td>Mejor costo/beneficio si el dominio argentino alcanza para la identidad del consultorio.</td>
+      </tr>
+      <tr>
+        <td>NIC Argentina .ar + Cloudflare DNS</td>
+        <td>Dominio .ar en NIC Argentina + DNS gratuito en Cloudflare</td>
+        <td class="num">ARS 25.500/año</td>
+        <td class="num">ARS 2.125/mes</td>
+        <td>Más corto y más caro. Útil si el nombre exacto queda muy bien sin .com.</td>
+      </tr>
+      <tr>
+        <td>Cloudflare completo básico</td>
+        <td>Dominio .com en Cloudflare Registrar + Cloudflare DNS Free</td>
+        <td class="num">USD 10,46/año aprox.</td>
+        <td class="num">USD 0,87/mes</td>
+        <td>Muy buena opción internacional. Cloudflare cobra dominio al costo de registro, sin markup.</td>
+      </tr>
+      <tr>
+        <td>Porkbun + DNS gratuito</td>
+        <td>Dominio .com en Porkbun + DNS gratuito, powered by Cloudflare</td>
+        <td class="num">USD 11,08/año</td>
+        <td class="num">USD 0,92/mes</td>
+        <td>Alternativa simple y barata. Buena si Cloudflare Registrar resulta incómodo o no permite comprar directo el dominio elegido.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Cloudflare con planes pagos</h2>
+  <p class="note">
+    Para este sistema, al inicio usaría Cloudflare Free y los registros DNS en modo <strong>DNS only</strong>.
+    No activaría el proxy naranja como primera medida porque el sistema maneja datos clínicos y conviene mantener claro dónde termina TLS.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Escenario Cloudflare</th>
+        <th>Plan</th>
+        <th class="num">Si se paga anual</th>
+        <th class="num">Si se paga mensual</th>
+        <th>Comentario</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>.com + Cloudflare Free</td>
+        <td>Free</td>
+        <td class="num">USD 10,46/año aprox.</td>
+        <td class="num">USD 0,87/mes equivalente</td>
+        <td>La opción razonable para empezar: DNS, DNSSEC y gestión centralizada sin costo mensual.</td>
+      </tr>
+      <tr>
+        <td>.com + Cloudflare Pro</td>
+        <td>Pro</td>
+        <td class="num">USD 250,46/año aprox.<br><span class="note">USD 240 plan + dominio</span></td>
+        <td class="num">USD 25/mes + dominio<br><span class="note">USD 310,46/año aprox.</span></td>
+        <td>No lo pagaría todavía. Tiene más WAF/reglas/controles, pero no resuelve por sí solo backups, seguridad del servidor ni operación clínica.</td>
+      </tr>
+      <tr>
+        <td>.com + Cloudflare Business</td>
+        <td>Business</td>
+        <td class="num">USD 2.410,46/año aprox.<br><span class="note">USD 2.400 plan + dominio</span></td>
+        <td class="num">USD 250/mes + dominio<br><span class="note">USD 3.010,46/año aprox.</span></td>
+        <td>Demasiado para esta etapa salvo necesidad fuerte de SLA, soporte, configuración empresarial o features específicas.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Decisión sugerida</h2>
+  <ul>
+    <li>Comprar ahora el dominio argentino principal: <strong>omarprieto.com.ar</strong> o <strong>dromarprieto.com.ar</strong>.</li>
+    <li>Configurar DNS en Cloudflare Free, con registros A apuntando al servidor productivo.</li>
+    <li>Usar subdominio para la aplicación: <strong>hc.omarprieto.com.ar</strong>, <strong>sistema.omarprieto.com.ar</strong> o equivalente.</li>
+    <li>Mantener certificados con Let’s Encrypt directamente en el servidor.</li>
+    <li>Comprar también el .com si se quiere proteger marca y dejarlo redireccionado al .com.ar.</li>
+  </ul>
+
+  <h2>Fuentes y precisión</h2>
+  <ul class="sources">
+    <li>NIC Argentina, aranceles oficiales: https://punto.gov.ar/dominios/aranceles</li>
+    <li>Cloudflare DNS, planes y precios: https://www.cloudflare.com/dns/</li>
+    <li>Cloudflare Registrar, política de precio al costo: https://developers.cloudflare.com/registrar/</li>
+    <li>Porkbun .com, precio publicado: https://porkbun.com/tld/com</li>
+    <li>Cloudflare .com, tabla pública no oficial para precio puntual de TLD: https://cfdomainpricing.com/</li>
+  </ul>
+
+  <p class="note">
+    Nota sobre Cloudflare Registrar: Cloudflare declara oficialmente que cobra dominios al costo, sin margen.
+    El valor puntual .com de USD 10,46/año fue tomado de una tabla pública actualizada el 5 de mayo de 2026,
+    porque Cloudflare no expone una tabla oficial simple con todos los TLDs en una página pública estática.
+  </p>
+</body>
+</html>

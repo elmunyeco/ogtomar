@@ -1,0 +1,80 @@
+[
+  {
+    "file": "01_crear_paciente.png",
+    "path": "/pacientes/crear/",
+    "title": "Nuevo Paciente - CardioPrieto",
+    "error_detected": false
+  },
+  {
+    "file": "02_editar_paciente.png",
+    "path": "/pacientes/12695/editar/",
+    "title": "Editar Paciente - Dr. Omar Prieto",
+    "error_detected": false
+  },
+  {
+    "file": "03_historia_desde_pacientes.png",
+    "path": "/historial_medico/12697/?return_label=Pacientes&return_to=/pacientes/",
+    "title": "Historia Clínica - QA FIX-ESTUDIOS-NUEVO-REAL",
+    "error_detected": false
+  },
+  {
+    "file": "04_historia_desde_historias.png",
+    "path": "/historial_medico/12697/?return_label=Historias&return_to=/historias/",
+    "title": "Historia Clínica - QA FIX-ESTUDIOS-NUEVO-REAL",
+    "error_detected": false
+  },
+  {
+    "file": "05_estudios_de_historia.png",
+    "path": "/historias/12697/estudios/",
+    "title": "Estudios por Historia - Dr. Omar Prieto",
+    "error_detected": false
+  },
+  {
+    "file": "06_selector_nuevo_estudio.png",
+    "path": "/historias/12697/estudios/nuevo/",
+    "title": "Nuevo Estudio - Historia 12697",
+    "error_detected": false
+  },
+  {
+    "file": "07_estudio_ecocardiograma.png",
+    "path": "/ecocardiograma/estudio/15159/",
+    "title": "Sistema de Ecocardiograma",
+    "error_detected": false
+  },
+  {
+    "file": "08_estudio_ecostress.png",
+    "path": "/ecostress/12697/nuevo/?action=nuevo",
+    "title": "Ecostrés cardíaco",
+    "error_detected": false
+  },
+  {
+    "file": "09_estudio_carotidas.png",
+    "path": "/carotidas/12697/nuevo/?action=nuevo",
+    "title": "Nuevo Estudio de Carótidas",
+    "error_detected": false
+  },
+  {
+    "file": "10_estudio_mmii.png",
+    "path": "/mmii/12697/nuevo/?action=nuevo",
+    "title": "Doppler color arterial de miembros inferiores",
+    "error_detected": false
+  },
+  {
+    "file": "11_indicaciones_lista.png",
+    "path": "/historia/12697/indicaciones/",
+    "title": "Indicaciones",
+    "error_detected": false
+  },
+  {
+    "file": "12_indicacion_nueva.png",
+    "path": "/historia/12697/indicaciones/agregar/",
+    "title": "Nueva Indicación",
+    "error_detected": false
+  },
+  {
+    "file": "13_solicitudes.png",
+    "path": "/ordenes_medicas/12695/",
+    "title": "Solicitudes",
+    "error_detected": false
+  }
+]
