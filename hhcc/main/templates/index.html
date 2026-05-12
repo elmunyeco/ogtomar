@@ -79,7 +79,15 @@
                         <span class="global-search-page-link disabled">&larr; Anterior</span>
                     {% endif %}
 
-                    <span class="global-search-page-current">Página {{ search_context.page }}</span>
+                    <div class="global-search-page-list" aria-label="Páginas">
+                        {% for item in search_context.page_links %}
+                            {% if item.active %}
+                                <span class="global-search-prieto-page active tone-{{ item.tone }}" aria-current="page">{{ item.label }}</span>
+                            {% else %}
+                                <a href="?q={{ query|urlencode }}&page={{ item.page }}" class="global-search-prieto-page tone-{{ item.tone }}">{{ item.label }}</a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
 
                     {% if search_context.has_next %}
                         <a href="?q={{ query|urlencode }}&page={{ search_context.next_page }}" class="global-search-page-link">Siguiente &rarr;</a>

@@ -272,6 +272,8 @@ def global_search(query, page=1, per_page=10):
             "per_page": per_page,
             "has_previous": False,
             "has_next": False,
+            "total_pages": 0,
+            "page_links": [],
         }
 
     grams = query_trigrams(validation.normalized_query)
@@ -298,6 +300,10 @@ def global_search(query, page=1, per_page=10):
         ranked.append((boost + gram_score + matched * 25, matched, document))
 
     ranked.sort(key=lambda item: (-item[0], -item[1], item[2].title.casefold(), item[2].id))
+    total_results = len(ranked)
+    total_pages = max((total_results + per_page - 1) // per_page, 1)
+    if page > total_pages:
+        page = total_pages
     page_start = (page - 1) * per_page
     page_end = page_start + per_page
     page_items = ranked[page_start:page_end]
@@ -341,5 +347,37 @@ def global_search(query, page=1, per_page=10):
         "previous_page": page - 1,
         "has_next": len(ranked) > page_end,
         "next_page": page + 1,
-        "approx_total": len(ranked),
+        "approx_total": total_results,
+        "total_pages": total_pages,
+        "page_links": build_page_links(page, total_pages),
     }
+
+
+def build_page_links(current_page, total_pages):
+    if total_pages <= 1:
+        return []
+
+    if total_pages <= 6:
+        return [
+            {
+                "page": page,
+                "label": str(page),
+                "active": page == current_page,
+                "tone": page,
+            }
+            for page in range(1, total_pages + 1)
+        ]
+
+    window_start = max(1, current_page - 2)
+    window_end = min(total_pages, window_start + 5)
+    window_start = max(1, window_end - 5)
+
+    return [
+        {
+            "page": page,
+            "label": "Pri" + ("e" * (page - window_start + 1)) + "to",
+            "active": page == current_page,
+            "tone": page - window_start + 1,
+        }
+        for page in range(window_start, window_end + 1)
+    ]

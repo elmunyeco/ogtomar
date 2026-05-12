@@ -1186,12 +1186,12 @@ h3 {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.7rem;
     margin: 1.5rem 0 0;
 }
 
-.global-search-page-link,
-.global-search-page-current {
+.global-search-page-link {
     border-radius: 999px;
     font-size: 0.9rem;
     font-weight: 700;
@@ -1215,8 +1215,64 @@ h3 {
     pointer-events: none;
 }
 
-.global-search-page-current {
-    color: #6b7280;
+.global-search-page-list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem;
+}
+
+.global-search-prieto-page {
+    border-radius: 999px;
+    color: #9a4035;
+    font-size: 0.92rem;
+    font-weight: 800;
+    line-height: 1;
+    padding: 0.5rem 0.55rem;
+    text-decoration: none;
+}
+
+.global-search-prieto-page:hover {
+    background: rgba(154, 64, 53, 0.07);
+}
+
+.global-search-prieto-page.active {
+    background: #9a4035;
+    color: #ffffff;
+}
+
+.global-search-prieto-page.tone-1 {
+    color: #7a332b;
+}
+
+.global-search-prieto-page.tone-2 {
+    color: #87382f;
+}
+
+.global-search-prieto-page.tone-3 {
+    color: #943d34;
+}
+
+.global-search-prieto-page.tone-4 {
+    color: #a1493d;
+}
+
+.global-search-prieto-page.tone-5 {
+    color: #ad5a4b;
+}
+
+.global-search-prieto-page.tone-6 {
+    color: #bd6b5d;
+}
+
+.global-search-prieto-page.active.tone-1,
+.global-search-prieto-page.active.tone-2,
+.global-search-prieto-page.active.tone-3,
+.global-search-prieto-page.active.tone-4,
+.global-search-prieto-page.active.tone-5,
+.global-search-prieto-page.active.tone-6 {
+    color: #ffffff;
 }
 
 .global-result {
@@ -1322,5 +1378,14 @@ h3 {
 
     .global-result-link-kind {
         min-width: 4.2rem;
+    }
+
+    .global-search-pagination {
+        gap: 0.45rem;
+    }
+
+    .global-search-prieto-page {
+        font-size: 0.82rem;
+        padding: 0.45rem 0.45rem;
     }
 }
