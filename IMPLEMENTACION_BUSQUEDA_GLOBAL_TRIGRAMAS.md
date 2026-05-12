@@ -78,7 +78,6 @@ La vista `index` ahora lee el parametro `q` y ejecuta la busqueda global.
 La plantilla `index.html` deja de estar vacia y pasa a mostrar:
 
 - Caja unica de busqueda.
-- Marca visual `Prieeeeeeto`, como guiño al patron de Google.
 - Mensaje de error si la query tiene menos de 3 caracteres.
 - Resultados agrupados por paciente/historia.
 - Enlaces accionables a:
