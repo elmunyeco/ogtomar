@@ -6,11 +6,6 @@
 {% block content %}
 <section class="global-search-page {% if search_context %}has-results{% endif %}">
     <div class="global-search-shell">
-        <div class="global-search-brand">
-            <span class="global-search-kicker">Cardiología integral</span>
-            <h1>Buscar pacientes</h1>
-        </div>
-
         <form method="GET" action="{% url 'index' %}" class="global-search-form">
             <label for="global-search-input" class="sr-only">Buscar paciente, documento o historia</label>
             <div class="global-search-input-wrap">
@@ -62,12 +57,16 @@
 
                         <div class="global-result-actions">
                             {% for action in result.actions %}
-                                <a href="{{ action.url }}" class="global-result-link">
-                                    <span class="global-result-link-kind">{{ action.kind }}</span>
-                                    <span class="global-result-link-text">
-                                        <strong>{{ action.label }}</strong>
-                                        <small>{{ action.description }}</small>
-                                    </span>
+                                <a href="{{ action.url }}" class="global-result-link {% if action.type == 'study' %}study-link{% endif %}">
+                                    {% if action.type == 'study' %}
+                                        <span class="global-result-link-kind">{{ action.label }}</span>
+                                        <span class="global-result-link-date">{{ action.description }}</span>
+                                    {% else %}
+                                        <span class="global-result-link-kind">{{ action.kind }}</span>
+                                        <span class="global-result-link-text">
+                                            <strong>{{ action.label }}</strong>
+                                        </span>
+                                    {% endif %}
                                 </a>
                             {% endfor %}
                         </div>

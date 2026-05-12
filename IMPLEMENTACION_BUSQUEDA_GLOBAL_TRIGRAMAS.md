@@ -83,7 +83,7 @@ La plantilla `index.html` deja de estar vacia y pasa a mostrar:
 - Enlaces accionables a:
   - Edicion de paciente.
   - Historia clinica.
-  - Estudios categorizados por tipo y fecha.
+  - Estudios categorizados por tipo y fecha en formato compacto, por ejemplo `ECO 12/05/2026`.
 
 ## Paso 7 - Estilo visual
 

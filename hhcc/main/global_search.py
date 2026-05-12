@@ -221,35 +221,39 @@ def study_links_for_historia(historia):
     links = []
     for estudio in EstudioEcocardiograma.objects.filter(historia=historia).order_by("-fecha", "-id"):
         links.append({
+            "type": "study",
             "kind": "Eco",
-            "label": "Ecocardiograma",
+            "label": "ECO",
             "date": estudio.fecha,
             "url": reverse("ecocardiograma:estudio_editar", args=[estudio.id]),
-            "description": f"Editar ecocardiograma del {estudio.fecha:%d/%m/%Y}",
+            "description": estudio.fecha.strftime("%d/%m/%Y"),
         })
     for estudio in EcostressEstudio.objects.filter(historia=historia).order_by("-fecha_estudio", "-id_stress"):
         links.append({
+            "type": "study",
             "kind": "Stress",
-            "label": "Ecostress",
+            "label": "Stress",
             "date": estudio.fecha_estudio,
             "url": reverse("ecostress:estudio_editar", args=[estudio.id_stress]),
-            "description": f"Editar ecostress del {estudio.fecha_estudio:%d/%m/%Y}" if estudio.fecha_estudio else "Editar ecostress sin fecha",
+            "description": estudio.fecha_estudio.strftime("%d/%m/%Y") if estudio.fecha_estudio else "Sin fecha",
         })
     for estudio in CarotidasEstudio.objects.filter(historia=historia).order_by("-fecha_estudio", "-id"):
         links.append({
+            "type": "study",
             "kind": "Carotidas",
             "label": "Carotidas",
             "date": estudio.fecha_estudio,
             "url": reverse("carotidas:estudio_editar", args=[estudio.id]),
-            "description": f"Editar carotidas del {estudio.fecha_estudio:%d/%m/%Y}",
+            "description": estudio.fecha_estudio.strftime("%d/%m/%Y"),
         })
     for estudio in MmiiEstudio.objects.filter(historia=historia).order_by("-fecha_estudio", "-id_mmii"):
         links.append({
+            "type": "study",
             "kind": "MMII",
-            "label": "Doppler MMII",
+            "label": "MMII",
             "date": estudio.fecha_estudio,
             "url": reverse("mmii:estudio_editar", args=[estudio.id_mmii]),
-            "description": f"Editar doppler MMII del {estudio.fecha_estudio:%d/%m/%Y}",
+            "description": estudio.fecha_estudio.strftime("%d/%m/%Y"),
         })
     return sorted(links, key=lambda item: (item["date"] is None, item["date"]), reverse=True)
 
@@ -304,18 +308,18 @@ def global_search(query, page=1, per_page=10):
         paciente = document.paciente
         actions = [
             {
+                "type": "primary",
                 "kind": "Paciente",
                 "label": "Editar paciente",
                 "url": reverse("editar_paciente", args=[paciente.id]),
-                "description": "Ficha administrativa del paciente",
             }
         ]
         if historia:
             actions.append({
+                "type": "primary",
                 "kind": "Historia",
                 "label": "Abrir historia",
                 "url": reverse("detalle_historia_con_historial", args=[historia.id]),
-                "description": "Historia clinica y evolucion",
             })
         actions.extend(study_links_for_historia(historia))
         results.append({
