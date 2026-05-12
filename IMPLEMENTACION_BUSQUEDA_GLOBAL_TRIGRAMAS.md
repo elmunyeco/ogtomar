@@ -92,7 +92,7 @@ La presentacion de acciones queda deliberadamente condensada: `PACIENTE`, `HISTO
 
 La superficie del buscador global incluye una marca de agua `EXPERIMENTAL` repetida en gris muy transparente, limitada a esta pantalla, para identificar visualmente que el feature todavia esta en evaluacion.
 
-La pantalla incluye una linea inferior discreta con `algorithm by erb` y un link `leer doc de trigramas`.
+La pantalla incluye una linea inferior discreta con `algorithm by erb` y un link `leer doc de trigramas`. Ese link apunta a una documentacion conceptual, separada de la documentacion tecnica previa usada para el PDF.
 
 ## Paso 7 - Estilo visual
 

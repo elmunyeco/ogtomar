@@ -44,11 +44,11 @@ def documento_trigramas(request):
     from pathlib import Path
     from django.conf import settings
 
-    doc_path = Path(settings.BASE_DIR).parent / "BUSQUEDA_IDENTIFICATORIA_TRIGRAMAS.md"
+    doc_path = Path(settings.BASE_DIR).parent / "BUSQUEDA_GLOBAL_TRIGRAMAS_CONCEPTUAL.md"
     return FileResponse(
         open(doc_path, "rb"),
         content_type="text/markdown; charset=utf-8",
-        filename="BUSQUEDA_IDENTIFICATORIA_TRIGRAMAS.md",
+        filename="BUSQUEDA_GLOBAL_TRIGRAMAS_CONCEPTUAL.md",
     )
 
 
