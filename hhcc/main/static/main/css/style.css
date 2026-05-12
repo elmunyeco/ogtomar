@@ -1216,63 +1216,99 @@ h3 {
 }
 
 .global-search-page-list {
-    display: flex;
-    align-items: center;
+    display: inline-flex;
+    align-items: baseline;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.25rem;
+    gap: 0;
 }
 
-.global-search-prieto-page {
+.global-search-number-page {
     border-radius: 999px;
-    color: #9a4035;
-    font-size: 0.92rem;
-    font-weight: 800;
+    color: #155e75;
+    font-size: 0.9rem;
+    font-weight: 700;
     line-height: 1;
-    padding: 0.5rem 0.55rem;
+    padding: 0.5rem 0.7rem;
     text-decoration: none;
 }
 
-.global-search-prieto-page:hover {
+.global-search-number-page:hover {
     background: rgba(154, 64, 53, 0.07);
 }
 
-.global-search-prieto-page.active {
+.global-search-number-page.active {
     background: #9a4035;
     color: #ffffff;
 }
 
-.global-search-prieto-page.tone-1 {
+.global-search-prieto-edge,
+.global-search-prieto-e {
+    font-size: 1.08rem;
+    font-weight: 900;
+    line-height: 1;
+    text-decoration: none;
+}
+
+.global-search-prieto-edge {
+    color: #155e75;
+    letter-spacing: 0;
+}
+
+.global-search-prieto-e {
+    display: inline-block;
+    padding: 0.2rem 0.01rem;
+}
+
+.global-search-prieto-e:hover {
+    transform: translateY(-1px);
+}
+
+.global-search-prieto-e.active {
+    color: #7a332b;
+    text-decoration: underline;
+    text-decoration-thickness: 0.14rem;
+    text-underline-offset: 0.18rem;
+}
+
+.global-search-prieto-e.tone-1 {
     color: #7a332b;
 }
 
-.global-search-prieto-page.tone-2 {
+.global-search-prieto-e.tone-2 {
     color: #87382f;
 }
 
-.global-search-prieto-page.tone-3 {
+.global-search-prieto-e.tone-3 {
     color: #943d34;
 }
 
-.global-search-prieto-page.tone-4 {
+.global-search-prieto-e.tone-4 {
     color: #a1493d;
 }
 
-.global-search-prieto-page.tone-5 {
+.global-search-prieto-e.tone-5 {
     color: #ad5a4b;
 }
 
-.global-search-prieto-page.tone-6 {
+.global-search-prieto-e.tone-6 {
     color: #bd6b5d;
 }
 
-.global-search-prieto-page.active.tone-1,
-.global-search-prieto-page.active.tone-2,
-.global-search-prieto-page.active.tone-3,
-.global-search-prieto-page.active.tone-4,
-.global-search-prieto-page.active.tone-5,
-.global-search-prieto-page.active.tone-6 {
-    color: #ffffff;
+.global-search-prieto-e.tone-7 {
+    color: #c8796d;
+}
+
+.global-search-prieto-e.tone-8 {
+    color: #d1877b;
+}
+
+.global-search-prieto-e.tone-9 {
+    color: #dc9a90;
+}
+
+.global-search-prieto-e.tone-10 {
+    color: #e6aca4;
 }
 
 .global-result {
@@ -1391,8 +1427,13 @@ a.global-result-badge:hover {
         gap: 0.45rem;
     }
 
-    .global-search-prieto-page {
+    .global-search-prieto-edge,
+    .global-search-prieto-e {
+        font-size: 0.95rem;
+    }
+
+    .global-search-number-page {
         font-size: 0.82rem;
-        padding: 0.45rem 0.45rem;
+        padding: 0.45rem 0.55rem;
     }
 }

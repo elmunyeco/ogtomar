@@ -368,16 +368,12 @@ def build_page_links(current_page, total_pages):
             for page in range(1, total_pages + 1)
         ]
 
-    window_start = max(1, current_page - 2)
-    window_end = min(total_pages, window_start + 5)
-    window_start = max(1, window_end - 5)
-
     return [
         {
             "page": page,
-            "label": "Pri" + ("e" * (page - window_start + 1)) + "to",
+            "label": "e",
             "active": page == current_page,
-            "tone": page - window_start + 1,
+            "tone": ((page - 1) % 10) + 1,
         }
-        for page in range(window_start, window_end + 1)
+        for page in range(1, total_pages + 1)
     ]

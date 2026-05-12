@@ -52,7 +52,7 @@ En empates de score textual, el desempate se hace alfabeticamente por titulo del
 
 La busqueda global queda paginada de a 10 resultados, con navegacion anterior/siguiente en la home. Esto evita forzar scores artificiales o mostrar una lista demasiado larga cuando una query parcial, por ejemplo `quiel`, trae muchos pacientes validos.
 
-Cuando hay mas de 6 paginas, el paginador usa una marca visual tipo Google con variantes `Prieto`, `Prieeto`, `Prieeeto`, etc. Los enlaces usan una escala de tonos rojos alineada con el color principal del sitio.
+Cuando hay mas de 6 paginas, el paginador usa una sola palabra tipo Google: `pri` + una `e` por pagina + `to`. Los extremos `pri` y `to` usan azul petroleo; cada `e` es un enlace de pagina en degradado de tonos rojos.
 
 ## Paso 4 - Comando operativo
 

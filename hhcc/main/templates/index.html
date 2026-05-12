@@ -80,13 +80,17 @@
                     {% endif %}
 
                     <div class="global-search-page-list" aria-label="Páginas">
-                        {% for item in search_context.page_links %}
-                            {% if item.active %}
-                                <span class="global-search-prieto-page active tone-{{ item.tone }}" aria-current="page">{{ item.label }}</span>
-                            {% else %}
-                                <a href="?q={{ query|urlencode }}&page={{ item.page }}" class="global-search-prieto-page tone-{{ item.tone }}">{{ item.label }}</a>
-                            {% endif %}
-                        {% endfor %}
+                        {% if search_context.total_pages > 6 %}
+                            <span class="global-search-prieto-edge">pri</span>{% for item in search_context.page_links %}{% if item.active %}<span class="global-search-prieto-e active tone-{{ item.tone }}" aria-current="page" title="Página {{ item.page }}">{{ item.label }}</span>{% else %}<a href="?q={{ query|urlencode }}&page={{ item.page }}" class="global-search-prieto-e tone-{{ item.tone }}" title="Página {{ item.page }}">{{ item.label }}</a>{% endif %}{% endfor %}<span class="global-search-prieto-edge">to</span>
+                        {% else %}
+                            {% for item in search_context.page_links %}
+                                {% if item.active %}
+                                    <span class="global-search-number-page active" aria-current="page">{{ item.label }}</span>
+                                {% else %}
+                                    <a href="?q={{ query|urlencode }}&page={{ item.page }}" class="global-search-number-page">{{ item.label }}</a>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
                     </div>
 
                     {% if search_context.has_next %}
