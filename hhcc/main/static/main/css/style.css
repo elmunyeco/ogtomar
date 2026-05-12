@@ -1217,10 +1217,10 @@ h3 {
 
 .global-search-page-list {
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0;
+    gap: 0.25rem;
 }
 
 .global-search-number-page {
@@ -1240,75 +1240,6 @@ h3 {
 .global-search-number-page.active {
     background: #9a4035;
     color: #ffffff;
-}
-
-.global-search-prieto-edge,
-.global-search-prieto-e {
-    font-size: 1.08rem;
-    font-weight: 900;
-    line-height: 1;
-    text-decoration: none;
-}
-
-.global-search-prieto-edge {
-    color: #155e75;
-    letter-spacing: 0;
-}
-
-.global-search-prieto-e {
-    display: inline-block;
-    padding: 0.2rem 0.01rem;
-}
-
-.global-search-prieto-e:hover {
-    transform: translateY(-1px);
-}
-
-.global-search-prieto-e.active {
-    color: #7a332b;
-    text-decoration: underline;
-    text-decoration-thickness: 0.14rem;
-    text-underline-offset: 0.18rem;
-}
-
-.global-search-prieto-e.tone-1 {
-    color: #7a332b;
-}
-
-.global-search-prieto-e.tone-2 {
-    color: #87382f;
-}
-
-.global-search-prieto-e.tone-3 {
-    color: #943d34;
-}
-
-.global-search-prieto-e.tone-4 {
-    color: #a1493d;
-}
-
-.global-search-prieto-e.tone-5 {
-    color: #ad5a4b;
-}
-
-.global-search-prieto-e.tone-6 {
-    color: #bd6b5d;
-}
-
-.global-search-prieto-e.tone-7 {
-    color: #c8796d;
-}
-
-.global-search-prieto-e.tone-8 {
-    color: #d1877b;
-}
-
-.global-search-prieto-e.tone-9 {
-    color: #dc9a90;
-}
-
-.global-search-prieto-e.tone-10 {
-    color: #e6aca4;
 }
 
 .global-result {
@@ -1425,11 +1356,6 @@ a.global-result-badge:hover {
 
     .global-search-pagination {
         gap: 0.45rem;
-    }
-
-    .global-search-prieto-edge,
-    .global-search-prieto-e {
-        font-size: 0.95rem;
     }
 
     .global-search-number-page {

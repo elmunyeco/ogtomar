@@ -74,29 +74,23 @@
             {% if search_context.has_previous or search_context.has_next %}
                 <nav class="global-search-pagination" aria-label="Paginación de búsqueda global">
                     {% if search_context.has_previous %}
-                        <a href="?q={{ query|urlencode }}&page={{ search_context.previous_page }}" class="global-search-page-link">&larr; Anterior</a>
-                    {% else %}
-                        <span class="global-search-page-link disabled">&larr; Anterior</span>
+                        <a href="?q={{ query|urlencode }}&page=1" class="global-search-page-link">&laquo;</a>
+                        <a href="?q={{ query|urlencode }}&page={{ search_context.previous_page }}" class="global-search-page-link">&lt;</a>
                     {% endif %}
 
                     <div class="global-search-page-list" aria-label="Páginas">
-                        {% if search_context.total_pages > 6 %}
-                            <span class="global-search-prieto-edge">pri</span>{% for item in search_context.page_links %}{% if item.active %}<span class="global-search-prieto-e active tone-{{ item.tone }}" aria-current="page" title="Página {{ item.page }}">{{ item.label }}</span>{% else %}<a href="?q={{ query|urlencode }}&page={{ item.page }}" class="global-search-prieto-e tone-{{ item.tone }}" title="Página {{ item.page }}">{{ item.label }}</a>{% endif %}{% endfor %}<span class="global-search-prieto-edge">to</span>
-                        {% else %}
-                            {% for item in search_context.page_links %}
-                                {% if item.active %}
-                                    <span class="global-search-number-page active" aria-current="page">{{ item.label }}</span>
-                                {% else %}
-                                    <a href="?q={{ query|urlencode }}&page={{ item.page }}" class="global-search-number-page">{{ item.label }}</a>
-                                {% endif %}
-                            {% endfor %}
-                        {% endif %}
+                        {% for item in search_context.page_links %}
+                            {% if item.active %}
+                                <span class="global-search-number-page active" aria-current="page">{{ item.label }}</span>
+                            {% else %}
+                                <a href="?q={{ query|urlencode }}&page={{ item.page }}" class="global-search-number-page">{{ item.label }}</a>
+                            {% endif %}
+                        {% endfor %}
                     </div>
 
                     {% if search_context.has_next %}
-                        <a href="?q={{ query|urlencode }}&page={{ search_context.next_page }}" class="global-search-page-link">Siguiente &rarr;</a>
-                    {% else %}
-                        <span class="global-search-page-link disabled">Siguiente &rarr;</span>
+                        <a href="?q={{ query|urlencode }}&page={{ search_context.next_page }}" class="global-search-page-link">&gt;</a>
+                        <a href="?q={{ query|urlencode }}&page={{ search_context.total_pages }}" class="global-search-page-link">&raquo;</a>
                     {% endif %}
                 </nav>
             {% endif %}

@@ -357,23 +357,14 @@ def build_page_links(current_page, total_pages):
     if total_pages <= 1:
         return []
 
-    if total_pages <= 6:
-        return [
-            {
-                "page": page,
-                "label": str(page),
-                "active": page == current_page,
-                "tone": page,
-            }
-            for page in range(1, total_pages + 1)
-        ]
+    window_start = max(1, current_page - 3)
+    window_end = min(total_pages, current_page + 2)
 
     return [
         {
             "page": page,
-            "label": "e",
+            "label": str(page),
             "active": page == current_page,
-            "tone": ((page - 1) % 10) + 1,
         }
-        for page in range(1, total_pages + 1)
+        for page in range(window_start, window_end + 1)
     ]
