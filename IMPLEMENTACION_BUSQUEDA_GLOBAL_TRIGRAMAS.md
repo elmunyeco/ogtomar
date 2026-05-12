@@ -85,6 +85,8 @@ La plantilla `index.html` deja de estar vacia y pasa a mostrar:
   - Historia clinica.
   - Estudios categorizados por tipo y fecha en formato compacto, por ejemplo `ECO 12/05/2026`.
 
+La presentacion de acciones queda deliberadamente condensada: `PACIENTE`, `HISTORIA` y chips de estudios con tipo azul y fecha negra.
+
 ## Paso 7 - Estilo visual
 
 Se agregaron estilos en `main/static/main/css/style.css` para que la primera pantalla funcione como buscador principal del sistema, manteniendo la paleta y lenguaje visual existente.
