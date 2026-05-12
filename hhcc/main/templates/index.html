@@ -8,7 +8,7 @@
     <div class="global-search-shell">
         <div class="global-search-brand">
             <span class="global-search-kicker">Cardiología integral</span>
-            <h1>Buscar en Omar</h1>
+            <h1>Prieeeeeeto</h1>
         </div>
 
         <form method="GET" action="{% url 'index' %}" class="global-search-form">
@@ -39,7 +39,7 @@
         {% if search_context and not search_context.error %}
             <div class="global-search-summary">
                 {% if search_context.results %}
-                    {{ search_context.results|length }} resultado{% if search_context.results|length != 1 %}s{% endif %} para <strong>{{ query }}</strong>
+                    Página {{ search_context.page }} para <strong>{{ query }}</strong>
                 {% else %}
                     No se encontraron resultados para <strong>{{ query }}</strong>
                 {% endif %}
@@ -74,6 +74,24 @@
                     </article>
                 {% endfor %}
             </div>
+
+            {% if search_context.has_previous or search_context.has_next %}
+                <nav class="global-search-pagination" aria-label="Paginación de búsqueda global">
+                    {% if search_context.has_previous %}
+                        <a href="?q={{ query|urlencode }}&page={{ search_context.previous_page }}" class="global-search-page-link">&larr; Anterior</a>
+                    {% else %}
+                        <span class="global-search-page-link disabled">&larr; Anterior</span>
+                    {% endif %}
+
+                    <span class="global-search-page-current">Página {{ search_context.page }}</span>
+
+                    {% if search_context.has_next %}
+                        <a href="?q={{ query|urlencode }}&page={{ search_context.next_page }}" class="global-search-page-link">Siguiente &rarr;</a>
+                    {% else %}
+                        <span class="global-search-page-link disabled">Siguiente &rarr;</span>
+                    {% endif %}
+                </nav>
+            {% endif %}
         {% endif %}
     </div>
 </section>

@@ -1204,6 +1204,43 @@ h3 {
     gap: 0.95rem;
 }
 
+.global-search-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0 0;
+}
+
+.global-search-page-link,
+.global-search-page-current {
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 0.55rem 0.9rem;
+}
+
+.global-search-page-link {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #7a332b;
+    text-decoration: none;
+}
+
+.global-search-page-link:hover {
+    border-color: #9a4035;
+    background: #fbf7f6;
+}
+
+.global-search-page-link.disabled {
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+.global-search-page-current {
+    color: #6b7280;
+}
+
 .global-result {
     border-bottom: 1px solid #e5e7eb;
     padding: 1rem 0 1.1rem;

@@ -16,9 +16,10 @@ def index(request):
     from .global_search import global_search
 
     query = request.GET.get("q", "").strip()
+    page = request.GET.get("page", 1)
     search_context = None
     if query:
-        search_context = global_search(query)
+        search_context = global_search(query, page=page)
     return render(
         request,
         "index.html",

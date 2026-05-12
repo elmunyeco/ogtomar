@@ -48,6 +48,10 @@ El pool inicial de candidatos se mantiene deliberadamente mas amplio que el limi
 
 El ranking agrega boost para coincidencias por sufijo en ID/documento, porque ese patron es clinicamente util cuando se recuerda el final de un numero.
 
+En empates de score textual, el desempate se hace alfabeticamente por titulo del documento (`Apellido, Nombre`). Esto evita que una busqueda por fragmento de nombre, por ejemplo `quiel`, esconda apellidos esperables solo porque sus IDs son mas antiguos.
+
+La busqueda global queda paginada de a 10 resultados, con navegacion anterior/siguiente en la home. Esto evita forzar scores artificiales o mostrar una lista demasiado larga cuando una query parcial, por ejemplo `quiel`, trae muchos pacientes validos.
+
 ## Paso 4 - Comando operativo
 
 Se agrego el comando:
@@ -74,6 +78,7 @@ La vista `index` ahora lee el parametro `q` y ejecuta la busqueda global.
 La plantilla `index.html` deja de estar vacia y pasa a mostrar:
 
 - Caja unica de busqueda.
+- Marca visual `Prieeeeeeto`, como guiño al patron de Google.
 - Mensaje de error si la query tiene menos de 3 caracteres.
 - Resultados agrupados por paciente/historia.
 - Enlaces accionables a:

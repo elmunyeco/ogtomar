@@ -254,17 +254,24 @@ def study_links_for_historia(historia):
     return sorted(links, key=lambda item: (item["date"] is None, item["date"]), reverse=True)
 
 
-def global_search(query, limit=12):
+def global_search(query, page=1, per_page=10):
+    page = max(int(page or 1), 1)
+    per_page = max(int(per_page or 10), 1)
+    visible_until = page * per_page
     validation = validate_global_query(query)
     if not validation.ok:
         return {
             "query": query,
             "error": validation.message,
             "results": [],
+            "page": page,
+            "per_page": per_page,
+            "has_previous": False,
+            "has_next": False,
         }
 
     grams = query_trigrams(validation.normalized_query)
-    candidate_pool_size = max(limit * 200, 1000)
+    candidate_pool_size = max((visible_until + per_page) * 80, 1000)
     candidate_ids = (
         GlobalSearchGram.objects.filter(gram__in=grams)
         .values("document_id")
@@ -286,10 +293,13 @@ def global_search(query, limit=12):
         matched = document.grams.filter(gram__in=grams).count()
         ranked.append((boost + gram_score + matched * 25, matched, document))
 
-    ranked.sort(key=lambda item: (item[0], item[1], item[2].id), reverse=True)
+    ranked.sort(key=lambda item: (-item[0], -item[1], item[2].title.casefold(), item[2].id))
+    page_start = (page - 1) * per_page
+    page_end = page_start + per_page
+    page_items = ranked[page_start:page_end]
 
     results = []
-    for score, matched, document in ranked[:limit]:
+    for score, matched, document in page_items:
         historia = document.historia
         paciente = document.paciente
         actions = [
@@ -321,4 +331,11 @@ def global_search(query, limit=12):
         "query": query,
         "error": "",
         "results": results,
+        "page": page,
+        "per_page": per_page,
+        "has_previous": page > 1,
+        "previous_page": page - 1,
+        "has_next": len(ranked) > page_end,
+        "next_page": page + 1,
+        "approx_total": len(ranked),
     }
