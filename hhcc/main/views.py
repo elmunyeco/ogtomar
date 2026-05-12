@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from django.urls import reverse
 from django.utils.dateparse import parse_date
 from .models import Paciente, HistoriaClinica, TipoDocumento, IndicacionesVisitas
@@ -38,6 +38,18 @@ def logout_view(request):
 
 def buscador(request):
     return render(request, "buscador.html")
+
+
+def documento_trigramas(request):
+    from pathlib import Path
+    from django.conf import settings
+
+    doc_path = Path(settings.BASE_DIR).parent / "BUSQUEDA_IDENTIFICATORIA_TRIGRAMAS.md"
+    return FileResponse(
+        open(doc_path, "rb"),
+        content_type="text/markdown; charset=utf-8",
+        filename="BUSQUEDA_IDENTIFICATORIA_TRIGRAMAS.md",
+    )
 
 
 from django.core.paginator import Paginator

@@ -1277,6 +1277,27 @@ a.global-result-badge:hover {
     font-weight: 700;
 }
 
+.global-search-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    color: rgba(107, 114, 128, 0.5);
+    font-size: 0.72rem;
+    font-weight: 500;
+    margin-top: 1.25rem;
+}
+
+.global-search-footer a {
+    color: rgba(21, 94, 117, 0.65);
+    text-decoration: none;
+}
+
+.global-search-footer a:hover {
+    color: #155e75;
+    text-decoration: underline;
+}
+
 @media (max-width: 640px) {
     .global-search-page {
         padding-top: 2.25rem;
@@ -1307,6 +1328,12 @@ a.global-result-badge:hover {
 
     .global-result-link-kind {
         min-width: 4.2rem;
+    }
+
+    .global-search-footer {
+        align-items: flex-end;
+        flex-direction: column;
+        gap: 0.35rem;
     }
 
 }

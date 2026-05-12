@@ -92,6 +92,8 @@ La presentacion de acciones queda deliberadamente condensada: `PACIENTE`, `HISTO
 
 La superficie del buscador global incluye una marca de agua `EXPERIMENTAL` repetida en gris muy transparente, limitada a esta pantalla, para identificar visualmente que el feature todavia esta en evaluacion.
 
+La pantalla incluye una linea inferior discreta con `algorithm by erb` y un link `leer doc de trigramas`.
+
 ## Paso 7 - Estilo visual
 
 Se agregaron estilos en `main/static/main/css/style.css` para que la primera pantalla funcione como buscador principal del sistema, manteniendo la paleta y lenguaje visual existente.
