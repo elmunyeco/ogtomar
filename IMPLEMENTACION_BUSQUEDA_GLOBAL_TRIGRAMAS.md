@@ -94,6 +94,8 @@ La superficie del buscador global incluye una marca de agua `EXPERIMENTAL` repet
 
 La pantalla incluye una linea inferior discreta con `algorithm by erb` y un link `leer doc de trigramas`. Ese link apunta a un PDF conceptual, separado de la documentacion tecnica previa.
 
+Para Docker/QA, el PDF conceptual se copia dentro de la imagen en `/app/BUSQUEDA_GLOBAL_TRIGRAMAS_CONCEPTUAL.pdf`. En desarrollo local, la vista tambien acepta el archivo en la raiz del repositorio.
+
 ## Paso 7 - Estilo visual
 
 Se agregaron estilos en `main/static/main/css/style.css` para que la primera pantalla funcione como buscador principal del sistema, manteniendo la paleta y lenguaje visual existente.

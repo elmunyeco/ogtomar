@@ -44,11 +44,16 @@ def documento_trigramas(request):
     from pathlib import Path
     from django.conf import settings
 
-    doc_path = Path(settings.BASE_DIR).parent / "BUSQUEDA_GLOBAL_TRIGRAMAS_CONCEPTUAL.pdf"
+    filename = "BUSQUEDA_GLOBAL_TRIGRAMAS_CONCEPTUAL.pdf"
+    candidates = [
+        Path(settings.BASE_DIR) / filename,
+        Path(settings.BASE_DIR).parent / filename,
+    ]
+    doc_path = next(path for path in candidates if path.exists())
     return FileResponse(
         open(doc_path, "rb"),
         content_type="application/pdf",
-        filename="BUSQUEDA_GLOBAL_TRIGRAMAS_CONCEPTUAL.pdf",
+        filename=filename,
     )
 
 

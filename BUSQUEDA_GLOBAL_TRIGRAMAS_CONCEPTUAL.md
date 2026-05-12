@@ -7,9 +7,9 @@ author: "Ezequiel Rodrigo Bergonzi"
 
 # Busqueda global por trigramas
 
-## Este paper conceptual
+## Este paper
 
-Aclara como funcionan las busquedas identificatorias basadas en la teoria de segmentacion de vectores con pesos asignados. Puede ser una buena introduccion a los grafos porque explica con ejemplos las vecindades y las fuerzas de las conexiones entre elementos. De ninguna forma se busca mostrar una implementacion actual.
+Aclara como funciona uno de los tipos de busquedas identificatorias con score, especificamente la basada en la segmentacion de vectores con pesos relativos preasignados. Puede dar una idea introductoria a los grafos porque presenta con ejemplos practicos las vecindades y las fuerzas de las conexiones entre elementos.
 
 ## Proposito
 
