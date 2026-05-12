@@ -1102,34 +1102,10 @@ h3 {
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    opacity: 0.42;
-    background-image:
-        repeating-linear-gradient(
-            -22deg,
-            transparent 0,
-            transparent 4.5rem,
-            rgba(107, 114, 128, 0.055) 4.5rem,
-            rgba(107, 114, 128, 0.055) 7.8rem,
-            transparent 7.8rem,
-            transparent 12rem
-        );
-}
-
-.global-search-watermark::before {
-    content: "EXPERIMENTAL   EXPERIMENTAL   EXPERIMENTAL   EXPERIMENTAL";
-    position: absolute;
-    top: 1.5rem;
-    left: -6rem;
-    width: calc(100% + 12rem);
-    color: rgba(107, 114, 128, 0.075);
-    font-size: 3.2rem;
-    font-weight: 900;
-    line-height: 2.4;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    transform: rotate(-22deg);
-    white-space: pre-wrap;
-    word-spacing: 2.5rem;
+    opacity: 1;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='180' viewBox='0 0 420 180'%3E%3Cg transform='rotate(-22 210 90)'%3E%3Ctext x='-20' y='70' fill='%236b7280' fill-opacity='0.075' font-family='Arial, sans-serif' font-size='46' font-weight='900' letter-spacing='6'%3EEXPERIMENTAL%3C/text%3E%3Ctext x='80' y='150' fill='%236b7280' fill-opacity='0.065' font-family='Arial, sans-serif' font-size='46' font-weight='900' letter-spacing='6'%3EEXPERIMENTAL%3C/text%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 420px 180px;
 }
 
 .global-search-form {
@@ -1219,66 +1195,6 @@ h3 {
 .global-search-results {
     display: grid;
     gap: 0.95rem;
-}
-
-.global-search-pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.7rem;
-    margin: 1.5rem 0 0;
-}
-
-.global-search-page-link {
-    border-radius: 999px;
-    font-size: 0.9rem;
-    font-weight: 700;
-    padding: 0.55rem 0.9rem;
-}
-
-.global-search-page-link {
-    border: 1px solid #d1d5db;
-    background: #ffffff;
-    color: #7a332b;
-    text-decoration: none;
-}
-
-.global-search-page-link:hover {
-    border-color: #9a4035;
-    background: #fbf7f6;
-}
-
-.global-search-page-link.disabled {
-    color: #9ca3af;
-    pointer-events: none;
-}
-
-.global-search-page-list {
-    display: inline-flex;
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.25rem;
-}
-
-.global-search-number-page {
-    border-radius: 999px;
-    color: #155e75;
-    font-size: 0.9rem;
-    font-weight: 700;
-    line-height: 1;
-    padding: 0.5rem 0.7rem;
-    text-decoration: none;
-}
-
-.global-search-number-page:hover {
-    background: rgba(154, 64, 53, 0.07);
-}
-
-.global-search-number-page.active {
-    background: #9a4035;
-    color: #ffffff;
 }
 
 .global-result {
@@ -1393,12 +1309,4 @@ a.global-result-badge:hover {
         min-width: 4.2rem;
     }
 
-    .global-search-pagination {
-        gap: 0.45rem;
-    }
-
-    .global-search-number-page {
-        font-size: 0.82rem;
-        padding: 0.45rem 0.55rem;
-    }
 }
