@@ -59,8 +59,8 @@ Campos obligatorios:
 | Campo | Motivo | Peso sugerido |
 |---|---:|---:|
 | `pacientes.id` | Identificador interno del paciente. Puede coincidir funcionalmente con historia en muchos casos. | 100 |
-| `pacientes.numDoc` | Documento nacional u otro identificador administrativo. Es uno de los accesos mas usados. | 90 |
-| `pacientes.apellido` | Campo clinicamente central para ubicar personas. Suele ser mas discriminante que el nombre. | 80 |
+| `pacientes.numDoc` | Documento nacional u otro identificador administrativo. Es un acceso exacto fuerte, aunque no siempre sea el dato mas usado en consultorio. | 100 |
+| `pacientes.apellido` | Campo clinicamente central para ubicar personas. En un consultorio medico se busca tanto por apellido como por documento o ID. | 100 |
 | `pacientes.nombre` | Campo central para busqueda humana. | 70 |
 
 Campos no incluidos en la primera etapa:
@@ -341,10 +341,11 @@ Orden sugerido:
 1. ID exacto de historia.
 2. ID exacto de paciente.
 3. Documento exacto.
-4. Documento parcial.
-5. Apellido parcial.
-6. Nombre parcial.
-7. Coincidencia por trigramas generales.
+4. Apellido exacto o de alta coincidencia.
+5. Documento parcial.
+6. Apellido parcial.
+7. Nombre parcial.
+8. Coincidencia por trigramas generales.
 
 Los pesos sugeridos ayudan, pero no reemplazan reglas explicitas para coincidencias exactas.
 
@@ -427,4 +428,4 @@ paciente.apellido
 paciente.nombre
 ```
 
-Apellido queda incluido con peso alto porque, en busqueda humana de pacientes, suele ser el dato mas importante despues del documento o ID exacto.
+Apellido queda incluido con el mismo peso que documento e ID porque, en el flujo real de un consultorio medico, muchas busquedas empiezan por apellido. El ranking no debe tratarlo como un dato secundario.
