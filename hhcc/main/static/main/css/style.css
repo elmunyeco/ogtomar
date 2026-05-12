@@ -1076,10 +1076,12 @@ h3 {
 
 /* ===== Busqueda global tipo Google ===== */
 .global-search-page {
+    position: relative;
     min-height: calc(100vh - 180px);
     display: flex;
     justify-content: center;
     padding: 5rem 1rem 3rem;
+    overflow: hidden;
 }
 
 .global-search-page.has-results {
@@ -1088,9 +1090,46 @@ h3 {
 }
 
 .global-search-shell {
+    position: relative;
+    z-index: 1;
     width: 100%;
     max-width: 54rem;
     margin: 0 auto;
+}
+
+.global-search-watermark {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.42;
+    background-image:
+        repeating-linear-gradient(
+            -22deg,
+            transparent 0,
+            transparent 4.5rem,
+            rgba(107, 114, 128, 0.055) 4.5rem,
+            rgba(107, 114, 128, 0.055) 7.8rem,
+            transparent 7.8rem,
+            transparent 12rem
+        );
+}
+
+.global-search-watermark::before {
+    content: "EXPERIMENTAL   EXPERIMENTAL   EXPERIMENTAL   EXPERIMENTAL";
+    position: absolute;
+    top: 1.5rem;
+    left: -6rem;
+    width: calc(100% + 12rem);
+    color: rgba(107, 114, 128, 0.075);
+    font-size: 3.2rem;
+    font-weight: 900;
+    line-height: 2.4;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transform: rotate(-22deg);
+    white-space: pre-wrap;
+    word-spacing: 2.5rem;
 }
 
 .global-search-form {

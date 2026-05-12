@@ -5,6 +5,7 @@
 
 {% block content %}
 <section class="global-search-page {% if search_context %}has-results{% endif %}">
+    <div class="global-search-watermark" aria-hidden="true"></div>
     <div class="global-search-shell">
         <form method="GET" action="{% url 'index' %}" class="global-search-form">
             <label for="global-search-input" class="sr-only">Buscar paciente, documento o historia</label>

@@ -90,6 +90,8 @@ La plantilla `index.html` deja de estar vacia y pasa a mostrar:
 
 La presentacion de acciones queda deliberadamente condensada: `PACIENTE`, `HISTORIA` y chips de estudios con tipo azul y fecha negra.
 
+La superficie del buscador global incluye una marca de agua `EXPERIMENTAL` en gris muy transparente, limitada a esta pantalla, para identificar visualmente que el feature todavia esta en evaluacion.
+
 ## Paso 7 - Estilo visual
 
 Se agregaron estilos en `main/static/main/css/style.css` para que la primera pantalla funcione como buscador principal del sistema, manteniendo la paleta y lenguaje visual existente.
