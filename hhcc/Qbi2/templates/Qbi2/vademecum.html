@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Vademecum Qbi2 - Dr. Omar Prieto{% endblock %}
+
+{% block content %}
+<section class="global-search-page vademecum-page" data-endpoint="{% url 'qbi2:buscar_vademecum' %}">
+    <div class="global-search-watermark" aria-hidden="true"></div>
+    <div class="global-search-shell">
+        <form class="global-search-form" id="vademecum-form" autocomplete="off">
+            <label for="vademecum-input" class="sr-only">Buscar medicamento</label>
+            <div class="global-search-input-wrap">
+                <svg class="global-search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                    type="text"
+                    name="q"
+                    id="vademecum-input"
+                    placeholder="Medicamento, droga o presentación"
+                    autocomplete="off"
+                    autofocus
+                />
+                <button type="submit">Buscar</button>
+            </div>
+        </form>
+
+        <div id="vademecum-alert" class="global-search-alert hidden" role="alert"></div>
+        <div id="vademecum-summary" class="global-search-summary hidden"></div>
+        <div id="vademecum-results" class="global-search-results"></div>
+
+        <div id="vademecum-pager" class="vademecum-pager hidden">
+            <button type="button" id="vademecum-prev">Anterior</button>
+            <span id="vademecum-page-info"></span>
+            <button type="button" id="vademecum-next">Siguiente</button>
+        </div>
+
+        <div class="global-search-footer">
+            <span>qbi2 vademecum</span>
+            <span>experimental</span>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .vademecum-page.has-results {
+        justify-content: flex-start;
+        padding-top: 1.25rem;
+    }
+
+    .vademecum-flags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.55rem;
+    }
+
+    .vademecum-flag {
+        border: 1px solid #e5e7eb;
+        border-radius: 999px;
+        color: #4b5563;
+        background: #ffffff;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.18rem 0.55rem;
+    }
+
+    .vademecum-flag.warning {
+        border-color: #f2c7bd;
+        color: #8a2f25;
+        background: #fff7f5;
+    }
+
+    .vademecum-pager {
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        margin-top: 1.2rem;
+    }
+
+    .vademecum-pager:not(.hidden) {
+        display: flex;
+    }
+
+    .vademecum-pager button {
+        border: 1px solid #e0d2cf;
+        border-radius: 999px;
+        background: #fbf7f6;
+        color: #7a332b;
+        font-size: 0.84rem;
+        font-weight: 800;
+        padding: 0.45rem 0.9rem;
+    }
+
+    .vademecum-pager button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+    }
+
+    .vademecum-pager span {
+        color: #6b7280;
+        font-size: 0.88rem;
+        font-weight: 700;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const page = document.querySelector(".vademecum-page");
+    const endpoint = page.dataset.endpoint;
+    const form = document.getElementById("vademecum-form");
+    const input = document.getElementById("vademecum-input");
+    const alertBox = document.getElementById("vademecum-alert");
+    const summary = document.getElementById("vademecum-summary");
+    const results = document.getElementById("vademecum-results");
+    const pager = document.getElementById("vademecum-pager");
+    const prev = document.getElementById("vademecum-prev");
+    const next = document.getElementById("vademecum-next");
+    const pageInfo = document.getElementById("vademecum-page-info");
+
+    let currentQuery = "";
+    let currentPage = 1;
+    let hasNext = false;
+
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#039;",
+    }[char]));
+
+    const setLoading = () => {
+        alertBox.classList.add("hidden");
+        summary.classList.remove("hidden");
+        summary.textContent = "Buscando medicamentos...";
+        results.innerHTML = "";
+        pager.classList.add("hidden");
+        page.classList.add("has-results");
+    };
+
+    const showError = (message) => {
+        summary.classList.add("hidden");
+        alertBox.textContent = message;
+        alertBox.classList.remove("hidden");
+        pager.classList.add("hidden");
+    };
+
+    const flag = (label, active, warning = false) => {
+        if (!active) return "";
+        return `<span class="vademecum-flag ${warning ? "warning" : ""}">${escapeHtml(label)}</span>`;
+    };
+
+    const renderItem = (item) => {
+        const flags = [
+            flag("Cobertura", item.tieneCobertura),
+            flag("Aprobación", item.requiereAprobacion, true),
+            flag("Venta controlada", item.ventaControlada, true),
+            flag("Psicofármaco", item.psicofarmaco, true),
+            flag("Estupefaciente", item.estupefaciente, true),
+            flag("Duplicado", item.requiereDuplicado, true),
+        ].join("");
+
+        const detail = [
+            item.nombreDroga,
+            item.presentacion,
+            item.formaFarmaceutica,
+            item.viaAdministracion,
+        ].filter(Boolean).join(" · ");
+
+        return `
+            <article class="global-result">
+                <div class="global-result-main">
+                    <div>
+                        <h2>${escapeHtml(item.nombreProducto || item.display || "Medicamento")}</h2>
+                        <p>${escapeHtml(detail)}</p>
+                        ${flags ? `<div class="vademecum-flags">${flags}</div>` : ""}
+                    </div>
+                    <span class="global-result-badge">RegNo ${escapeHtml(item.regNo || "-")}</span>
+                </div>
+            </article>
+        `;
+    };
+
+    const renderPager = (info) => {
+        if (!info) {
+            pager.classList.add("hidden");
+            return;
+        }
+        const totalPages = info.cantidadPaginas || currentPage;
+        hasNext = Boolean(info.tieneMasResultados);
+        pageInfo.textContent = `Página ${info.numeroPagina || currentPage} de ${totalPages}`;
+        prev.disabled = currentPage <= 1;
+        next.disabled = !hasNext;
+        pager.classList.remove("hidden");
+    };
+
+    const search = async (query, requestedPage = 1) => {
+        currentQuery = query.trim();
+        currentPage = requestedPage;
+        if (currentQuery.length < 2) {
+            showError("Ingresá al menos 2 caracteres.");
+            return;
+        }
+
+        setLoading();
+        const url = new URL(endpoint, window.location.origin);
+        url.searchParams.set("q", currentQuery);
+        url.searchParams.set("page", String(currentPage));
+
+        try {
+            const response = await fetch(url, {headers: {"Accept": "application/json"}});
+            const data = await response.json();
+            if (!response.ok || data.status !== "success") {
+                showError(data.message || "No se pudo consultar Qbi2.");
+                return;
+            }
+
+            summary.classList.remove("hidden");
+            summary.innerHTML = data.count
+                ? `Página ${data.page} para <strong>${escapeHtml(data.query)}</strong> · ${data.count} resultados`
+                : `No se encontraron medicamentos para <strong>${escapeHtml(data.query)}</strong>`;
+            results.innerHTML = data.items.map(renderItem).join("");
+            renderPager(data.pageInfo);
+        } catch (error) {
+            showError("No se pudo conectar con el buscador interno.");
+        }
+    };
+
+    form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        search(input.value, 1);
+    });
+
+    prev.addEventListener("click", () => {
+        if (currentPage > 1) search(currentQuery, currentPage - 1);
+    });
+
+    next.addEventListener("click", () => {
+        if (hasNext) search(currentQuery, currentPage + 1);
+    });
+})();
+</script>
+{% endblock %}

@@ -15,12 +15,17 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.contrib.auth.decorators import login_required
 from django.urls import path, include
+from Qbi2 import views as qbi2_views
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('vademecum/', login_required(qbi2_views.vademecum_page), name='vademecum'),
     path('', include('main.urls')),
     path('ecocardiograma/', include('ecocardiograma.urls')),
     path('carotidas/', include('carotidas.urls')),
     path('ecostress/', include('ecostress.urls')),
     path('mmii/', include('mmii.urls')),
+    path('qbi2/', include('Qbi2.urls')),
 ]
