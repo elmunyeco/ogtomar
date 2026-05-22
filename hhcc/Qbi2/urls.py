@@ -8,4 +8,5 @@ app_name = "qbi2"
 urlpatterns = [
     path("health/", login_required(views.health), name="health"),
     path("api/vademecum/buscar/", login_required(views.buscar_vademecum), name="buscar_vademecum"),
+    path("api/receta/poc/emitir/", login_required(views.emitir_receta_poc), name="emitir_receta_poc"),
 ]

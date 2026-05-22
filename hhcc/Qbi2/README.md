@@ -31,3 +31,43 @@ QBI2_VADEMECUM_MIN_QUERY_LENGTH=2
 `QBI2_AUTH_MODE=auto` envia `Authorization: Bearer ...` solo si `QBI2_BEARER_TOKEN` esta configurado. Esto permite probar si algun endpoint de catalogo es publico sin cambiar codigo. Usar `required` cuando soporte confirme que el vademecum exige token.
 
 El Swagger de homologacion confirma que `GetMedicamento` recibe el texto de busqueda en el path y exige `numeroPagina` + `clienteAppId`.
+
+## PoC de receta HML
+
+Comando seguro por defecto, solo imprime payload:
+
+```bash
+python manage.py qbi2_receta_poc
+```
+
+Emitir receta real en Qbi2 HML:
+
+```bash
+QBI2_TIMEOUT_SECONDS=90 python manage.py qbi2_receta_poc --send
+```
+
+Imprimir respuesta completa del proveedor:
+
+```bash
+QBI2_TIMEOUT_SECONDS=90 python manage.py qbi2_receta_poc --send --raw
+```
+
+La PoC usa datos ficticios y `regNo=34959` por defecto:
+
+```text
+LOTRIAL - enalapril - 10 mg comp.x 30
+```
+
+El diagnostico puede ser texto libre o codigo CIE-10 segun Swagger (`RecetaRequestDto.diagnostico`). La prueba HML exitosa devolvio:
+
+```text
+status=OK
+idReceta
+s3Link
+verificador
+idTransaccion
+fechavencimiento
+errores=[]
+```
+
+Qbi2 completo automaticamente cobertura "No posee" para el paciente ficticio cuando no se envio cobertura.

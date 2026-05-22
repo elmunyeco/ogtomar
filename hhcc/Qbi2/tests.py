@@ -1,7 +1,8 @@
 from django.test import RequestFactory, SimpleTestCase, override_settings
 
+from .recipes import build_hml_receta_poc_payload, summarize_receta_response
 from .services import VademecumService, normalize_medicamento, normalize_vademecum_response
-from .views import buscar_vademecum, vademecum_page
+from .views import buscar_vademecum, emitir_receta_poc, receta_poc_page, vademecum_page
 
 
 class FakeClient:
@@ -72,3 +73,52 @@ class VademecumViewTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"vademecum-input", response.content)
         self.assertIn(b"/qbi2/api/vademecum/buscar/", response.content)
+
+    def test_receta_poc_page_renders_poc_ui(self):
+        request = RequestFactory().get("/receta-poc/")
+        response = receta_poc_page(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Proof Of Concept", response.content)
+        self.assertIn(b"Emitir receta HML", response.content)
+        self.assertIn(b"34959", response.content)
+
+    def test_receta_poc_endpoint_requires_post(self):
+        request = RequestFactory().get("/qbi2/api/receta/poc/emitir/")
+        response = emitir_receta_poc(request)
+
+        self.assertEqual(response.status_code, 405)
+
+
+class RecetaPocTests(SimpleTestCase):
+    @override_settings(QBI2_CLIENT_APP_ID="563")
+    def test_builds_hml_receta_payload_with_lotrial_reg_no(self):
+        payload = build_hml_receta_poc_payload(nro_doc="99999999")
+
+        self.assertEqual(payload["clienteAppId"], 563)
+        self.assertEqual(payload["diagnostico"], "Hipertension arterial")
+        self.assertEqual(payload["paciente"]["nroDoc"], "99999999")
+        self.assertEqual(payload["medicamentos"][0]["regNo"], "34959")
+        self.assertEqual(payload["medicamentos"][0]["nombreProducto"], "LOTRIAL")
+
+    def test_summarizes_receta_response(self):
+        summary = summarize_receta_response(
+            {
+                "recetas": [
+                    {
+                        "id": "HASH",
+                        "fecha": "21/05/2026",
+                        "idReceta": "9600000255038",
+                        "s3Link": "https://example.invalid/receta.pdf",
+                        "verificador": "https://example.invalid/verificador",
+                    }
+                ],
+                "errores": [],
+                "response": [{"status": "OK", "fechavencimiento": "20/06/2026"}],
+                "idTransaccion": "tx",
+            }
+        )
+
+        self.assertEqual(summary["id"], "HASH")
+        self.assertEqual(summary["idReceta"], "9600000255038")
+        self.assertEqual(summary["status"], "OK")

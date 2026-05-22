@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+
+{% block title %}PoC Receta Qbi2 - Dr. Omar Prieto{% endblock %}
+
+{% block content %}
+<section class="global-search-page receta-poc-page has-results" data-emit-endpoint="{% url 'qbi2:emitir_receta_poc' %}" data-search-endpoint="{% url 'qbi2:buscar_vademecum' %}">
+    <div class="global-search-watermark" aria-hidden="true"></div>
+    <div class="global-search-shell receta-poc-shell">
+        <div class="receta-poc-banner">
+            <span>Proof Of Concept</span>
+            <strong>Qbi2 HML</strong>
+        </div>
+
+        <div class="receta-poc-head">
+            <div>
+                <h1>Confección de receta</h1>
+                <p>Datos ficticios para entender el contrato de HML. La búsqueda selecciona el medicamento y pasa el regNo al formulario.</p>
+            </div>
+            <button type="button" id="emit-receta-poc">Emitir receta HML</button>
+        </div>
+
+        <div class="receta-poc-help">
+            <strong>Obligatorio:</strong>
+            datos mínimos que esta PoC envía para que Qbi2 HML confeccione una receta.
+            <strong>Recomendado:</strong>
+            Qbi2 puede no marcarlo como requerido, pero conviene completarlo para una receta clara y auditable.
+            <strong>Optativo:</strong>
+            datos complementarios. El diagnóstico puede ser texto libre o código CIE-10.
+        </div>
+
+        <form id="receta-poc-form" class="receta-poc-form">
+            <section class="receta-poc-panel">
+                <h2>Vademécum <span>obligatorio</span></h2>
+                <label class="receta-field receta-field-wide">
+                    <span>Buscar medicamento <em>obligatorio</em></span>
+                    <div class="receta-search-row">
+                        <input type="text" id="med-search" value="lotrial" placeholder="Buscar por producto, droga o presentación">
+                        <button type="button" id="search-med">Buscar</button>
+                    </div>
+                </label>
+                <div id="med-results" class="med-results"></div>
+
+                <div class="receta-grid">
+                    <label class="receta-field">
+                        <span>RegNo <em>obligatorio</em></span>
+                        <input name="regNo" value="34959" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Producto <em>obligatorio</em></span>
+                        <input name="nombreProducto" value="LOTRIAL" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Droga <em>obligatorio</em></span>
+                        <input name="nombreDroga" value="enalapril" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Presentación <em>obligatorio</em></span>
+                        <input name="presentacion" value="10 mg comp.x 30" required>
+                    </label>
+                </div>
+            </section>
+
+            <section class="receta-poc-panel">
+                <h2>Prescripción <span>obligatorio</span></h2>
+                <div class="receta-grid">
+                    <label class="receta-field receta-field-wide">
+                        <span>Diagnóstico <em>obligatorio, texto libre o CIE-10</em></span>
+                        <input name="diagnostico" value="Hipertension arterial" required>
+                    </label>
+                    <label class="receta-field receta-field-wide">
+                        <span>Posología <em>obligatorio</em></span>
+                        <input name="posologia" value="Tomar 1 comprimido por dia segun indicacion medica." required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Cantidad <em>obligatorio</em></span>
+                        <input name="cantidad" type="number" min="1" value="1" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Tratamiento <em>obligatorio</em></span>
+                        <select name="tratamiento">
+                            <option value="0">Normal</option>
+                            <option value="1">Prolongado</option>
+                        </select>
+                    </label>
+                </div>
+            </section>
+
+            <section class="receta-poc-panel">
+                <h2>Paciente <span>obligatorio</span></h2>
+                <div class="receta-grid">
+                    <label class="receta-field">
+                        <span>Nombre <em>obligatorio</em></span>
+                        <input name="pacienteNombre" value="Prueba" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Apellido <em>obligatorio</em></span>
+                        <input name="pacienteApellido" value="Paciente" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>DNI <em>obligatorio</em></span>
+                        <input name="pacienteNroDoc" value="99999999" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Sexo <em>obligatorio</em></span>
+                        <select name="pacienteSexo">
+                            <option value="M">M</option>
+                            <option value="F">F</option>
+                            <option value="X">X</option>
+                        </select>
+                    </label>
+                    <label class="receta-field">
+                        <span>Fecha nacimiento <em>obligatorio</em></span>
+                        <input name="pacienteFechaNacimiento" type="date" value="1980-01-01" required>
+                    </label>
+                </div>
+            </section>
+
+            <section class="receta-poc-panel">
+                <h2>Médico <span>obligatorio</span></h2>
+                <div class="receta-grid">
+                    <label class="receta-field">
+                        <span>Nombre <em>obligatorio</em></span>
+                        <input name="medicoNombre" value="Prueba" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Apellido <em>obligatorio</em></span>
+                        <input name="medicoApellido" value="Medico" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>DNI <em>recomendado</em></span>
+                        <input name="medicoNroDoc" value="11111111">
+                    </label>
+                    <label class="receta-field">
+                        <span>Tipo matrícula <em>obligatorio</em></span>
+                        <select name="medicoMatriculaTipo">
+                            <option value="MN">MN</option>
+                            <option value="MP">MP</option>
+                            <option value="OP">OP</option>
+                        </select>
+                    </label>
+                    <label class="receta-field">
+                        <span>Número matrícula <em>obligatorio</em></span>
+                        <input name="medicoMatriculaNumero" value="123456" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Especialidad <em>recomendado</em></span>
+                        <input name="medicoEspecialidad" value="Cardiologia" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Profesión <em>recomendado</em></span>
+                        <input name="medicoProfesion" value="Medico" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>CUIT/ID tributario <em>recomendado</em></span>
+                        <input name="medicoIdTributario" value="20111111112">
+                    </label>
+                </div>
+            </section>
+
+            <section class="receta-poc-panel">
+                <h2>Lugar de atención <span>recomendado</span></h2>
+                <div class="receta-grid">
+                    <label class="receta-field">
+                        <span>Consultorio <em>recomendado</em></span>
+                        <input name="consultorioNombre" value="Consultorio HML Prueba" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Dirección <em>recomendado</em></span>
+                        <input name="consultorioDireccion" value="Gral. Las Heras 459" required>
+                    </label>
+                    <label class="receta-field">
+                        <span>Email <em>optativo</em></span>
+                        <input name="consultorioEmail" value="consultorio.prueba@example.com">
+                    </label>
+                    <label class="receta-field">
+                        <span>Contacto <em>optativo</em></span>
+                        <input name="consultorioContacto" value="1100000002">
+                    </label>
+                </div>
+            </section>
+        </form>
+
+        <div id="receta-poc-alert" class="global-search-alert hidden" role="alert"></div>
+
+        <div id="receta-poc-summary" class="receta-poc-summary hidden">
+            <div><span>ID Receta</span><strong data-field="idReceta">-</strong></div>
+            <div><span>Estado</span><strong data-field="status">-</strong></div>
+            <div><span>Vencimiento</span><strong data-field="fechavencimiento">-</strong></div>
+        </div>
+
+        <div id="receta-poc-links" class="receta-poc-links hidden">
+            <a data-field="s3Link" href="#" target="_blank" rel="noopener">Abrir PDF</a>
+            <a data-field="verificador" href="#" target="_blank" rel="noopener">Verificador</a>
+        </div>
+
+        <section class="receta-poc-panel">
+            <h2>Respuesta Qbi2 <span>salida</span></h2>
+            <pre id="receta-poc-response">Sin emisión todavía.</pre>
+        </section>
+
+        <div class="global-search-footer">
+            <span>qbi2 receta poc</span>
+            <span>experimental</span>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .receta-poc-shell { max-width: 76rem; }
+    .receta-poc-banner {
+        align-items: center; background: #fff7f5; border: 2px solid #9a4035; border-radius: 0.5rem;
+        color: #7a332b; display: flex; font-weight: 900; gap: 1rem; justify-content: space-between;
+        margin-bottom: 1rem; padding: 0.85rem 1rem; text-transform: uppercase;
+    }
+    .receta-poc-head {
+        align-items: flex-start; border-bottom: 1px solid #e5e7eb; display: flex; gap: 1rem;
+        justify-content: space-between; margin-bottom: 1rem; padding-bottom: 1rem;
+    }
+    .receta-poc-head h1 { color: #1f2937; font-size: 1.55rem; font-weight: 800; margin: 0 0 0.25rem; }
+    .receta-poc-head p, .receta-poc-help { color: #6b7280; margin: 0; }
+    .receta-poc-head button, .receta-search-row button {
+        background: #9a4035; border: 0; border-radius: 999px; color: #fff; cursor: pointer;
+        flex: 0 0 auto; font-weight: 800; padding: 0.75rem 1.15rem;
+    }
+    .receta-poc-head button:disabled { cursor: wait; opacity: 0.65; }
+    .receta-poc-help {
+        background: #f9fafb; border-left: 4px solid #9a4035; border-radius: 0.35rem;
+        line-height: 1.55; margin-bottom: 1rem; padding: 0.85rem 1rem;
+    }
+    .receta-poc-help strong { color: #374151; }
+    .receta-poc-form { display: grid; gap: 1rem; }
+    .receta-poc-panel { border-bottom: 1px solid #e5e7eb; padding: 1rem 0; }
+    .receta-poc-panel h2 {
+        align-items: center; color: #1f2937; display: flex; font-size: 1.05rem; font-weight: 800;
+        gap: 0.5rem; margin: 0 0 0.8rem;
+    }
+    .receta-poc-panel h2 span {
+        background: #fbf7f6; border: 1px solid #e0d2cf; border-radius: 999px; color: #7a332b;
+        font-size: 0.68rem; font-weight: 900; padding: 0.15rem 0.45rem; text-transform: uppercase;
+    }
+    .receta-grid { display: grid; gap: 0.85rem; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .receta-field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .receta-field-wide { grid-column: 1 / -1; }
+    .receta-field span {
+        color: #374151; font-size: 0.82rem; font-weight: 800;
+    }
+    .receta-field em {
+        color: #9a4035; display: block; font-size: 0.7rem; font-style: normal; font-weight: 800;
+        margin-top: 0.08rem; text-transform: uppercase;
+    }
+    .receta-field input, .receta-field select, .receta-search-row input {
+        border: 1px solid #d1d5db; border-radius: 0.45rem; color: #1f2937; min-height: 2.55rem;
+        padding: 0.45rem 0.6rem; width: 100%;
+    }
+    .receta-search-row { display: flex; gap: 0.6rem; }
+    .med-results { display: grid; gap: 0.5rem; margin: 0.7rem 0 1rem; }
+    .med-result {
+        align-items: flex-start; background: #fff; border-bottom: 1px solid #e5e7eb; cursor: pointer;
+        display: flex; gap: 0.8rem; justify-content: space-between; padding: 0.75rem 0;
+    }
+    .med-result strong { color: #1f2937; display: block; }
+    .med-result span { color: #6b7280; display: block; font-size: 0.86rem; }
+    .med-result code {
+        background: #fbf7f6; border: 1px solid #e0d2cf; border-radius: 999px; color: #7a332b;
+        font-size: 0.76rem; font-weight: 800; padding: 0.22rem 0.55rem;
+    }
+    .receta-poc-summary { display: grid; gap: 0.8rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 1rem 0; }
+    .receta-poc-summary div { border-bottom: 1px solid #e5e7eb; padding: 0.7rem 0; }
+    .receta-poc-summary span { color: #6b7280; display: block; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; }
+    .receta-poc-summary strong { color: #1f2937; font-size: 1rem; }
+    .receta-poc-links { display: flex; flex-wrap: wrap; gap: 0.65rem; margin: 0.5rem 0 1rem; }
+    .receta-poc-links a {
+        background: #fbf7f6; border: 1px solid #e0d2cf; border-radius: 999px; color: #7a332b;
+        font-size: 0.82rem; font-weight: 800; padding: 0.45rem 0.8rem; text-decoration: none;
+    }
+    #receta-poc-response {
+        background: #111827; border-radius: 0.45rem; color: #e5e7eb; font-size: 0.78rem;
+        line-height: 1.45; max-height: 34rem; overflow: auto; padding: 1rem; white-space: pre-wrap; word-break: break-word;
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 1000px) { .receta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 700px) {
+        .receta-poc-head, .receta-search-row { flex-direction: column; }
+        .receta-grid, .receta-poc-summary { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const page = document.querySelector(".receta-poc-page");
+    const emitEndpoint = page.dataset.emitEndpoint;
+    const searchEndpoint = page.dataset.searchEndpoint;
+    const form = document.getElementById("receta-poc-form");
+    const emitButton = document.getElementById("emit-receta-poc");
+    const searchButton = document.getElementById("search-med");
+    const searchInput = document.getElementById("med-search");
+    const medResults = document.getElementById("med-results");
+    const alertBox = document.getElementById("receta-poc-alert");
+    const responseBox = document.getElementById("receta-poc-response");
+    const summaryBox = document.getElementById("receta-poc-summary");
+    const linksBox = document.getElementById("receta-poc-links");
+
+    const getCookie = (name) => document.cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith(name + "="))?.split("=")[1] || "";
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" }[char]));
+    const setField = (name, value) => { const node = document.querySelector(`[data-field="${name}"]`); if (node) node.textContent = value || "-"; };
+    const setInput = (name, value) => { const node = form.elements[name]; if (node) node.value = value || ""; };
+    const setLink = (name, value) => {
+        const node = document.querySelector(`a[data-field="${name}"]`);
+        if (!node) return;
+        node.href = value || "#";
+        node.classList.toggle("hidden", !value);
+    };
+    const showError = (message, payload = null) => {
+        alertBox.textContent = message;
+        alertBox.classList.remove("hidden");
+        if (payload) responseBox.textContent = JSON.stringify(payload, null, 2);
+    };
+    const formData = () => Object.fromEntries(new FormData(form).entries());
+
+    const renderMedication = (item) => `
+        <button type="button" class="med-result" data-med='${escapeHtml(JSON.stringify(item))}'>
+            <span>
+                <strong>${escapeHtml(item.nombreProducto || item.display)}</strong>
+                <span>${escapeHtml([item.nombreDroga, item.presentacion].filter(Boolean).join(" · "))}</span>
+            </span>
+            <code>RegNo ${escapeHtml(item.regNo)}</code>
+        </button>
+    `;
+
+    searchButton.addEventListener("click", async () => {
+        alertBox.classList.add("hidden");
+        medResults.textContent = "Buscando...";
+        const url = new URL(searchEndpoint, window.location.origin);
+        url.searchParams.set("q", searchInput.value);
+        url.searchParams.set("page", "1");
+        try {
+            const response = await fetch(url, {headers: {"Accept": "application/json"}});
+            const data = await response.json();
+            if (!response.ok || data.status !== "success") {
+                showError(data.message || "No se pudo buscar en vademécum.", data);
+                medResults.textContent = "";
+                return;
+            }
+            medResults.innerHTML = data.items.map(renderMedication).join("");
+        } catch (error) {
+            showError("No se pudo conectar con el buscador de vademécum.");
+            medResults.textContent = "";
+        }
+    });
+
+    medResults.addEventListener("click", (event) => {
+        const button = event.target.closest(".med-result");
+        if (!button) return;
+        const item = JSON.parse(button.dataset.med);
+        setInput("regNo", item.regNo);
+        setInput("nombreProducto", item.nombreProducto);
+        setInput("nombreDroga", item.nombreDroga);
+        setInput("presentacion", item.presentacion);
+    });
+
+    emitButton.addEventListener("click", async () => {
+        if (!form.reportValidity()) return;
+        if (!window.confirm("Esto emite una receta real en Qbi2 HML con los datos del formulario. ¿Continuar?")) return;
+
+        alertBox.classList.add("hidden");
+        summaryBox.classList.add("hidden");
+        linksBox.classList.add("hidden");
+        emitButton.disabled = true;
+        emitButton.textContent = "Emitiendo...";
+        responseBox.textContent = "Esperando respuesta de Qbi2 HML...";
+
+        try {
+            const response = await fetch(emitEndpoint, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": decodeURIComponent(getCookie("csrftoken")),
+                },
+                body: JSON.stringify(formData()),
+            });
+            const data = await response.json();
+            responseBox.textContent = JSON.stringify(data.response || data, null, 2);
+            if (!response.ok || data.status !== "success") {
+                showError(data.message || "No se pudo emitir la receta PoC.", data);
+                return;
+            }
+            const summary = data.summary || {};
+            setField("idReceta", summary.idReceta);
+            setField("status", summary.status);
+            setField("fechavencimiento", summary.fechavencimiento);
+            setLink("s3Link", summary.s3Link);
+            setLink("verificador", summary.verificador);
+            summaryBox.classList.remove("hidden");
+            linksBox.classList.remove("hidden");
+        } catch (error) {
+            showError("No se pudo conectar con el endpoint interno de PoC.");
+        } finally {
+            emitButton.disabled = false;
+            emitButton.textContent = "Emitir receta HML";
+        }
+    });
+})();
+</script>
+{% endblock %}

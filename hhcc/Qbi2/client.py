@@ -1,5 +1,6 @@
 import json
 import logging
+import socket
 from dataclasses import dataclass
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -95,6 +96,9 @@ class Qbi2Client:
         except URLError as exc:
             logger.warning("No se pudo conectar con Qbi2 en %s %s: %s", method, self._safe_url(url), exc)
             raise Qbi2HTTPError("No se pudo conectar con Qbi2.", payload=str(exc)) from exc
+        except (TimeoutError, socket.timeout) as exc:
+            logger.warning("Timeout invocando Qbi2 en %s %s", method, self._safe_url(url))
+            raise Qbi2HTTPError("Timeout esperando respuesta de Qbi2.", payload=str(exc)) from exc
 
     def _decode_response(self, response_body: bytes) -> Any:
         if not response_body:

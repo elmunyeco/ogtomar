@@ -22,6 +22,7 @@ from Qbi2 import views as qbi2_views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('vademecum/', login_required(qbi2_views.vademecum_page), name='vademecum'),
+    path('receta-poc/', login_required(qbi2_views.receta_poc_page), name='receta_poc'),
     path('', include('main.urls')),
     path('ecocardiograma/', include('ecocardiograma.urls')),
     path('carotidas/', include('carotidas.urls')),
