@@ -16,6 +16,7 @@ services:
       - db
     env_file:
       - .env.docker
+      - .env.qbi2
 
   nginx:
     image: nginx:alpine

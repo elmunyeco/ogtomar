@@ -1,0 +1,547 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PoC-pacientes-portal - Dr. Omar Prieto</title>
+    <link rel="stylesheet" href="{% static 'main/css/style.css' %}?v=nav-retornos-20260511">
+    <style>
+        body {
+            background: #ffffff;
+            color: #1f2937;
+            margin: 0;
+        }
+        .pacientes-portal-page {
+            background: #ffffff;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='560' height='210' viewBox='0 0 560 210'%3E%3Cg transform='rotate(-14 280 105)'%3E%3Ctext x='-18' y='92' fill='%23356f9a' fill-opacity='0.15' font-family='Impact, Arial Black, sans-serif' font-size='58' font-style='italic' font-weight='900'%3Epedi tu receta%3C/text%3E%3Ctext x='120' y='170' fill='%23356f9a' fill-opacity='0.10' font-family='Impact, Arial Black, sans-serif' font-size='50' font-style='italic' font-weight='900'%3Epedi tu receta%3C/text%3E%3C/g%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 560px 210px;
+            min-height: 100vh;
+            overflow: hidden;
+            padding: 2rem 1rem 3rem;
+            position: relative;
+        }
+        .portal-graffiti {
+            color: rgba(53, 111, 154, 0.18);
+            font-family: Impact, "Arial Black", sans-serif;
+            font-size: clamp(4rem, 13vw, 11rem);
+            font-style: italic;
+            font-weight: 900;
+            inset: 0;
+            letter-spacing: 0;
+            line-height: 0.9;
+            pointer-events: none;
+            position: fixed;
+            text-transform: uppercase;
+            transform: rotate(-12deg) translate(-5%, 12%);
+            white-space: normal;
+            z-index: 0;
+        }
+        .portal-shell {
+            margin: 0 auto;
+            max-width: 58rem;
+            position: relative;
+            z-index: 1;
+        }
+        .portal-banner {
+            align-items: center;
+            background: rgba(255, 255, 255, 0.92);
+            border: 2px solid #356f9a;
+            border-radius: 0.5rem;
+            color: #2b577a;
+            display: flex;
+            flex-wrap: wrap;
+            font-weight: 900;
+            gap: 0.75rem;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding: 0.85rem 1rem;
+            text-transform: uppercase;
+        }
+        .portal-banner span:last-child {
+            background: #356f9a;
+            border-radius: 999px;
+            color: #ffffff;
+            font-size: 0.78rem;
+            padding: 0.25rem 0.75rem;
+        }
+        .portal-card {
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 16px 50px rgba(15, 23, 42, 0.08);
+            padding: 1.25rem;
+        }
+        .portal-head {
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+        }
+        .portal-head h1 {
+            color: #1f2937;
+            font-size: 1.65rem;
+            font-weight: 900;
+            margin: 0 0 0.25rem;
+        }
+        .portal-head p {
+            color: #6b7280;
+            margin: 0;
+        }
+        .portal-form {
+            display: grid;
+            gap: 1rem;
+        }
+        .portal-grid {
+            display: grid;
+            gap: 0.85rem;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .portal-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.32rem;
+        }
+        .portal-field-wide {
+            grid-column: 1 / -1;
+        }
+        .portal-field span {
+            color: #374151;
+            font-size: 0.82rem;
+            font-weight: 900;
+        }
+        .portal-field em {
+            color: #356f9a;
+            display: block;
+            font-size: 0.7rem;
+            font-style: normal;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+        .portal-field input {
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 0.45rem;
+            color: #1f2937;
+            min-height: 2.65rem;
+            padding: 0.5rem 0.7rem;
+            width: 100%;
+        }
+        .portal-search-row {
+            display: flex;
+            gap: 0.6rem;
+        }
+        .portal-search-row input {
+            flex: 1;
+            min-width: 0;
+        }
+        .portal-button {
+            background: #356f9a;
+            border: 0;
+            border-radius: 999px;
+            color: #ffffff;
+            cursor: pointer;
+            flex: 0 0 auto;
+            font-weight: 900;
+            min-height: 2.65rem;
+            padding: 0 1.05rem;
+        }
+        .portal-button:disabled {
+            cursor: wait;
+            opacity: 0.65;
+        }
+        .portal-results {
+            display: grid;
+            gap: 0.5rem;
+            margin-top: 0.65rem;
+        }
+        .portal-med-result {
+            align-items: flex-start;
+            background: #ffffff;
+            border: 0;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            display: flex;
+            gap: 0.8rem;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            text-align: left;
+            width: 100%;
+        }
+        .portal-med-result strong {
+            color: #1f2937;
+            display: block;
+        }
+        .portal-med-result span span {
+            color: #6b7280;
+            display: block;
+            font-size: 0.86rem;
+        }
+        .portal-med-result code,
+        .portal-selected {
+            background: #eef6fb;
+            border: 1px solid #c6d9e8;
+            border-radius: 999px;
+            color: #2b577a;
+            font-size: 0.78rem;
+            font-weight: 900;
+            padding: 0.25rem 0.65rem;
+        }
+        .portal-selected {
+            border-radius: 0.45rem;
+            display: none;
+            margin-top: 0.75rem;
+            padding: 0.65rem 0.75rem;
+        }
+        .portal-selected-title {
+            color: #2b577a;
+            font-size: 0.78rem;
+            font-weight: 900;
+            margin-bottom: 0.45rem;
+            text-transform: uppercase;
+        }
+        .portal-selected-list {
+            display: grid;
+            gap: 0.45rem;
+        }
+        .portal-selected-item {
+            align-items: center;
+            display: flex;
+            gap: 0.55rem;
+            justify-content: space-between;
+        }
+        .portal-selected-item span {
+            color: #1f2937;
+            font-size: 0.9rem;
+            font-weight: 800;
+        }
+        .portal-selected-item small {
+            color: #6b7280;
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .portal-remove-med {
+            background: #ffffff;
+            border: 1px solid #c6d9e8;
+            border-radius: 999px;
+            color: #2b577a;
+            cursor: pointer;
+            flex: 0 0 auto;
+            font-weight: 900;
+            height: 1.8rem;
+            width: 1.8rem;
+        }
+        .portal-submit-row {
+            align-items: center;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: space-between;
+            margin-top: 0.25rem;
+            padding-top: 1rem;
+        }
+        .portal-status {
+            border-radius: 0.5rem;
+            display: none;
+            font-weight: 900;
+            margin-top: 1rem;
+            padding: 0.9rem 1rem;
+        }
+        .portal-status.error {
+            background: #eef6fb;
+            border: 2px solid #356f9a;
+            color: #2b577a;
+            display: block;
+            font-size: 1.2rem;
+        }
+        .portal-status.ok {
+            background: #eef6fb;
+            border: 1px solid #c6d9e8;
+            color: #2b577a;
+            display: block;
+        }
+        .portal-footer {
+            color: rgba(107, 114, 128, 0.65);
+            display: flex;
+            font-size: 0.74rem;
+            font-weight: 700;
+            justify-content: space-between;
+            margin-top: 1rem;
+            text-transform: lowercase;
+        }
+        .hidden {
+            display: none !important;
+        }
+        @media (max-width: 700px) {
+            .pacientes-portal-page {
+                padding-top: 1rem;
+            }
+            .portal-grid {
+                grid-template-columns: 1fr;
+            }
+            .portal-search-row,
+            .portal-submit-row {
+                align-items: stretch;
+                flex-direction: column;
+            }
+            .portal-button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="pacientes-portal-page" data-search-endpoint="{% url 'qbi2:buscar_vademecum_portal' %}" data-validate-endpoint="{% url 'qbi2:validar_paciente_portal' %}">
+        <div class="portal-graffiti" aria-hidden="true">pedi tu receta pedi tu receta pedi tu receta</div>
+        <div class="portal-shell">
+            <div class="portal-banner">
+                <span>PoC-pacientes-portal</span>
+                <span>Proof Of Concept</span>
+            </div>
+
+            <section class="portal-card">
+                <div class="portal-head">
+                    <h1>Pedí tu Receta</h1>
+                    <p>Portal experimental para validar Historia Clínica y seleccionar hasta 10 medicamentos del vademécum Qbi2.</p>
+                </div>
+
+                <form id="portal-form" class="portal-form" autocomplete="off">
+                    <div class="portal-grid">
+                        <label class="portal-field">
+                            <span>Apellido <em>obligatorio</em></span>
+                            <input type="text" name="apellido" id="portal-apellido" required>
+                        </label>
+                        <label class="portal-field">
+                            <span>Documento <em>obligatorio</em></span>
+                            <input type="text" name="documento" id="portal-documento" inputmode="numeric" required>
+                        </label>
+                        <label class="portal-field portal-field-wide">
+                            <span>Medicamentos <em>obligatorio, hasta 10, salen del vademécum Qbi2</em></span>
+                            <div class="portal-search-row">
+                                <input type="text" id="portal-med-search" placeholder="Buscar por producto, droga o presentación">
+                                <button class="portal-button" type="button" id="portal-search-button">Buscar</button>
+                            </div>
+                        </label>
+                        <label class="portal-field portal-field-wide">
+                            <span>Diagnóstico <em>obligatorio, revisable por el médico</em></span>
+                            <input type="text" name="diagnostico" placeholder="Ej: Hipertensión arterial" required>
+                        </label>
+                    </div>
+
+                    <div id="portal-med-results" class="portal-results"></div>
+                    <div id="portal-selected" class="portal-selected"></div>
+
+                    <input type="hidden" name="regNo" id="portal-regno">
+                    <input type="hidden" name="nombreProducto" id="portal-producto">
+                    <input type="hidden" name="nombreDroga" id="portal-droga">
+                    <input type="hidden" name="presentacion" id="portal-presentacion">
+                    <input type="hidden" name="medicamentoJson" id="portal-medicamento-json">
+                    <input type="hidden" name="medicamentosJson" id="portal-medicamentos-json">
+
+                    <div class="portal-submit-row">
+                        <span>La PoC valida identidad + Historia Clínica y deja la solicitud pendiente para revisión médica.</span>
+                        <button class="portal-button" type="submit" id="portal-submit">Pedir receta</button>
+                    </div>
+                </form>
+
+                <div id="portal-status" class="portal-status" role="alert"></div>
+            </section>
+
+            <div class="portal-footer">
+                <span>qbi2 pacientes portal</span>
+                <span>experimental</span>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    (() => {
+        const page = document.querySelector(".pacientes-portal-page");
+        const form = document.getElementById("portal-form");
+        const searchInput = document.getElementById("portal-med-search");
+        const searchButton = document.getElementById("portal-search-button");
+        const results = document.getElementById("portal-med-results");
+        const selectedBox = document.getElementById("portal-selected");
+        const statusBox = document.getElementById("portal-status");
+        const submitButton = document.getElementById("portal-submit");
+        const maxSelectedMedications = 10;
+        let selectedMedications = [];
+        let lastMedicationResults = [];
+
+        const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            "\"": "&quot;",
+            "'": "&#039;",
+        }[char]));
+        const getCookie = (name) => document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(name + "="))?.split("=")[1] || "";
+        const setStatus = (message, kind) => {
+            statusBox.textContent = message;
+            statusBox.className = `portal-status ${kind}`;
+        };
+        const clearStatus = () => {
+            statusBox.textContent = "";
+            statusBox.className = "portal-status";
+        };
+        const setHidden = (id, value) => {
+            const node = document.getElementById(id);
+            if (node) node.value = value || "";
+        };
+        const medicationKey = (item) => String(item?.regNo || item?.display || "").trim();
+        const renderSelectedMedications = () => {
+            if (!selectedMedications.length) {
+                selectedBox.style.display = "none";
+                selectedBox.innerHTML = "";
+                setHidden("portal-regno", "");
+                setHidden("portal-producto", "");
+                setHidden("portal-droga", "");
+                setHidden("portal-presentacion", "");
+                setHidden("portal-medicamento-json", "");
+                setHidden("portal-medicamentos-json", "");
+                return;
+            }
+
+            const firstMedication = selectedMedications[0];
+            setHidden("portal-regno", firstMedication.regNo);
+            setHidden("portal-producto", firstMedication.nombreProducto);
+            setHidden("portal-droga", firstMedication.nombreDroga);
+            setHidden("portal-presentacion", firstMedication.presentacion);
+            setHidden("portal-medicamento-json", JSON.stringify(firstMedication));
+            setHidden("portal-medicamentos-json", JSON.stringify(selectedMedications));
+            selectedBox.innerHTML = `
+                <div class="portal-selected-title">Seleccionados ${selectedMedications.length}/${maxSelectedMedications}</div>
+                <div class="portal-selected-list">
+                    ${selectedMedications.map((item, index) => `
+                        <div class="portal-selected-item">
+                            <span>
+                                ${escapeHtml(item.nombreProducto || item.display || "Medicamento")}
+                                <small>${escapeHtml([item.nombreDroga, item.presentacion, item.regNo ? `RegNo ${item.regNo}` : ""].filter(Boolean).join(" · "))}</small>
+                            </span>
+                            <button type="button" class="portal-remove-med" data-index="${index}" aria-label="Quitar medicamento">×</button>
+                        </div>
+                    `).join("")}
+                </div>
+            `;
+            selectedBox.style.display = "block";
+        };
+        const formData = () => Object.fromEntries(new FormData(form).entries());
+        const renderMedication = (item, index) => `
+            <button type="button" class="portal-med-result" data-index="${index}">
+                <span>
+                    <strong>${escapeHtml(item.nombreProducto || item.display || "Medicamento")}</strong>
+                    <span>${escapeHtml([item.nombreDroga, item.presentacion].filter(Boolean).join(" · "))}</span>
+                </span>
+                <code>RegNo ${escapeHtml(item.regNo || "-")}</code>
+            </button>
+        `;
+
+        searchButton.addEventListener("click", async () => {
+            clearStatus();
+            lastMedicationResults = [];
+            results.textContent = "Buscando...";
+            const url = new URL(page.dataset.searchEndpoint, window.location.origin);
+            url.searchParams.set("q", searchInput.value);
+            url.searchParams.set("page", "1");
+
+            let response;
+            let data;
+            try {
+                response = await fetch(url, {headers: {"Accept": "application/json"}});
+            } catch (error) {
+                console.error(error);
+                results.textContent = "";
+                setStatus("No se pudo conectar con el buscador de vademécum. En desarrollo abrí el portal en http://127.0.0.1:8000/PoC-pacientes-portal/.", "error");
+                return;
+            }
+
+            try {
+                data = await response.json();
+            } catch (error) {
+                console.error(error);
+                results.textContent = "";
+                setStatus("El buscador de vademécum respondió en un formato inesperado.", "error");
+                return;
+            }
+
+            if (!response.ok || data.status !== "success") {
+                results.textContent = "";
+                setStatus(data.message || "No se pudo buscar el medicamento.", "error");
+                return;
+            }
+
+            lastMedicationResults = Array.isArray(data.items) ? data.items : [];
+            results.innerHTML = lastMedicationResults.length
+                ? lastMedicationResults.map(renderMedication).join("")
+                : "No se encontraron medicamentos.";
+        });
+
+        results.addEventListener("click", (event) => {
+            const button = event.target.closest(".portal-med-result");
+            if (!button) return;
+            const medication = lastMedicationResults[Number(button.dataset.index)];
+            if (!medication) return;
+            if (selectedMedications.length >= maxSelectedMedications) {
+                setStatus("Ya seleccionaste 10 medicamentos.", "error");
+                return;
+            }
+            const key = medicationKey(medication);
+            if (key && selectedMedications.some((item) => medicationKey(item) === key)) {
+                setStatus("Ese medicamento ya está seleccionado.", "error");
+                return;
+            }
+            selectedMedications.push(medication);
+            renderSelectedMedications();
+            clearStatus();
+        });
+
+        selectedBox.addEventListener("click", (event) => {
+            const button = event.target.closest(".portal-remove-med");
+            if (!button) return;
+            selectedMedications.splice(Number(button.dataset.index), 1);
+            renderSelectedMedications();
+            clearStatus();
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (!form.reportValidity()) return;
+            if (!selectedMedications.length || !document.getElementById("portal-regno").value) {
+                setStatus("Elegí al menos un medicamento del vademécum.", "error");
+                return;
+            }
+
+            clearStatus();
+            submitButton.disabled = true;
+            submitButton.textContent = "Validando...";
+
+            try {
+                const response = await fetch(page.dataset.validateEndpoint, {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": decodeURIComponent(getCookie("csrftoken")),
+                    },
+                    body: JSON.stringify(formData()),
+                });
+                const data = await response.json();
+                if (!response.ok || data.status !== "success") {
+                    setStatus(data.message || "No tenes Historia Clinica", "error");
+                    return;
+                }
+                setStatus(data.message || "Solicitud recibida. Queda pendiente de aprobacion medica.", "ok");
+            } catch (error) {
+                setStatus("No se pudo validar la Historia Clinica.", "error");
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = "Pedir receta";
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

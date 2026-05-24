@@ -32,6 +32,14 @@ QBI2_VADEMECUM_MIN_QUERY_LENGTH=2
 
 El Swagger de homologacion confirma que `GetMedicamento` recibe el texto de busqueda en el path y exige `numeroPagina` + `clienteAppId`.
 
+Nota operativa 2026-05-23:
+
+- El vademecum de Innovamed/Qbi2 responde `401` con `WWW-Authenticate: Bearer` cuando no recibe token.
+- Si el wrapper devuelve `provider_status=401`, el endpoint probablemente esta vivo: revisar primero que `QBI2_BEARER_TOKEN` este llegando al proceso Django.
+- En desarrollo local, `settings.py` carga `/home/eze/omar/.env.qbi2` automaticamente.
+- En Docker, el archivo `.env.qbi2` debe entrar como `env_file`; si no, el contenedor no ve el Bearer aunque el archivo exista en el host.
+- Para trabajar localmente sobre la aplicacion, dejar Docker solo para la base `nuevo_cardioprieto` y levantar Django con `runserver`; reconstruir imagenes de app/nginx recien al preparar QA.
+
 ## PoC de receta HML
 
 Comando seguro por defecto, solo imprime payload:

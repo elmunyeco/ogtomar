@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitudes de receta Qbi2 - Dr. Omar Prieto{% endblock %}
+
+{% block content %}
+<section class="solicitudes-page">
+    <div class="solicitudes-head">
+        <div>
+            <p>qbi2 receta poc</p>
+            <h1>Solicitudes de receta</h1>
+        </div>
+        <a href="{% url 'poc_recetas' %}">Volver a poc-recetas</a>
+    </div>
+
+    <nav class="solicitudes-tabs" aria-label="Estados">
+        <a class="{% if estado == 'pendiente' %}active{% endif %}" href="?estado=pendiente">Pendientes <span>{{ counts.pendiente }}</span></a>
+        <a class="{% if estado == 'emitida' %}active{% endif %}" href="?estado=emitida">Emitidas <span>{{ counts.emitida }}</span></a>
+        <a class="{% if estado == 'error_emision' %}active{% endif %}" href="?estado=error_emision">Errores <span>{{ counts.error_emision }}</span></a>
+        <a class="{% if estado == 'aprobada' %}active{% endif %}" href="?estado=aprobada">Aprobadas <span>{{ counts.aprobada }}</span></a>
+        <a class="{% if estado == 'rechazada' %}active{% endif %}" href="?estado=rechazada">Rechazadas <span>{{ counts.rechazada }}</span></a>
+        <a class="{% if estado == 'todas' %}active{% endif %}" href="?estado=todas">Todas <span>{{ counts.todas }}</span></a>
+    </nav>
+
+    {% if messages %}
+        <div class="solicitudes-messages">
+            {% for message in messages %}
+                <div class="solicitudes-message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="solicitudes-list">
+        {% for solicitud in solicitudes %}
+            <article class="solicitud-item">
+                <div class="solicitud-main">
+                    <div>
+                        <span class="solicitud-state estado-{{ solicitud.estado }}">{{ solicitud.get_estado_display }}</span>
+                        <h2>{{ solicitud.paciente.apellido }}, {{ solicitud.paciente.nombre }}</h2>
+                        <p>DNI {{ solicitud.paciente.numDoc }} · HC {{ solicitud.historia_clinica.id }} · {{ solicitud.created_at|date:"d/m/Y H:i" }}</p>
+                    </div>
+                    <strong>#{{ solicitud.id }}</strong>
+                </div>
+
+                <div class="solicitud-med">
+                    <div>
+                        <span>Medicamentos</span>
+                        {% for medicamento in solicitud.auditoria.medicamentos %}
+                            <div class="solicitud-med-line">
+                                <strong>{{ medicamento.nombreProducto|default:"Medicamento" }}</strong>
+                                <p>{{ medicamento.nombreDroga }}{% if medicamento.nombreDroga and medicamento.presentacion %} · {% endif %}{{ medicamento.presentacion }}</p>
+                                <code>RegNo {{ medicamento.regNo }}</code>
+                            </div>
+                        {% empty %}
+                            <div class="solicitud-med-line">
+                                <strong>{{ solicitud.medicamento_nombre_producto|default:"Medicamento" }}</strong>
+                                <p>{{ solicitud.medicamento_nombre_droga }}{% if solicitud.medicamento_nombre_droga and solicitud.medicamento_presentacion %} · {% endif %}{{ solicitud.medicamento_presentacion }}</p>
+                                <code>RegNo {{ solicitud.medicamento_reg_no }}</code>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {% if solicitud.auditoria.total_recetas %}
+                        <code>Receta {{ solicitud.auditoria.receta_orden }}/{{ solicitud.auditoria.total_recetas }}</code>
+                    {% endif %}
+                </div>
+
+                {% if solicitud.observacion_paciente %}
+                    <div class="solicitud-note">
+                        <span>Observación paciente</span>
+                        <p>{{ solicitud.observacion_paciente }}</p>
+                    </div>
+                {% endif %}
+
+                {% if solicitud.observacion_medico %}
+                    <div class="solicitud-note">
+                        <span>Observación médica</span>
+                        <p>{{ solicitud.observacion_medico }}</p>
+                    </div>
+                {% endif %}
+
+                {% if solicitud.diagnostico %}
+                    <div class="solicitud-note">
+                        <span>Diagnóstico</span>
+                        <p>{{ solicitud.diagnostico }}</p>
+                    </div>
+                {% endif %}
+
+                {% if solicitud.error_qbi2 %}
+                    <div class="solicitud-error">
+                        <span>Error Qbi2</span>
+                        <p>{{ solicitud.error_qbi2 }}</p>
+                    </div>
+                {% endif %}
+
+                {% if solicitud.qbi2_pdf_url %}
+                    <div class="solicitud-links">
+                        <a href="{{ solicitud.qbi2_pdf_url }}" target="_blank" rel="noopener">Abrir PDF</a>
+                        {% if solicitud.qbi2_id_receta %}
+                            <span>Receta {{ solicitud.qbi2_id_receta }}</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if solicitud.estado == estados.PENDIENTE %}
+                    <div class="solicitud-actions">
+                        <form method="post" action="{% url 'qbi2:aprobar_solicitud_receta' solicitud.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="/poc-recetas/solicitudes/?estado={{ estado }}">
+                            <label>
+                                <span>Diagnóstico obligatorio</span>
+                                <input type="text" name="diagnostico" value="{{ solicitud.diagnostico }}" placeholder="Ej: Hipertensión arterial" required>
+                            </label>
+                            <label>
+                                <span>Posología</span>
+                                <input type="text" name="posologia" value="Tomar segun indicacion medica.">
+                            </label>
+                            <input type="hidden" name="cantidad" value="1">
+                            <input type="hidden" name="tratamiento" value="0">
+                            <label>
+                                <span>Nota médica opcional</span>
+                                <input type="text" name="observacion_medico" placeholder="Ej: autorizado para emitir">
+                            </label>
+                            <button type="submit">Aprobar y emitir</button>
+                        </form>
+                        <form method="post" action="{% url 'qbi2:rechazar_solicitud_receta' solicitud.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="/poc-recetas/solicitudes/?estado={{ estado }}">
+                            <label>
+                                <span>Motivo de rechazo opcional</span>
+                                <input type="text" name="observacion_medico" placeholder="Ej: requiere consulta">
+                            </label>
+                            <button class="secondary" type="submit">Rechazar</button>
+                        </form>
+                    </div>
+                {% else %}
+                    <div class="solicitud-decision">
+                        <span>Decisión</span>
+                        <strong>{{ solicitud.fecha_decision|date:"d/m/Y H:i"|default:"Sin fecha" }}</strong>
+                        {% if solicitud.aprobado_por %}
+                            <p>{{ solicitud.aprobado_por }}</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </article>
+        {% empty %}
+            <div class="solicitudes-empty">
+                No hay solicitudes para este estado.
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="solicitudes-footer">
+        <span>Proof Of Concept</span>
+        <span>experimental</span>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .solicitudes-page {
+        margin: 0 auto;
+        max-width: 74rem;
+        padding: 1rem 0 3rem;
+    }
+    .solicitudes-head {
+        align-items: flex-start;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+    }
+    .solicitudes-head p {
+        color: #9a4035;
+        font-size: 0.75rem;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        margin: 0 0 0.25rem;
+        text-transform: uppercase;
+    }
+    .solicitudes-head h1 {
+        color: #1f2937;
+        font-size: 1.7rem;
+        font-weight: 900;
+        margin: 0;
+    }
+    .solicitudes-head a,
+    .solicitudes-tabs a,
+    .solicitud-actions button {
+        text-decoration: none;
+    }
+    .solicitudes-head a {
+        background: #fbf7f6;
+        border: 1px solid #e0d2cf;
+        border-radius: 999px;
+        color: #7a332b;
+        font-weight: 900;
+        padding: 0.5rem 0.9rem;
+    }
+    .solicitudes-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .solicitudes-tabs a {
+        background: #ffffff;
+        border: 1px solid #d1d5db;
+        border-radius: 999px;
+        color: #374151;
+        font-weight: 900;
+        padding: 0.45rem 0.75rem;
+    }
+    .solicitudes-tabs a.active {
+        background: #9a4035;
+        border-color: #9a4035;
+        color: #ffffff;
+    }
+    .solicitudes-tabs span {
+        opacity: 0.75;
+    }
+    .solicitudes-list {
+        display: grid;
+        gap: 1rem;
+    }
+    .solicitud-item {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 32px rgba(15, 23, 42, 0.06);
+        padding: 1rem;
+    }
+    .solicitud-main,
+    .solicitud-med,
+    .solicitud-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+    }
+    .solicitud-main {
+        align-items: flex-start;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 0.9rem;
+        padding-bottom: 0.85rem;
+    }
+    .solicitud-main h2 {
+        color: #1f2937;
+        font-size: 1.15rem;
+        font-weight: 900;
+        margin: 0.35rem 0 0.15rem;
+    }
+    .solicitud-main p,
+    .solicitud-med p,
+    .solicitud-note p,
+    .solicitud-error p,
+    .solicitud-decision p {
+        color: #6b7280;
+        margin: 0;
+    }
+    .solicitud-main > strong {
+        color: #9ca3af;
+        font-size: 0.9rem;
+    }
+    .solicitud-state {
+        border-radius: 999px;
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 900;
+        padding: 0.18rem 0.55rem;
+        text-transform: uppercase;
+    }
+    .estado-pendiente {
+        background: #fff7ed;
+        color: #9a3412;
+    }
+    .estado-aprobada,
+    .estado-emitida {
+        background: #ecfdf5;
+        color: #047857;
+    }
+    .estado-rechazada,
+    .estado-error_emision,
+    .estado-anulada {
+        background: #f3f4f6;
+        color: #4b5563;
+    }
+    .solicitud-med {
+        align-items: flex-start;
+        margin-bottom: 0.85rem;
+    }
+    .solicitud-med span,
+    .solicitud-note span,
+    .solicitud-error span,
+    .solicitud-decision span,
+    .solicitud-actions label span {
+        color: #6b7280;
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 900;
+        margin-bottom: 0.15rem;
+        text-transform: uppercase;
+    }
+    .solicitud-med strong {
+        color: #1f2937;
+        display: block;
+        font-size: 1rem;
+    }
+    .solicitud-med code {
+        background: #fbf7f6;
+        border: 1px solid #e0d2cf;
+        border-radius: 999px;
+        color: #7a332b;
+        flex: 0 0 auto;
+        font-weight: 900;
+        padding: 0.25rem 0.65rem;
+    }
+    .solicitud-note,
+    .solicitud-error,
+    .solicitud-decision {
+        background: #f9fafb;
+        border-radius: 0.45rem;
+        margin: 0.75rem 0;
+        padding: 0.7rem 0.8rem;
+    }
+    .solicitud-error {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+    }
+    .solicitud-error span,
+    .solicitud-error p {
+        color: #9a3412;
+    }
+    .solicitud-links {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin-top: 0.75rem;
+    }
+    .solicitud-links a {
+        background: #fbf7f6;
+        border: 1px solid #e0d2cf;
+        border-radius: 999px;
+        color: #7a332b;
+        font-weight: 900;
+        padding: 0.4rem 0.75rem;
+        text-decoration: none;
+    }
+    .solicitud-links span {
+        color: #6b7280;
+        font-weight: 800;
+    }
+    .solicitudes-messages {
+        display: grid;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .solicitudes-message {
+        border-radius: 0.45rem;
+        font-weight: 800;
+        padding: 0.75rem 0.9rem;
+    }
+    .solicitudes-message.error {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+    }
+    .solicitud-actions {
+        border-top: 1px solid #e5e7eb;
+        margin-top: 0.9rem;
+        padding-top: 0.9rem;
+    }
+    .solicitud-actions form {
+        display: flex;
+        flex: 1;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+    .solicitud-actions label {
+        flex: 1 1 13rem;
+    }
+    .solicitud-actions input {
+        border: 1px solid #d1d5db;
+        border-radius: 0.45rem;
+        min-height: 2.5rem;
+        padding: 0.45rem 0.65rem;
+        width: 100%;
+    }
+    .solicitud-actions button {
+        align-self: flex-end;
+        background: #9a4035;
+        border: 0;
+        border-radius: 999px;
+        color: #ffffff;
+        cursor: pointer;
+        font-weight: 900;
+        min-height: 2.5rem;
+        padding: 0 1rem;
+    }
+    .solicitud-actions button.secondary {
+        background: #6b7280;
+    }
+    .solicitudes-empty {
+        background: #f9fafb;
+        border: 1px dashed #d1d5db;
+        border-radius: 0.5rem;
+        color: #6b7280;
+        font-weight: 800;
+        padding: 1rem;
+        text-align: center;
+    }
+    .solicitudes-footer {
+        color: rgba(107, 114, 128, 0.6);
+        display: flex;
+        font-size: 0.72rem;
+        font-weight: 800;
+        justify-content: space-between;
+        margin-top: 1rem;
+        text-transform: lowercase;
+    }
+    @media (max-width: 900px) {
+        .solicitud-main,
+        .solicitud-med,
+        .solicitud-actions,
+        .solicitud-actions form {
+            flex-direction: column;
+        }
+        .solicitud-actions button {
+            align-self: flex-start;
+        }
+    }
+</style>
+{% endblock %}

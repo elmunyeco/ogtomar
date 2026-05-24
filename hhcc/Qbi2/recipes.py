@@ -30,6 +30,13 @@ def build_hml_receta_poc_payload(
     paciente_apellido: str = "Paciente",
     paciente_sexo: str = "M",
     paciente_fecha_nacimiento: str = "1980-01-01",
+    paciente_email: str = "paciente.prueba@example.com",
+    paciente_telefono: str = "1100000000",
+    paciente_localidad: str = "Monte Grande",
+    paciente_direccion: str = "Calle Falsa",
+    paciente_direccion_numero: str = "123",
+    paciente_codigo_postal: str = "1842",
+    paciente_provincia: str = "Buenos Aires",
     diagnostico: str = "Hipertension arterial",
     posologia: str = "Tomar 1 comprimido por dia segun indicacion medica.",
     cantidad: int = 1,
@@ -83,16 +90,16 @@ def build_hml_receta_poc_payload(
             "nroDoc": patient_doc,
             "sexo": paciente_sexo,
             "fechaNacimiento": paciente_fecha_nacimiento,
-            "email": "paciente.prueba@example.com",
-            "telefono": "1100000000",
-            "localidad": "Monte Grande",
-            "provincia": "Buenos Aires",
+            "email": paciente_email,
+            "telefono": paciente_telefono,
+            "localidad": paciente_localidad,
+            "provincia": paciente_provincia,
             "domicilio": {
-                "calle": "Calle Falsa",
-                "numero": "123",
-                "codigoPostal": "1842",
-                "localidad": "Monte Grande",
-                "provincia": "Buenos Aires",
+                "calle": paciente_direccion,
+                "numero": paciente_direccion_numero,
+                "codigoPostal": paciente_codigo_postal,
+                "localidad": paciente_localidad,
+                "provincia": paciente_provincia,
                 "pais": "Argentina",
             },
             "ocultarPaciente": False,
@@ -134,6 +141,75 @@ def build_hml_receta_poc_payload(
             },
         },
     }
+
+
+def build_receta_payload_from_solicitud(
+    solicitud,
+    *,
+    diagnostico: str,
+    posologia: str = "Tomar segun indicacion medica.",
+    cantidad: int = 1,
+    tratamiento: int = 0,
+) -> dict[str, Any]:
+    paciente = solicitud.paciente
+    payload = build_hml_receta_poc_payload(
+        reg_no=solicitud.medicamento_reg_no,
+        nombre_producto=solicitud.medicamento_nombre_producto,
+        nombre_droga=solicitud.medicamento_nombre_droga,
+        presentacion=solicitud.medicamento_presentacion,
+        nro_doc=paciente.numDoc,
+        paciente_nombre=paciente.nombre,
+        paciente_apellido=paciente.apellido,
+        paciente_sexo=_qbi2_patient_sex(paciente.sexo),
+        paciente_fecha_nacimiento=_format_qbi2_date(paciente.fechaNac) or "1980-01-01",
+        paciente_email=paciente.mail or "paciente.prueba@example.com",
+        paciente_telefono=paciente.celular or paciente.telefono or "1100000000",
+        paciente_localidad=paciente.localidad or "Monte Grande",
+        paciente_direccion=_patient_street(paciente.direccion) or "Calle Falsa",
+        paciente_direccion_numero=_patient_street_number(paciente.direccion) or "123",
+        diagnostico=diagnostico,
+        posologia=posologia,
+        cantidad=cantidad,
+        tratamiento=tratamiento,
+    )
+    medicamentos = _medicamentos_from_solicitud(solicitud)
+    if medicamentos:
+        payload["medicamentos"] = [
+            {
+                "nombreProducto": item.get("nombreProducto", ""),
+                "nombreDroga": item.get("nombreDroga", ""),
+                "presentacion": item.get("presentacion", ""),
+                "cantidad": cantidad,
+                "permiteSustitucion": "",
+                "regNo": item.get("regNo", ""),
+                "tratamiento": tratamiento,
+                "diagnostico": diagnostico,
+                "posologia": posologia,
+                "observaciones": "PoC HML",
+                "forzarDuplicado": False,
+            }
+            for item in medicamentos[:2]
+            if (item.get("regNo") or "").strip()
+        ]
+    return payload
+
+
+def _medicamentos_from_solicitud(solicitud) -> list[dict[str, Any]]:
+    auditoria = solicitud.auditoria if isinstance(solicitud.auditoria, dict) else {}
+    medicamentos = auditoria.get("medicamentos")
+    if isinstance(medicamentos, list):
+        normalized = [item for item in medicamentos if isinstance(item, dict)]
+        if normalized:
+            return normalized
+
+    return [
+        {
+            "regNo": solicitud.medicamento_reg_no,
+            "nombreProducto": solicitud.medicamento_nombre_producto,
+            "nombreDroga": solicitud.medicamento_nombre_droga,
+            "presentacion": solicitud.medicamento_presentacion,
+        }
+    ]
 
 
 def emitir_receta_hml_poc(
@@ -182,3 +258,39 @@ def summarize_receta_response(response: Any) -> dict[str, Any]:
 def _fake_patient_doc() -> str:
     now = timezone.localtime(timezone.now()) if settings.USE_TZ else datetime.now()
     return "99" + now.strftime("%H%M%S")
+
+
+def _format_qbi2_date(value) -> str:
+    if not value:
+        return ""
+    return value.strftime("%Y-%m-%d")
+
+
+def _qbi2_patient_sex(value: str) -> str:
+    if value == "H":
+        return "M"
+    if value == "M":
+        return "F"
+    if value in {"F", "X"}:
+        return value
+    return "M"
+
+
+def _patient_street(value: str | None) -> str:
+    value = (value or "").strip()
+    if not value:
+        return ""
+    parts = value.rsplit(" ", 1)
+    if len(parts) == 2 and parts[1].isdigit():
+        return parts[0]
+    return value
+
+
+def _patient_street_number(value: str | None) -> str:
+    value = (value or "").strip()
+    if not value:
+        return ""
+    parts = value.rsplit(" ", 1)
+    if len(parts) == 2 and parts[1].isdigit():
+        return parts[1]
+    return ""
