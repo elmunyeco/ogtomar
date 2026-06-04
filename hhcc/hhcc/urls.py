@@ -14,8 +14,10 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('main.urls')),
@@ -24,3 +26,6 @@ urlpatterns = [
     path('ecostress/', include('ecostress.urls')),
     path('mmii/', include('mmii.urls')),
 ]
+
+if settings.ENABLE_QBI2_POC:
+    urlpatterns.insert(1, path('qbi2-poc/', include(('Qbi2.urls', 'qbi2_poc'), namespace='qbi2_poc')))

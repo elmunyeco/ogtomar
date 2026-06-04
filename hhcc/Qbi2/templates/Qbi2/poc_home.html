@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}QBI2 PoC - Dr. Omar Prieto{% endblock %}
+
+{% block content %}
+<section class="global-search-page has-results">
+    <div class="global-search-watermark" aria-hidden="true"></div>
+    <div class="global-search-shell">
+        <div class="global-search-header">
+            <div>
+                <h1>QBI2 PoC</h1>
+                <p>Apéndice experimental aislado de historias clínicas. Comparte base de datos, pero sus pantallas y APIs viven bajo este prefijo.</p>
+            </div>
+        </div>
+
+        <div class="global-search-results">
+            <a class="global-search-card" href="{% url 'qbi2_poc:medicamentos_directo' %}">
+                <span>Medicamentos</span>
+                <strong>Buscador directo</strong>
+                <p>Consulta QBI2 sin cache.</p>
+            </a>
+            <a class="global-search-card" href="{% url 'qbi2_poc:medicamentos_cache' %}">
+                <span>Medicamentos</span>
+                <strong>Buscador con cache</strong>
+                <p>Prueba la cache persistente de vademécum.</p>
+            </a>
+            <a class="global-search-card" href="{% url 'qbi2_poc:paciente_receta_nueva' %}">
+                <span>Paciente</span>
+                <strong>Pedir receta</strong>
+                <p>Portal público de solicitud.</p>
+            </a>
+            <a class="global-search-card" href="{% url 'qbi2_poc:medico_solicitudes' %}">
+                <span>Médico</span>
+                <strong>Solicitudes</strong>
+                <p>Bandeja para aprobar o rechazar.</p>
+            </a>
+            <a class="global-search-card" href="{% url 'qbi2_poc:lab_receta' %}">
+                <span>Lab</span>
+                <strong>Receta HML</strong>
+                <p>Payload técnico de emisión.</p>
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}
