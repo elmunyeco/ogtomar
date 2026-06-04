@@ -52,7 +52,7 @@ INSTALLED_APPS = [
 ]
 
 if ENABLE_QBI2_POC:
-    INSTALLED_APPS.append('Qbi2')
+    INSTALLED_APPS.append('Qbi2.apps.Qbi2Config')
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',

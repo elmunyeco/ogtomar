@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("Qbi2", "0001_initial"),
+        ("qbi2", "0001_initial"),
         ("main", "0005_global_search_trigrams"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
