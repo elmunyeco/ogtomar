@@ -57,6 +57,9 @@ class Qbi2Client:
     def post(self, path: str, payload: dict[str, Any] | None = None) -> Any:
         return self._request("POST", path, payload=payload)
 
+    def delete(self, path: str, payload: dict[str, Any] | None = None) -> Any:
+        return self._request("DELETE", path, payload=payload)
+
     def _request(
         self,
         method: str,
@@ -118,4 +121,3 @@ class Qbi2Client:
 
     def _safe_url(self, url: str) -> str:
         return url.split("?")[0]
-

@@ -10,6 +10,7 @@
 - El sistema productivo/local operativo vive en `~/omar`.
 - Las decisiones de arquitectura y los cambios de codigo deben partir de la implementacion real de `~/omar/hhcc`.
 - Si hace falta contexto historico, validacion de criterios o evidencia visual/funcional, consultar `~/omar-codex`.
+- El arbol `~/omar-codex/hhcc` es un snapshot legado; no se usa como fuente de codigo ni de despliegue.
 - No reabrir decisiones ya consolidadas sin una razon tecnica o funcional concreta.
 
 ## Resumen del sistema

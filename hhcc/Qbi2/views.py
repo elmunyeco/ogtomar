@@ -23,7 +23,12 @@ from .recipes import (
     emitir_receta_payload,
     summarize_receta_response,
 )
-from .services import VademecumService
+from .services import DiagnosticoService, FinanciadorService, PracticaService, VademecumService
+from .spontaneous import (
+    anular_documento_hash,
+    build_spontaneous_payload,
+    emit_spontaneous_payload,
+)
 from .vademecum_cache import CachedVademecumService
 
 
@@ -61,6 +66,18 @@ def vademecum_legacy(request):
 def receta_poc_page(request):
     payload = build_hml_receta_poc_payload(nro_doc="99999999")
     return render(request, "Qbi2/receta_poc.html", {"payload": payload})
+
+
+@ensure_csrf_cookie
+def espontanea_poc_page(request):
+    return render(
+        request,
+        "Qbi2/espontanea_poc.html",
+        {
+            "client_app_id": getattr(settings, "QBI2_CLIENT_APP_ID", ""),
+            "base_url": getattr(settings, "QBI2_BASE_URL", ""),
+        },
+    )
 
 
 @ensure_csrf_cookie
@@ -202,6 +219,142 @@ def buscar_vademecum_legacy(request):
 @require_GET
 def buscar_vademecum_portal(request):
     return buscar_vademecum_legacy(request)
+
+
+@require_GET
+def espontanea_catalogo_api(request, catalogo):
+    query = request.GET.get("q", "")
+    page = _positive_int(request.GET.get("page"), default=1)
+    try:
+        if catalogo == "medicamentos":
+            result = VademecumService().buscar(
+                query,
+                page=page,
+                extra_params=_qbi2_prefixed_params(request),
+            )
+        elif catalogo == "diagnosticos":
+            result = DiagnosticoService().buscar(
+                query,
+                extra_params=_qbi2_prefixed_params(request),
+            )
+        elif catalogo == "financiadores":
+            result = FinanciadorService().buscar(extra_params=_qbi2_prefixed_params(request))
+        elif catalogo == "practicas":
+            result = PracticaService().buscar(
+                query,
+                page=page,
+                tipo=request.GET.get("tipo", ""),
+                categoria=request.GET.get("categoria", ""),
+                extra_params=_qbi2_prefixed_params(request),
+            )
+        else:
+            return JsonResponse({"status": "error", "message": "Catalogo no soportado."}, status=404)
+    except ValidationError as exc:
+        return JsonResponse({"status": "error", "message": "; ".join(exc.messages)}, status=400)
+    except Qbi2ConfigurationError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
+    except Qbi2HTTPError as exc:
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": str(exc),
+                "provider_status": exc.status_code,
+                "provider_payload": exc.payload,
+            },
+            status=502,
+        )
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "catalogo": catalogo,
+            "count": len(result.get("items", []) or []),
+            "items": result.get("items", []),
+            "pageInfo": result.get("page_info"),
+            "raw": result.get("raw"),
+        }
+    )
+
+
+@csrf_protect
+@require_POST
+def espontanea_preview_api(request):
+    data_or_response = _json_body(request)
+    if isinstance(data_or_response, JsonResponse):
+        return data_or_response
+    operation = data_or_response.get("operation") or "receta"
+    try:
+        endpoint, payload = build_spontaneous_payload(data_or_response, operation)
+    except (TypeError, ValueError) as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+    return JsonResponse({"status": "success", "operation": operation, "endpoint": endpoint, "payload": payload})
+
+
+@csrf_protect
+@require_POST
+def espontanea_emitir_api(request):
+    data_or_response = _json_body(request)
+    if isinstance(data_or_response, JsonResponse):
+        return data_or_response
+    operation = data_or_response.get("operation") or "receta"
+    try:
+        result = emit_spontaneous_payload(data_or_response, operation)
+    except (TypeError, ValueError) as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+    except Qbi2ConfigurationError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
+    except Qbi2HTTPError as exc:
+        endpoint, payload = build_spontaneous_payload(data_or_response, operation)
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": str(exc),
+                "operation": operation,
+                "endpoint": endpoint,
+                "payload": payload,
+                "provider_status": exc.status_code,
+                "provider_payload": exc.payload,
+            },
+            status=502,
+        )
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "operation": result.operation,
+            "endpoint": result.endpoint,
+            "payload": result.payload,
+            "summary": result.summary,
+            "response": result.response,
+        }
+    )
+
+
+@csrf_protect
+@require_POST
+def espontanea_anular_api(request):
+    data_or_response = _json_body(request)
+    if isinstance(data_or_response, JsonResponse):
+        return data_or_response
+    hash_id = data_or_response.get("hash") or data_or_response.get("id") or ""
+    operation = data_or_response.get("operation") or "receta"
+    try:
+        response = anular_documento_hash(hash_id, operation)
+    except ValueError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+    except Qbi2ConfigurationError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
+    except Qbi2HTTPError as exc:
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": str(exc),
+                "provider_status": exc.status_code,
+                "provider_payload": exc.payload,
+            },
+            status=502,
+        )
+    return JsonResponse({"status": "success", "response": response})
 
 
 @csrf_protect
@@ -392,6 +545,24 @@ def _parse_extra_params(raw: str) -> dict[str, Any] | JsonResponse:
             status=400,
         )
     return parsed
+
+
+def _qbi2_prefixed_params(request) -> dict[str, Any]:
+    return {
+        key.removeprefix("qbi2_"): value
+        for key, value in request.GET.items()
+        if key.startswith("qbi2_") and value not in ("", None)
+    }
+
+
+def _json_body(request) -> dict[str, Any] | JsonResponse:
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError as exc:
+        return JsonResponse({"status": "error", "message": f"JSON invalido: {exc}"}, status=400)
+    if not isinstance(data, dict):
+        return JsonResponse({"status": "error", "message": "El cuerpo debe ser un objeto JSON."}, status=400)
+    return data
 
 
 def _selected_medications_from_portal_data(data):

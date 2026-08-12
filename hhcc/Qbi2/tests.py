@@ -10,9 +10,15 @@ from django.utils import timezone
 
 from Qbi2 import views
 from Qbi2.cache import MySQLCache, hash_key
+from Qbi2.client import Qbi2HTTPError
 from Qbi2.models import Qbi2CacheEntry, SolicitudReceta
 from Qbi2.portal import normalize_document
 from Qbi2.recipes import RecetaPocResult
+from Qbi2.spontaneous import (
+    SpontaneousPocResult,
+    build_spontaneous_payload,
+    summarize_document_response,
+)
 from Qbi2.vademecum_cache import CachedVademecumService, VademecumCachePolicy
 from main.models import HistoriaClinica, Paciente, TipoDocumento
 
@@ -265,8 +271,12 @@ class Qbi2PocRoutingTests(TestCase):
             "/qbi2-poc/paciente/recetas/nueva/": "qbi2_poc:paciente_receta_nueva",
             "/qbi2-poc/medico/solicitudes/": "qbi2_poc:medico_solicitudes",
             "/qbi2-poc/lab/receta/": "qbi2_poc:lab_receta",
+            "/qbi2-poc/lab/rcta-espontanea/": "qbi2_poc:lab_espontanea",
             "/qbi2-poc/api/medicamentos/directo/": "qbi2_poc:api_medicamentos_directo",
             "/qbi2-poc/api/medicamentos/cache/": "qbi2_poc:api_medicamentos_cache",
+            "/qbi2-poc/api/lab/espontanea/preview/": "qbi2_poc:api_lab_espontanea_preview",
+            "/qbi2-poc/api/lab/espontanea/emitir/": "qbi2_poc:api_lab_espontanea_emitir",
+            "/qbi2-poc/api/lab/espontanea/anular/": "qbi2_poc:api_lab_espontanea_anular",
         }
 
         for path, view_name in expected.items():
@@ -320,6 +330,140 @@ class RecetaPortalViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Solicitudes de receta", response.content)
         self.assertIn(b"No hay solicitudes", response.content)
+
+
+class EspontaneaPocTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="espontanea", password="test")
+        self.client.force_login(self.user)
+
+    def test_page_renders_direct_medical_request_form(self):
+        request = RequestFactory().get("/qbi2-poc/lab/rcta-espontanea/")
+        request.user = self.user
+
+        response = views.espontanea_poc_page(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Prueba piloto Pedido espont", response.content)
+        self.assertIn(b"Receta", response.content)
+        self.assertIn("Práctica".encode(), response.content)
+
+    def test_receta_payload_uses_catalog_identifiers(self):
+        endpoint, payload = build_spontaneous_payload(
+            {
+                "regNo": "34959",
+                "nombreProducto": "LOTRIAL",
+                "nombreDroga": "enalapril",
+                "presentacion": "10 mg comp.x 30",
+                "cantidad": "2",
+                "diagnostico": "Hipertension arterial",
+                "codigoDiagnostico": "I10",
+            },
+            "receta",
+        )
+
+        self.assertEqual(endpoint, "/apirecipe/Receta")
+        self.assertEqual(payload["medicamentos"][0]["regNo"], "34959")
+        self.assertEqual(payload["medicamentos"][0]["codigoDiagnostico"], "I10")
+
+    def test_practica_payload_keeps_qbi2_id_and_snomed_separate(self):
+        endpoint, payload = build_spontaneous_payload(
+            {
+                "practicaId": "42",
+                "practicaNombre": "Ecocardiograma Doppler",
+                "practicaCodSnomed": "40701008",
+                "practicaCodigoPropio": "ECO-01",
+                "practicaCantidad": "1",
+                "diagnostico": "Control cardiologico",
+            },
+            "practica",
+        )
+
+        item = payload["prescripcion"][0]
+        self.assertEqual(endpoint, "/apirecipe/prescribirPractica")
+        self.assertEqual(item["id"], 42)
+        self.assertEqual(item["codSnomed"], "40701008")
+        self.assertEqual(item["codigo"], "ECO-01")
+
+    @patch("Qbi2.views.emit_spontaneous_payload")
+    def test_emit_api_returns_document_summary_and_provider_response(self, emit):
+        emit.return_value = SpontaneousPocResult(
+            operation="receta",
+            endpoint="/apirecipe/Receta",
+            payload={"medicamentos": [{"regNo": "34959"}]},
+            response={
+                "recetas": [{"id": "hash-1", "idReceta": "100", "s3Link": "https://example.invalid/receta.pdf"}],
+                "errores": [],
+            },
+            summary={"id": "hash-1", "idReceta": "100", "s3Link": "https://example.invalid/receta.pdf"},
+        )
+
+        response = self.client.post(
+            "/qbi2-poc/api/lab/espontanea/emitir/",
+            data=json.dumps({"operation": "receta", "regNo": "34959"}),
+            content_type="application/json",
+        )
+
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["summary"]["id"], "hash-1")
+        self.assertEqual(data["response"]["recetas"][0]["idReceta"], "100")
+
+    @patch("Qbi2.views.emit_spontaneous_payload")
+    def test_emit_api_preserves_exact_qbi2_error_payload(self, emit):
+        emit.side_effect = Qbi2HTTPError(
+            "QBI2 devolvio un error HTTP.",
+            status_code=400,
+            payload={"errores": [{"error": "QBI136", "mensaje": "Dato invalido"}]},
+        )
+
+        response = self.client.post(
+            "/qbi2-poc/api/lab/espontanea/emitir/",
+            data=json.dumps({"operation": "receta", "regNo": "34959"}),
+            content_type="application/json",
+        )
+
+        data = response.json()
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(data["provider_status"], 400)
+        self.assertEqual(data["provider_payload"]["errores"][0]["error"], "QBI136")
+
+    @patch("Qbi2.views.anular_documento_hash")
+    def test_anular_api_uses_hash_and_operation(self, anular):
+        anular.return_value = {"ok": True}
+
+        response = self.client.post(
+            "/qbi2-poc/api/lab/espontanea/anular/",
+            data=json.dumps({"operation": "practica", "hash": "hash-practica"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        anular.assert_called_once_with("hash-practica", "practica")
+
+    def test_anular_rejects_missing_hash(self):
+        response = self.client.post(
+            "/qbi2-poc/api/lab/espontanea/anular/",
+            data=json.dumps({"operation": "receta"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("hash QBI2 es obligatorio", response.json()["message"])
+
+    def test_summary_distinguishes_document_hash_from_prescription_number(self):
+        summary = summarize_document_response(
+            {
+                "prescripciones": [
+                    {"id": "hash-practica", "numeroPrescripcion": "P-100", "verificador": "https://example.invalid/verificar"}
+                ],
+                "response": [{"status": "OK"}],
+            },
+            operation="practica",
+        )
+
+        self.assertEqual(summary["id"], "hash-practica")
+        self.assertEqual(summary["numeroPrescripcion"], "P-100")
 
 
 class PacientesPortalTests(TestCase):

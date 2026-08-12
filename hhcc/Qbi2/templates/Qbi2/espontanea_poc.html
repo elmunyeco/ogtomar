@@ -1,0 +1,576 @@
+{% extends "base.html" %}
+
+{% block title %}Prueba piloto Pedido espontáneo QBI2 - Dr. Omar Prieto{% endblock %}
+
+{% block content %}
+<section
+    class="global-search-page qbi2-spont-page has-results"
+    data-med-endpoint="{% url 'qbi2_poc:api_lab_espontanea_catalogo' 'medicamentos' %}"
+    data-dx-endpoint="{% url 'qbi2_poc:api_lab_espontanea_catalogo' 'diagnosticos' %}"
+    data-fin-endpoint="{% url 'qbi2_poc:api_lab_espontanea_catalogo' 'financiadores' %}"
+    data-prac-endpoint="{% url 'qbi2_poc:api_lab_espontanea_catalogo' 'practicas' %}"
+    data-emit-endpoint="{% url 'qbi2_poc:api_lab_espontanea_emitir' %}"
+>
+    <div class="global-search-watermark" aria-hidden="true"></div>
+    <div class="global-search-shell qbi2-spont-shell">
+        <form id="spont-form" class="qbi2-spont-form">
+            <section class="qbi2-panel qbi2-document-type">
+                <h2>Tipo de pedido</h2>
+                <label class="qbi2-field">
+                    <span>Completar</span>
+                    <select name="operation" id="operation-select">
+                        <option value="receta" selected>Receta</option>
+                        <option value="practica">Práctica</option>
+                    </select>
+                </label>
+            </section>
+
+            <section class="qbi2-panel qbi2-operation qbi2-operation-receta">
+                <h2>Receta</h2>
+                <label class="qbi2-field qbi2-wide">
+                    <span>Buscar medicamento</span>
+                    <div class="qbi2-search-row">
+                        <input type="text" id="med-search" value="lotrial" placeholder="Producto, droga o presentación">
+                        <button type="button" data-search="medicamentos">Buscar medicamento</button>
+                    </div>
+                </label>
+                <div id="med-results" class="qbi2-results"></div>
+                <div class="qbi2-grid">
+                    <label class="qbi2-field"><span>RegNo</span><input name="regNo" value="34959"></label>
+                    <label class="qbi2-field"><span>Producto</span><input name="nombreProducto" value="LOTRIAL"></label>
+                    <label class="qbi2-field"><span>Droga</span><input name="nombreDroga" value="enalapril"></label>
+                    <label class="qbi2-field"><span>Presentación</span><input name="presentacion" value="10 mg comp.x 30"></label>
+                    <label class="qbi2-field"><span>Cantidad</span><input name="cantidad" type="number" min="1" value="1"></label>
+                    <label class="qbi2-field">
+                        <span>Tratamiento</span>
+                        <select name="tratamiento">
+                            <option value="0">Normal</option>
+                            <option value="1">Prolongado</option>
+                        </select>
+                    </label>
+                    <label class="qbi2-field">
+                        <span>Sustitución</span>
+                        <select name="permiteSustitucion">
+                            <option value="">Sin enviar</option>
+                            <option value="S">Genérico</option>
+                            <option value="N">No sustituir</option>
+                        </select>
+                    </label>
+                    <label class="qbi2-check"><input type="checkbox" name="forzarDuplicado"> Forzar duplicado </label>
+                    <label class="qbi2-field qbi2-wide"><span>Posología</span><input name="posologia" value="Tomar segun indicacion medica."></label>
+                    <label class="qbi2-field qbi2-wide"><span>Observación del ítem</span><input name="itemObservaciones" value=""></label>
+                </div>
+            </section>
+
+            <section class="qbi2-panel qbi2-operation qbi2-operation-practica hidden">
+                <h2>Práctica</h2>
+                <label class="qbi2-field qbi2-wide">
+                    <span>Buscar práctica</span>
+                    <div class="qbi2-search-row">
+                        <input type="text" id="prac-search" value="eco" placeholder="Nombre de práctica">
+                        <button type="button" data-search="practicas">Buscar práctica</button>
+                    </div>
+                </label>
+                <div class="qbi2-grid">
+                    <label class="qbi2-field"><span>Tipo</span><input id="prac-tipo" name="practicaTipoFiltro" value=""></label>
+                    <label class="qbi2-field"><span>Categoría</span><input id="prac-categoria" name="practicaCategoriaFiltro" value=""></label>
+                </div>
+                <div id="prac-results" class="qbi2-results"></div>
+                <div class="qbi2-grid">
+                    <label class="qbi2-field"><span>ID práctica</span><input name="practicaId" value=""></label>
+                    <label class="qbi2-field"><span>Nombre práctica</span><input name="practicaNombre" value=""></label>
+                    <label class="qbi2-field"><span>Código propio</span><input name="practicaCodigoPropio" value=""></label>
+                    <label class="qbi2-field"><span>SNOMED</span><input name="practicaCodSnomed" value=""></label>
+                    <label class="qbi2-field"><span>NBU</span><input name="practicaNbu" value=""></label>
+                    <label class="qbi2-field"><span>Categoría</span><input name="practicaCategoria" value=""></label>
+                    <label class="qbi2-field"><span>Cantidad</span><input name="practicaCantidad" type="number" min="1" value="1"></label>
+                    <label class="qbi2-field qbi2-wide"><span>Descripción libre</span><input name="practicaDescripcionLibre" value=""></label>
+                    <label class="qbi2-check"><input type="checkbox" name="confidencial"> Confidencial </label>
+                </div>
+            </section>
+
+            <section class="qbi2-panel">
+                <h2>Datos clínicos comunes</h2>
+                <div class="qbi2-grid">
+                    <label class="qbi2-field qbi2-wide">
+                        <span>Diagnóstico</span>
+                        <div class="qbi2-search-row">
+                            <input type="text" id="dx-search" value="hipertension" placeholder="Texto o CIE-10">
+                            <button type="button" data-search="diagnosticos">Buscar diagnóstico</button>
+                        </div>
+                    </label>
+                    <div id="dx-results" class="qbi2-results qbi2-wide"></div>
+                    <label class="qbi2-field qbi2-wide">
+                        <span>Texto diagnóstico</span>
+                        <input name="diagnostico" value="Hipertension arterial">
+                    </label>
+                    <label class="qbi2-field">
+                        <span>Código diagnóstico</span>
+                        <input name="codigoDiagnostico" value="">
+                    </label>
+                    <label class="qbi2-field">
+                        <span>Imprimir diagnóstico</span>
+                        <select name="imprimirDiagnostico">
+                            <option value="S">S</option>
+                            <option value="N">N</option>
+                            <option value="">Sin enviar</option>
+                        </select>
+                    </label>
+                    <label class="qbi2-field qbi2-wide">
+                        <span>Indicaciones generales</span>
+                        <input name="indicaciones" value="Control y seguimiento segun criterio medico.">
+                    </label>
+                    <label class="qbi2-field qbi2-wide">
+                        <span>Observaciones generales</span>
+                        <input name="observaciones" value="">
+                    </label>
+                </div>
+            </section>
+
+            <section class="qbi2-panel">
+                <h2>Paciente</h2>
+                <div class="qbi2-grid">
+                    <label class="qbi2-field"><span>Nombre</span><input name="pacienteNombre" value="Prueba"></label>
+                    <label class="qbi2-field"><span>Apellido</span><input name="pacienteApellido" value="Paciente"></label>
+                    <label class="qbi2-field"><span>Tipo doc</span><input name="pacienteTipoDoc" value="DNI"></label>
+                    <label class="qbi2-field"><span>Nro doc</span><input name="pacienteNroDoc" value="99999999"></label>
+                    <label class="qbi2-field">
+                        <span>Sexo</span>
+                        <select name="pacienteSexo"><option>M</option><option>F</option><option>X</option><option>O</option></select>
+                    </label>
+                    <label class="qbi2-field"><span>Fecha nacimiento</span><input name="pacienteFechaNacimiento" type="date" value="1980-01-01"></label>
+                    <label class="qbi2-field"><span>CUIL</span><input name="pacienteCuil" value=""></label>
+                    <label class="qbi2-field"><span>Email</span><input name="pacienteEmail" value="paciente.prueba@example.com"></label>
+                    <label class="qbi2-field"><span>Teléfono</span><input name="pacienteTelefono" value="1100000000"></label>
+                    <label class="qbi2-field"><span>Localidad</span><input name="pacienteLocalidad" value="Monte Grande"></label>
+                    <label class="qbi2-field"><span>Provincia</span><input name="pacienteProvincia" value="Buenos Aires"></label>
+                    <label class="qbi2-check"><input type="checkbox" name="ocultarPaciente"> Ocultar paciente </label>
+                    <label class="qbi2-field"><span>Calle</span><input name="pacienteCalle" value="Calle Falsa"></label>
+                    <label class="qbi2-field"><span>Número</span><input name="pacienteNumero" value="123"></label>
+                    <label class="qbi2-field"><span>CP</span><input name="pacienteCodigoPostal" value="1842"></label>
+                    <label class="qbi2-field"><span>País</span><input name="pacientePais" value="AR"></label>
+                </div>
+            </section>
+
+            <section class="qbi2-panel">
+                <h2>Cobertura</h2>
+                <label class="qbi2-field qbi2-wide">
+                    <span>Buscar financiador</span>
+                    <div class="qbi2-search-row">
+                        <input type="text" id="fin-search" value="" placeholder="Filtra localmente la respuesta">
+                        <button type="button" data-search="financiadores">Traer financiadores</button>
+                    </div>
+                </label>
+                <div id="fin-results" class="qbi2-results"></div>
+                <div id="plan-results" class="qbi2-results qbi2-plans"></div>
+                <div class="qbi2-grid">
+                    <label class="qbi2-field"><span>ID financiador</span><input name="idFinanciador" value=""></label>
+                    <label class="qbi2-field"><span>Nro financiador</span><input name="nroFinanciador" value=""></label>
+                    <label class="qbi2-field"><span>Plan ID</span><input name="planId" value=""></label>
+                    <label class="qbi2-field"><span>Plan</span><input name="plan" value=""></label>
+                    <label class="qbi2-field"><span>Nro afiliado</span><input name="afiliadoNumero" value=""></label>
+                    <label class="qbi2-field"><span>DNI titular</span><input name="dniTitular" value=""></label>
+                </div>
+            </section>
+
+            <section class="qbi2-panel">
+                <h2>Médico y lugar de atención</h2>
+                <div class="qbi2-grid">
+                    <label class="qbi2-field"><span>Nombre médico</span><input name="medicoNombre" value="Prueba"></label>
+                    <label class="qbi2-field"><span>Apellido médico</span><input name="medicoApellido" value="Medico"></label>
+                    <label class="qbi2-field"><span>DNI médico</span><input name="medicoNroDoc" value="11111111"></label>
+                    <label class="qbi2-field"><span>Sexo médico</span><select name="medicoSexo"><option>M</option><option>F</option><option>X</option><option>O</option></select></label>
+                    <label class="qbi2-field"><span>Matrícula tipo</span><select name="medicoMatriculaTipo"><option>MN</option><option>MP</option></select></label>
+                    <label class="qbi2-field"><span>Matrícula número</span><input name="medicoMatriculaNumero" value="123456"></label>
+                    <label class="qbi2-field"><span>Provincia matrícula</span><input name="medicoMatriculaProvincia" value=""></label>
+                    <label class="qbi2-field"><span>Especialidad</span><input name="medicoEspecialidad" value="Cardiologia"></label>
+                    <label class="qbi2-field"><span>Profesión</span><input name="medicoProfesion" value="Medico"></label>
+                    <label class="qbi2-field"><span>CUIT</span><input name="medicoIdTributario" value="20111111112"></label>
+                    <label class="qbi2-field"><span>ID REFEPS</span><input name="medicoIdRefeps" value=""></label>
+                    <label class="qbi2-field"><span>Email médico</span><input name="medicoEmail" value="medico.prueba@example.com"></label>
+                    <label class="qbi2-field"><span>Consultorio</span><input name="consultorioNombre" value="Consultorio HML Prueba"></label>
+                    <label class="qbi2-field"><span>Calle consultorio</span><input name="consultorioCalle" value="Gral. Las Heras"></label>
+                    <label class="qbi2-field"><span>Número consultorio</span><input name="consultorioNumero" value="459"></label>
+                    <label class="qbi2-field"><span>Contacto consultorio</span><input name="consultorioContacto" value="1100000002"></label>
+                    <label class="qbi2-field"><span>Email consultorio</span><input name="consultorioEmail" value="consultorio.prueba@example.com"></label>
+                </div>
+            </section>
+
+            <section class="qbi2-panel qbi2-submit-panel">
+                <button type="button" id="emit-document">Emitir pedido</button>
+            </section>
+        </form>
+
+        <div id="qbi2-alert" class="global-search-alert hidden" role="alert"></div>
+
+        <div id="qbi2-summary" class="qbi2-summary hidden">
+            <div><span>Hash</span><strong data-field="id">-</strong></div>
+            <div><span>ID receta</span><strong data-field="idReceta">-</strong></div>
+            <div><span>Nro prescripción</span><strong data-field="numeroPrescripcion">-</strong></div>
+            <div><span>Estado</span><strong data-field="status">-</strong></div>
+        </div>
+        <div id="qbi2-links" class="qbi2-links hidden">
+            <a data-field="s3Link" href="#" target="_blank" rel="noopener">Abrir PDF</a>
+            <a data-field="verificador" href="#" target="_blank" rel="noopener">Verificador</a>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .qbi2-spont-shell {
+        max-width: 88rem;
+        padding-bottom: 2rem;
+    }
+    .qbi2-actions, .qbi2-search-row, .qbi2-links { display: flex; flex-wrap: wrap; gap: 0.65rem; }
+    .qbi2-actions button, .qbi2-search-row button, .qbi2-submit-panel button {
+        background: #9a4035; border: 0; border-radius: 999px; color: #fff; cursor: pointer;
+        font-weight: 800; padding: 0.7rem 1rem;
+    }
+    .qbi2-submit-panel {
+        align-items: center;
+        border-left-color: #15803d;
+        display: flex;
+        justify-content: flex-end;
+    }
+    .qbi2-submit-panel button {
+        min-width: 12rem;
+    }
+    .qbi2-actions button:disabled, .qbi2-search-row button:disabled, .qbi2-submit-panel button:disabled { cursor: wait; opacity: 0.65; }
+    .qbi2-spont-form {
+        display: grid;
+        gap: 1.25rem;
+    }
+    .qbi2-panel {
+        background: #fff;
+        border: 1px solid #dfe3e8;
+        border-left: 5px solid #9a4035;
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+        margin: 0 0 1.25rem;
+        padding: 1.1rem;
+    }
+    .qbi2-operation {
+        border-left-color: #2563eb;
+    }
+    .qbi2-document-type {
+        border-left-color: #7c3aed;
+    }
+    .qbi2-document-type .qbi2-field {
+        max-width: 22rem;
+    }
+    .qbi2-panel h2 {
+        align-items: center;
+        border-bottom: 1px solid #edf0f3;
+        color: #1f2937;
+        display: flex;
+        font-size: 1.05rem;
+        font-weight: 800;
+        gap: 0.55rem;
+        margin: -0.1rem 0 1rem;
+        padding-bottom: 0.75rem;
+    }
+    .qbi2-panel h2::before {
+        background: #9a4035;
+        border-radius: 999px;
+        content: "";
+        display: inline-block;
+        height: 0.65rem;
+        width: 0.65rem;
+    }
+    .qbi2-document-type h2::before { background: #7c3aed; }
+    .qbi2-operation h2::before { background: #2563eb; }
+    .qbi2-submit-panel::before {
+        display: none;
+    }
+    .qbi2-grid {
+        display: grid;
+        gap: 0.9rem 1rem;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .qbi2-field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .qbi2-wide { grid-column: 1 / -1; }
+    .qbi2-field span, .qbi2-check { color: #374151; font-size: 0.82rem; font-weight: 800; }
+    .qbi2-field input, .qbi2-field select, .qbi2-field textarea, .qbi2-search-row input {
+        background: #fff;
+        border: 1px solid #cfd6df; border-radius: 0.45rem; color: #1f2937; min-height: 2.55rem;
+        padding: 0.45rem 0.6rem; width: 100%;
+    }
+    .qbi2-field input:focus, .qbi2-field select:focus, .qbi2-field textarea:focus, .qbi2-search-row input:focus {
+        border-color: #9a4035;
+        box-shadow: 0 0 0 3px rgba(154, 64, 53, 0.14);
+        outline: 0;
+    }
+    .qbi2-search-row input { flex: 1 1 20rem; }
+    .qbi2-results {
+        background: #f9fafb;
+        border: 1px dashed #cfd6df;
+        border-radius: 8px;
+        display: grid;
+        gap: 0.45rem;
+        margin: 0.7rem 0 1rem;
+        min-height: 2.65rem;
+        padding: 0.65rem;
+    }
+    .qbi2-result {
+        align-items: flex-start; background: #fff; border: 1px solid #e5e7eb; border-radius: 0.45rem;
+        cursor: pointer; display: flex; gap: 0.8rem; justify-content: space-between; padding: 0.75rem;
+        text-align: left;
+    }
+    .qbi2-result strong { color: #1f2937; display: block; }
+    .qbi2-result span { color: #6b7280; display: block; font-size: 0.86rem; }
+    .qbi2-result code {
+        background: #fbf7f6; border: 1px solid #e0d2cf; border-radius: 999px; color: #7a332b;
+        font-size: 0.76rem; font-weight: 800; padding: 0.22rem 0.55rem;
+    }
+    .qbi2-summary {
+        background: #f8fafc;
+        border: 1px solid #dfe3e8;
+        border-radius: 8px;
+        display: grid;
+        gap: 0.8rem;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin: 1rem 0;
+        padding: 0.9rem;
+    }
+    .qbi2-summary div { border-left: 3px solid #9a4035; padding: 0.25rem 0 0.25rem 0.65rem; }
+    .qbi2-summary span { color: #6b7280; display: block; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; }
+    .qbi2-summary strong { color: #1f2937; font-size: 1rem; overflow-wrap: anywhere; }
+    .qbi2-links a {
+        background: #fbf7f6; border: 1px solid #e0d2cf; border-radius: 999px; color: #7a332b;
+        font-size: 0.82rem; font-weight: 800; padding: 0.45rem 0.8rem; text-decoration: none;
+    }
+    #qbi2-alert {
+        white-space: pre-wrap;
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 1100px) { .qbi2-grid, .qbi2-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 700px) {
+        .qbi2-search-row, .qbi2-actions { flex-direction: column; }
+        .qbi2-grid, .qbi2-summary { grid-template-columns: 1fr; }
+        .qbi2-panel { padding: 0.9rem; }
+        .qbi2-submit-panel { justify-content: stretch; }
+        .qbi2-submit-panel button { width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const page = document.querySelector(".qbi2-spont-page");
+    const form = document.getElementById("spont-form");
+    const alertBox = document.getElementById("qbi2-alert");
+    const summaryBox = document.getElementById("qbi2-summary");
+    const linksBox = document.getElementById("qbi2-links");
+    const operationSelect = document.getElementById("operation-select");
+
+    const endpoints = {
+        medicamentos: page.dataset.medEndpoint,
+        diagnosticos: page.dataset.dxEndpoint,
+        financiadores: page.dataset.finEndpoint,
+        practicas: page.dataset.pracEndpoint,
+        emit: page.dataset.emitEndpoint,
+    };
+
+    const getCookie = (name) => document.cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith(name + "="))?.split("=")[1] || "";
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" }[char]));
+    const json = (value) => JSON.stringify(value, null, 2);
+    const input = (name) => form.elements[name];
+    const setInput = (name, value) => { if (input(name)) input(name).value = value ?? ""; };
+    const setField = (name, value) => { const node = document.querySelector(`[data-field="${name}"]`); if (node) node.textContent = value || "-"; };
+    const setLink = (name, value) => {
+        const node = document.querySelector(`a[data-field="${name}"]`);
+        if (!node) return;
+        node.href = value || "#";
+        node.classList.toggle("hidden", !value);
+    };
+    const exactQbi2Error = (data, fallback) => {
+        if (!data || typeof data !== "object") return fallback;
+        const parts = [];
+        if (data.provider_status) parts.push(`HTTP QBI2 ${data.provider_status}`);
+        if (data.message) parts.push(data.message);
+        if (data.provider_payload !== undefined && data.provider_payload !== null) {
+            parts.push(`Respuesta QBI2:\n${typeof data.provider_payload === "string" ? data.provider_payload : json(data.provider_payload)}`);
+        }
+        return parts.join("\n\n") || fallback;
+    };
+    const showError = (message, data = null) => {
+        alertBox.textContent = exactQbi2Error(data, message);
+        alertBox.classList.remove("hidden");
+    };
+    const hideError = () => alertBox.classList.add("hidden");
+    const formData = () => {
+        const data = Object.fromEntries(new FormData(form).entries());
+        form.querySelectorAll('input[type="checkbox"]').forEach((node) => {
+            data[node.name] = node.checked;
+        });
+        return data;
+    };
+
+    const setOperationVisibility = () => {
+        const operation = form.elements.operation.value;
+        document.querySelector(".qbi2-operation-receta").classList.toggle("hidden", operation !== "receta");
+        document.querySelector(".qbi2-operation-practica").classList.toggle("hidden", operation !== "practica");
+    };
+    operationSelect.addEventListener("change", setOperationVisibility);
+
+    const renderResult = (catalogo, item) => {
+        const label = item.display || item.nombreProducto || item.descdiagnostico || item.nombreComercial || item.practica || item.nombre || "Resultado";
+        const sub = [item.nombreDroga, item.presentacion, item.categoria, item.tipo, item.codSnomed ? `SNOMED ${item.codSnomed}` : "", item.nbu ? `NBU ${item.nbu}` : ""].filter(Boolean).join(" · ");
+        const code = item.regNo || item.coddiagnostico || item.idfinanciador || item.id || "";
+        return `
+            <button type="button" class="qbi2-result" data-catalogo="${catalogo}" data-item='${escapeHtml(JSON.stringify(item))}'>
+                <span><strong>${escapeHtml(label)}</strong><span>${escapeHtml(sub)}</span></span>
+                <code>${escapeHtml(code)}</code>
+            </button>
+        `;
+    };
+
+    const renderResults = (targetId, catalogo, items) => {
+        const target = document.getElementById(targetId);
+        target.innerHTML = (items || []).slice(0, 30).map((item) => renderResult(catalogo, item)).join("") || "Sin resultados.";
+    };
+
+    const searchCatalog = async (catalogo) => {
+        hideError();
+        const map = {
+            medicamentos: ["med-search", "med-results"],
+            diagnosticos: ["dx-search", "dx-results"],
+            financiadores: ["fin-search", "fin-results"],
+            practicas: ["prac-search", "prac-results"],
+        };
+        const [inputId, targetId] = map[catalogo];
+        const target = document.getElementById(targetId);
+        const query = document.getElementById(inputId).value;
+        target.textContent = "Buscando...";
+
+        const url = new URL(endpoints[catalogo], window.location.origin);
+        if (catalogo !== "financiadores") url.searchParams.set("q", query);
+        url.searchParams.set("page", "1");
+        if (catalogo === "practicas") {
+            url.searchParams.set("tipo", document.getElementById("prac-tipo").value);
+            url.searchParams.set("categoria", document.getElementById("prac-categoria").value);
+        }
+
+        try {
+            const response = await fetch(url, {headers: {"Accept": "application/json"}});
+            const data = await response.json();
+            if (!response.ok || data.status !== "success") {
+                showError(data.message || "No se pudo consultar QBI2.", data);
+                target.textContent = "";
+                return;
+            }
+            let items = data.items || [];
+            if (catalogo === "financiadores" && query.trim()) {
+                const needle = query.trim().toLowerCase();
+                items = items.filter((item) => JSON.stringify(item).toLowerCase().includes(needle));
+            }
+            renderResults(targetId, catalogo, items);
+        } catch (error) {
+            showError("No se pudo conectar con el endpoint interno.");
+            target.textContent = "";
+        }
+    };
+
+    document.querySelectorAll("[data-search]").forEach((button) => {
+        button.addEventListener("click", () => searchCatalog(button.dataset.search));
+    });
+
+    document.addEventListener("click", (event) => {
+        const button = event.target.closest(".qbi2-result");
+        if (!button) return;
+        const item = JSON.parse(button.dataset.item);
+        const catalogo = button.dataset.catalogo;
+        if (catalogo === "medicamentos") {
+            setInput("regNo", item.regNo);
+            setInput("nombreProducto", item.nombreProducto);
+            setInput("nombreDroga", item.nombreDroga);
+            setInput("presentacion", item.presentacion);
+        }
+        if (catalogo === "diagnosticos") {
+            setInput("codigoDiagnostico", item.coddiagnostico);
+            setInput("diagnostico", item.descdiagnostico || item.display);
+        }
+        if (catalogo === "practicas") {
+            setInput("practicaId", item.id);
+            setInput("practicaNombre", item.practica);
+            setInput("practicaCodSnomed", item.codSnomed);
+            setInput("practicaNbu", item.nbu);
+            setInput("practicaCategoria", item.categoria);
+        }
+        if (catalogo === "financiadores") {
+            setInput("idFinanciador", item.idfinanciador);
+            setInput("nroFinanciador", item.nrofinanciador);
+            const plans = item.planes || [];
+            document.getElementById("plan-results").innerHTML = plans.map((plan) => `
+                <button type="button" class="qbi2-result" data-plan='${escapeHtml(JSON.stringify(plan))}'>
+                    <span><strong>${escapeHtml(plan.nombre)}</strong></span><code>${escapeHtml(plan.id)}</code>
+                </button>
+            `).join("");
+        }
+    });
+
+    document.getElementById("plan-results").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-plan]");
+        if (!button) return;
+        const plan = JSON.parse(button.dataset.plan);
+        setInput("planId", plan.id);
+        setInput("plan", plan.nombre);
+    });
+
+    const postJson = async (url, body) => {
+        const response = await fetch(url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-CSRFToken": decodeURIComponent(getCookie("csrftoken")),
+            },
+            body: JSON.stringify(body),
+        });
+        const data = await response.json();
+        return {response, data};
+    };
+
+    document.getElementById("emit-document").addEventListener("click", async () => {
+        hideError();
+        const button = document.getElementById("emit-document");
+        if (!window.confirm("Esto emite un documento real en QBI2 HML con los datos completados. ¿Continuar?")) return;
+        button.disabled = true;
+        button.textContent = "Emitiendo...";
+        summaryBox.classList.add("hidden");
+        linksBox.classList.add("hidden");
+        try {
+            const {response, data} = await postJson(endpoints.emit, formData());
+            if (!response.ok || data.status !== "success") {
+                showError(data.message || "No se pudo emitir.", data);
+                return;
+            }
+            const summary = data.summary || {};
+            const qbi2Errores = data.response?.errores || summary.errores;
+            setField("id", summary.id);
+            setField("idReceta", summary.idReceta);
+            setField("numeroPrescripcion", summary.numeroPrescripcion);
+            setField("status", summary.status);
+            setLink("s3Link", summary.s3Link);
+            setLink("verificador", summary.verificador);
+            summaryBox.classList.remove("hidden");
+            linksBox.classList.remove("hidden");
+            if (qbi2Errores) {
+                showError("QBI2 devolvió errores.", {provider_payload: qbi2Errores});
+            }
+        } catch (error) {
+            showError("No se pudo conectar con el endpoint interno de emisión.");
+        } finally {
+            button.disabled = false;
+            button.textContent = "Emitir pedido";
+        }
+    });
+
+    setOperationVisibility();
+})();
+</script>
+{% endblock %}

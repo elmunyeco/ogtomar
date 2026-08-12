@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}QBI2 PoC - Dr. Omar Prieto{% endblock %}
+{% block title %}QBI2 Prueba piloto - Dr. Omar Prieto{% endblock %}
 
 {% block content %}
 <section class="global-search-page has-results">
@@ -8,7 +8,7 @@
     <div class="global-search-shell">
         <div class="global-search-header">
             <div>
-                <h1>QBI2 PoC</h1>
+                <h1>QBI2 Prueba piloto</h1>
                 <p>Apéndice experimental aislado de historias clínicas. Comparte base de datos, pero sus pantallas y APIs viven bajo este prefijo.</p>
             </div>
         </div>
@@ -38,6 +38,11 @@
                 <span>Lab</span>
                 <strong>Receta HML</strong>
                 <p>Payload técnico de emisión.</p>
+            </a>
+            <a class="global-search-card" href="{% url 'qbi2_poc:lab_espontanea' %}">
+                <span>Lab</span>
+                <strong>Pedido espontáneo</strong>
+                <p>Cliente de prueba piloto para receta o práctica directa del médico.</p>
             </a>
         </div>
     </div>
