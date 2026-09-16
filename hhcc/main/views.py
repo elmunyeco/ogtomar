@@ -376,12 +376,15 @@ def editar_paciente(request, pk):
     Vista para editar un paciente existente
     """
     paciente = get_object_or_404(Paciente, pk=pk)
+    recipe_context = request.GET.get("recipe_context") == "1" or request.POST.get("_recipe_context") == "1"
     
     if request.method == 'POST':
         form = PacienteForm(request.POST, instance=paciente)
         if form.is_valid():
             paciente = form.save()
             messages.success(request, f'Paciente {paciente.nombre} {paciente.apellido} actualizado exitosamente.')
+            if recipe_context:
+                return render(request, 'editar_paciente_confirmado.html', {'paciente': paciente})
             return redirect('editar_paciente', pk=paciente.pk)
         else:
             # Debug para ver los errores del formulario
@@ -400,7 +403,8 @@ def editar_paciente(request, pk):
     return render(request, 'editar_paciente.html', {
         'form': form, 
         'paciente': paciente,
-        'edad': edad
+        'edad': edad,
+        'recipe_context': recipe_context,
     })
 
 #@login_required

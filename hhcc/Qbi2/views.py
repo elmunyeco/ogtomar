@@ -42,9 +42,6 @@ from .spontaneous import (
 from main.models import Paciente
 
 
-ESPONTANEA_2_PATIENT_DOCUMENT = "23101065"
-
-
 @require_GET
 def qbi2_poc_home(request):
     return render(request, "Qbi2/poc_home.html")
@@ -246,7 +243,33 @@ def espontanea_catalogo_api(request, catalogo):
 @require_GET
 def espontanea_2_pacientes_api(request):
     """Search active HHCC patients and expose only fields needed by the recipe selector."""
+    raw_patient_id = str(request.GET.get("id") or "").strip()
     query = str(request.GET.get("q") or "").strip()
+    if raw_patient_id:
+        try:
+            patient_id = int(raw_patient_id)
+        except ValueError:
+            return JsonResponse({"status": "error", "message": "El ID de paciente no es válido."}, status=400)
+        patients = Paciente.objects.select_related("idTipoDoc").filter(pk=patient_id, deBaja=False)
+    else:
+        patients_or_response = _espontanea_2_search_patients(query)
+        if isinstance(patients_or_response, JsonResponse):
+            return patients_or_response
+        patients = patients_or_response
+
+    items = []
+    for patient_record in patients:
+        patient_data = _espontanea_2_patient_data(patient_record)
+        items.append(
+            {
+                "patient": patient_data["patient"],
+                "coverage": patient_data["coverage"],
+            }
+        )
+    return JsonResponse({"status": "success", "count": len(items), "items": items})
+
+
+def _espontanea_2_search_patients(query: str):
     compact_query = re.sub(r"[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+", "", query)
     if len(compact_query) < 3:
         return JsonResponse(
@@ -264,21 +287,11 @@ def espontanea_2_pacientes_api(request):
                 token_filter |= Q(pk=int(document_token))
         filters &= token_filter
 
-    patients = (
+    return (
         Paciente.objects.select_related("idTipoDoc")
         .filter(filters, deBaja=False)
         .order_by("apellido", "nombre", "id")[:12]
     )
-    items = []
-    for patient_record in patients:
-        patient_data = _espontanea_2_patient_data(patient_record)
-        items.append(
-            {
-                "patient": patient_data["patient"],
-                "coverage": patient_data["coverage"],
-            }
-        )
-    return JsonResponse({"status": "success", "count": len(items), "items": items})
 
 
 @csrf_protect
@@ -575,13 +588,6 @@ def rechazar_solicitud_receta(request, solicitud_id):
 
 def _espontanea_2_defaults(patient_record: Paciente | None = None) -> dict[str, Any]:
     """Professional defaults plus a patient profile read from the HHCC database."""
-    if patient_record is None:
-        patient_record = (
-            Paciente.objects.select_related("idTipoDoc")
-            .filter(numDoc=ESPONTANEA_2_PATIENT_DOCUMENT, apellido__iexact="Bergonzi", deBaja=False)
-            .order_by("id")
-            .first()
-        )
     patient_data = _espontanea_2_patient_data(patient_record)
     patient = patient_data["patient"]
     coverage = patient_data["coverage"]

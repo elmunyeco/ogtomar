@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import resolve, Resolver404
 
@@ -18,6 +19,7 @@ from Qbi2.spontaneous import (
     summarize_document_response,
 )
 from main.models import HistoriaClinica, Paciente, TipoDocumento
+from main import views as main_views
 
 
 class VademecumLegacyViewTests(TestCase):
@@ -170,31 +172,32 @@ class EspontaneaPocTests(TestCase):
         self.assertIn(b"Receta", response.content)
         self.assertIn("Práctica".encode(), response.content)
 
-    def test_simplified_page_uses_bergonzi_and_two_step_flow(self):
+    def test_simplified_page_starts_without_patient_and_keeps_two_step_flow(self):
         request = RequestFactory().get("/qbi2-poc/lab/rcta-espontanea-2/")
         request.user = self.user
 
         response = views.espontanea_poc_2_page(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Bergonzi", response.content)
-        self.assertIn(b"23101065", response.content)
-        self.assertIn(b"62333891101", response.content)
+        self.assertNotIn(b"Bergonzi", response.content)
+        self.assertNotIn(b"23101065", response.content)
+        self.assertIn("Seleccioná un paciente".encode(), response.content)
         self.assertIn(b"Cambiar paciente", response.content)
         self.assertIn(b"Editar datos del paciente", response.content)
-        self.assertIn(f'/pacientes/{self.patient.id}/editar/'.encode(), response.content)
         self.assertIn(b"QBI2 homologaci", response.content)
         self.assertNotIn(b"Perfil de receta", response.content)
         self.assertNotIn(b"recipe-v2-heading", response.content)
         self.assertNotIn(b"recipe-v2-safe-badge", response.content)
         self.assertNotIn(b"<h1>Crear receta</h1>", response.content)
         self.assertIn("💊".encode(), response.content)
-        self.assertIn(b"para ezequiel", response.content)
+        self.assertIn(b"sin paciente", response.content)
         self.assertIn(b"Escribir un diagn", response.content)
         self.assertIn(b"Usar texto", response.content)
         self.assertIn(b"/qbi2-poc/api/lab/espontanea-2/pacientes/", response.content)
         self.assertIn(b"/qbi2-poc/api/lab/espontanea-2/preview/", response.content)
         self.assertIn(b"/qbi2-poc/api/lab/espontanea-2/emitir/", response.content)
+        self.assertLess(response.content.index(b"Medicamentos"), response.content.index(b"Indicaciones"))
+        self.assertLess(response.content.index(b"Indicaciones"), response.content.index(b"Otras configuraciones"))
 
     def test_simplified_profile_payload_comes_from_external_yaml(self):
         defaults = views._espontanea_2_defaults(self.patient)
@@ -220,6 +223,54 @@ class EspontaneaPocTests(TestCase):
         self.assertEqual(data["items"][0]["coverage"]["name"], "OSDE")
         self.assertEqual(data["items"][0]["coverage"]["plan_id"], "43")
         self.assertEqual(data["items"][0]["coverage"]["member_number"], "62333891101")
+
+    def test_simplified_patient_refresh_by_id_returns_current_hhcc_data(self):
+        response = self.client.get(
+            "/qbi2-poc/api/lab/espontanea-2/pacientes/",
+            {"id": self.patient.id},
+        )
+
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["count"], 1)
+        self.assertEqual(data["items"][0]["patient"]["id"], self.patient.id)
+        self.assertEqual(data["items"][0]["patient"]["edit_url"], f"/pacientes/{self.patient.id}/editar/")
+
+    def test_canonical_patient_editor_returns_control_to_recipe_popup(self):
+        request = RequestFactory().post(
+            f"/pacientes/{self.patient.id}/editar/?recipe_context=1",
+            data={
+                "_recipe_context": "1",
+                "idTipoDoc": self.patient.idTipoDoc_id,
+                "numDoc": self.patient.numDoc,
+                "nombre": self.patient.nombre,
+                "apellido": self.patient.apellido,
+                "fechaNac": "1972-12-18",
+                "sexo": "H",
+                "mail": self.patient.mail,
+                "direccion": self.patient.direccion,
+                "localidad": self.patient.localidad,
+                "obraSocial": self.patient.obraSocial,
+                "plan": self.patient.plan,
+                "afiliado": self.patient.afiliado,
+                "telefono": "1144445555",
+                "celular": self.patient.celular,
+                "profesion": "Médico",
+                "referente": "",
+            },
+        )
+        request.user = self.user
+        request.session = {}
+        request._messages = FallbackStorage(request)
+        response = main_views.editar_paciente(request, self.patient.id)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"hhcc:patient-updated", response.content)
+        self.assertIn(f"patientId: {self.patient.id}".encode(), response.content)
+        self.assertIn(b"window.opener.focus()", response.content)
+        self.assertIn(b"window.close()", response.content)
+        self.patient.refresh_from_db()
+        self.assertEqual(self.patient.telefono, "1144445555")
 
     def test_simplified_preview_rejects_unknown_patient(self):
         response = self.client.post(

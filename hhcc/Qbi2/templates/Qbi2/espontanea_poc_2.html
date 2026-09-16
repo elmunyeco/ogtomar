@@ -12,7 +12,7 @@
     data-preview-endpoint="{% url 'qbi2_poc:api_lab_espontanea_2_preview' %}"
     data-emit-endpoint="{% url 'qbi2_poc:api_lab_espontanea_2_emitir' %}"
 >
-    <section class="recipe-v2-patient-card" aria-labelledby="recipe-v2-patient-title">
+    <section id="recipe-v2-patient-card" class="recipe-v2-patient-card" aria-labelledby="recipe-v2-patient-title" tabindex="-1">
         <div id="recipe-v2-patient-avatar" class="recipe-v2-avatar" aria-hidden="true">—</div>
         <div class="recipe-v2-patient-main">
             <span>Paciente de historias clínicas</span>
@@ -21,7 +21,7 @@
             <p id="recipe-v2-patient-contact" class="recipe-v2-patient-contact"></p>
             <div class="recipe-v2-patient-actions">
                 <button id="toggle-patient-search" class="recipe-v2-change-patient" type="button" aria-expanded="false" aria-controls="patient-search-panel">Cambiar paciente</button>
-                <a id="edit-recipe-patient" class="recipe-v2-edit-patient{% if not patient.id %} hidden{% endif %}" href="{{ patient.edit_url|default:'#' }}" target="_blank" rel="noopener">Editar datos del paciente</a>
+                <a id="edit-recipe-patient" class="recipe-v2-edit-patient{% if not patient.id %} hidden{% endif %}" href="{{ patient.edit_url|default:'#' }}">Editar datos del paciente</a>
             </div>
         </div>
         <div class="recipe-v2-patient-coverage">
@@ -113,6 +113,19 @@
                         <p class="recipe-v2-empty">Aún no hay medicamentos seleccionados para esta receta.</p>
                     </div>
                 </section>
+
+                <section class="recipe-v2-card">
+                    <header class="recipe-v2-card-header">
+                        <div class="recipe-v2-card-title">
+                            <span class="recipe-v2-icon" aria-hidden="true">≡</span>
+                            <h2>Indicaciones</h2>
+                        </div>
+                    </header>
+                    <div class="recipe-v2-card-body">
+                        <label class="sr-only" for="recipe-indications">Indicaciones para el paciente</label>
+                        <textarea class="recipe-v2-textarea" id="recipe-indications" placeholder="Añadí aquí las indicaciones para el paciente"></textarea>
+                    </div>
+                </section>
             </div>
 
             <div class="recipe-v2-column">
@@ -162,19 +175,6 @@
                             <strong id="selected-diagnosis-text"></strong>
                             <button type="button" id="clear-diagnosis" aria-label="Quitar diagnóstico">×</button>
                         </div>
-                    </div>
-                </section>
-
-                <section class="recipe-v2-card">
-                    <header class="recipe-v2-card-header">
-                        <div class="recipe-v2-card-title">
-                            <span class="recipe-v2-icon" aria-hidden="true">≡</span>
-                            <h2>Indicaciones</h2>
-                        </div>
-                    </header>
-                    <div class="recipe-v2-card-body">
-                        <label class="sr-only" for="recipe-indications">Indicaciones para el paciente</label>
-                        <textarea class="recipe-v2-textarea" id="recipe-indications" placeholder="Añadí aquí las indicaciones para el paciente"></textarea>
                     </div>
                 </section>
 
@@ -231,7 +231,7 @@
             <div class="recipe-v2-footer-actions">
                 <div class="recipe-v2-review-action">
                     <button id="preview-recipe" class="recipe-v2-review-button" type="button">Revisar datos</button>
-                    <small id="recipe-v2-review-patient">para ezequiel</small>
+                    <small id="recipe-v2-review-patient">sin paciente</small>
                 </div>
                 <button id="emit-recipe" class="recipe-v2-emit-button" type="button" disabled>Emitir en HML</button>
             </div>
@@ -415,6 +415,11 @@
         return patient ? [patient.last_name, patient.name].filter(Boolean).join(", ") : "el paciente seleccionado";
     };
 
+    const focusRecipePatient = () => {
+        window.focus();
+        document.getElementById("recipe-v2-patient-card").focus({preventScroll: false});
+    };
+
     const renderPatient = () => {
         const patient = state.patient?.patient;
         const coverage = state.patient?.coverage;
@@ -477,6 +482,50 @@
         document.getElementById("patient-search-panel").classList.add("hidden");
         document.getElementById("toggle-patient-search").setAttribute("aria-expanded", "false");
         setAlert();
+        focusRecipePatient();
+    };
+
+    const refreshSelectedPatient = async (patientId) => {
+        if (Number(state.patient?.patient?.id) !== Number(patientId)) {
+            focusRecipePatient();
+            return;
+        }
+        try {
+            const response = await fetch(`${endpoints.patients}?id=${encodeURIComponent(patientId)}`, {
+                credentials: "same-origin",
+                headers: {Accept: "application/json"},
+            });
+            const data = await response.json();
+            const item = Array.isArray(data.items) ? data.items[0] : null;
+            if (!response.ok || data.status !== "success" || !item) throw new Error(data.message || "No se pudo actualizar el paciente.");
+            state.patient = item;
+            invalidatePreview();
+            renderPatient();
+            setAlert("Datos del paciente actualizados desde historias clínicas.");
+        } catch (error) {
+            setAlert(error.message || "No se pudieron recargar los datos del paciente.");
+        } finally {
+            focusRecipePatient();
+        }
+    };
+
+    const openPatientEditor = (event) => {
+        event.preventDefault();
+        const patient = state.patient?.patient;
+        if (!patient?.edit_url) return;
+        const url = new URL(patient.edit_url, window.location.origin);
+        if (url.origin !== window.location.origin) return;
+        url.searchParams.set("recipe_context", "1");
+        const editor = window.open(
+            url.href,
+            "hhcc-patient-editor",
+            "popup=yes,width=1180,height=900,resizable=yes,scrollbars=yes"
+        );
+        if (!editor) {
+            setAlert("El navegador bloqueó la ventana de edición. Habilitá las ventanas emergentes para este sitio.");
+            return;
+        }
+        editor.focus();
     };
 
     const renderPatientResults = (items) => {
@@ -858,6 +907,7 @@
         if (!expanded) document.getElementById("patient-search").focus();
     });
     document.getElementById("search-patient").addEventListener("click", searchPatients);
+    document.getElementById("edit-recipe-patient").addEventListener("click", openPatientEditor);
     document.getElementById("search-medicine").addEventListener("click", () => requestSearch("medicine"));
     document.getElementById("search-diagnosis").addEventListener("click", () => requestSearch("diagnosis"));
     document.getElementById("use-free-diagnosis").addEventListener("click", useFreeDiagnosis);
@@ -873,6 +923,10 @@
         document.getElementById(id).addEventListener("change", invalidatePreview);
     });
     form.addEventListener("submit", (event) => event.preventDefault());
+    window.addEventListener("message", (event) => {
+        if (event.origin !== window.location.origin || event.data?.type !== "hhcc:patient-updated") return;
+        refreshSelectedPatient(event.data.patientId);
+    });
     renderPatient();
     renderMedicines();
 })();
