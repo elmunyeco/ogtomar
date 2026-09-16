@@ -12,15 +12,6 @@
     data-preview-endpoint="{% url 'qbi2_poc:api_lab_espontanea_2_preview' %}"
     data-emit-endpoint="{% url 'qbi2_poc:api_lab_espontanea_2_emitir' %}"
 >
-    <header class="recipe-v2-heading">
-        <div>
-            <p class="recipe-v2-kicker">QBI2 · homologación</p>
-            <h1>Crear receta</h1>
-            <p>Una pantalla clínica breve, con el perfil administrativo ya configurado.</p>
-        </div>
-        <span class="recipe-v2-safe-badge">QBI2 homologación</span>
-    </header>
-
     <section class="recipe-v2-patient-card" aria-labelledby="recipe-v2-patient-title">
         <div id="recipe-v2-patient-avatar" class="recipe-v2-avatar" aria-hidden="true">—</div>
         <div class="recipe-v2-patient-main">
@@ -96,7 +87,7 @@
                 <section class="recipe-v2-card recipe-v2-medications-card">
                     <header class="recipe-v2-card-header">
                         <div class="recipe-v2-card-title">
-                            <span class="recipe-v2-icon" aria-hidden="true">⌁</span>
+                            <span class="recipe-v2-icon" aria-hidden="true">💊</span>
                             <div>
                                 <h2>Medicamentos</h2>
                                 <small id="medicine-count">Ninguno seleccionado</small>
@@ -235,7 +226,10 @@
                 <span id="recipe-v2-footer-patient">Seleccioná un paciente de historias clínicas.</span>
             </div>
             <div class="recipe-v2-footer-actions">
-                <button id="preview-recipe" class="recipe-v2-review-button" type="button">Revisar datos</button>
+                <div class="recipe-v2-review-action">
+                    <button id="preview-recipe" class="recipe-v2-review-button" type="button">Revisar datos</button>
+                    <small id="recipe-v2-review-patient">para ezequiel</small>
+                </div>
                 <button id="emit-recipe" class="recipe-v2-emit-button" type="button" disabled>Emitir en HML</button>
             </div>
         </footer>
@@ -259,17 +253,6 @@
         padding: 1.5rem 1rem 3rem;
         color: var(--v2-ink);
     }
-    .recipe-v2-heading {
-        align-items: flex-start;
-        display: flex;
-        gap: 1rem;
-        justify-content: space-between;
-        margin-bottom: 1.25rem;
-    }
-    .recipe-v2-heading h1 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1; margin: 0.15rem 0 0.45rem; }
-    .recipe-v2-heading p { color: var(--v2-muted); margin: 0; }
-    .recipe-v2-kicker { color: var(--v2-red-dark) !important; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
-    .recipe-v2-safe-badge { background: var(--v2-red-soft); border: 1px solid var(--v2-red-border); border-radius: 999px; color: var(--v2-red-dark); flex: none; font-size: 0.78rem; font-weight: 800; padding: 0.55rem 0.85rem; }
     .recipe-v2-patient-card, .recipe-v2-card, .recipe-v2-preview, .recipe-v2-result-panel, .recipe-v2-footer {
         background: #fff;
         border: 1px solid var(--v2-border);
@@ -361,6 +344,8 @@
     .recipe-v2-footer div { display: grid; }
     .recipe-v2-footer span { color: var(--v2-muted); font-size: 0.82rem; }
     .recipe-v2-footer .recipe-v2-footer-actions { display: flex; flex: none; gap: 0.65rem; }
+    .recipe-v2-review-action { align-items: center; display: grid; gap: 0.2rem; justify-items: center; }
+    .recipe-v2-review-action small { color: var(--v2-muted); font-size: 0.72rem; line-height: 1; }
     .recipe-v2-footer button { border: 0; border-radius: 999px; cursor: pointer; font-weight: 850; min-width: 9rem; padding: 0.8rem 1.15rem; }
     .recipe-v2-review-button { background: var(--v2-red-soft); color: var(--v2-red-dark); }
     .recipe-v2-emit-button { background: var(--v2-red-dark); color: #fff; }
@@ -373,10 +358,9 @@
         .recipe-v2-patient-coverage { border-left: 0; border-top: 1px solid var(--v2-border); grid-column: 1 / -1; min-width: 0; padding: 0.8rem 0 0; }
     }
     @media (max-width: 560px) {
-        .recipe-v2-heading, .recipe-v2-footer, .recipe-v2-profile { align-items: stretch; flex-direction: column; }
+        .recipe-v2-footer, .recipe-v2-profile { align-items: stretch; flex-direction: column; }
         .recipe-v2-footer .recipe-v2-footer-actions { display: grid; }
         .recipe-v2-result-panel dl { grid-template-columns: 1fr; }
-        .recipe-v2-safe-badge { align-self: flex-start; }
         .recipe-v2-search-row { flex-direction: column; }
         .recipe-v2-medicine-fields { grid-template-columns: 1fr; }
     }
@@ -438,6 +422,7 @@
         const coverageMember = document.getElementById("recipe-v2-coverage-member");
         const coverageMapping = document.getElementById("recipe-v2-coverage-mapping");
         const footerPatient = document.getElementById("recipe-v2-footer-patient");
+        const reviewPatient = document.getElementById("recipe-v2-review-patient");
 
         if (!patient) {
             avatar.textContent = "—";
@@ -448,6 +433,7 @@
             coverageMember.textContent = "Sin número de afiliado";
             coverageMapping.textContent = "";
             footerPatient.textContent = "Seleccioná un paciente de historias clínicas.";
+            reviewPatient.textContent = "sin paciente";
             return;
         }
 
@@ -468,6 +454,8 @@
         coverageMember.textContent = coverage?.member_number ? `Afiliado ${coverage.member_number}` : "Sin número de afiliado";
         coverageMapping.textContent = coverage?.mapped ? "Cobertura vinculada con QBI2" : "Cobertura aún sin mapeo QBI2";
         footerPatient.textContent = `La receta se enviará a QBI2 homologación para ${patientDisplayName()}.`;
+        const firstName = String(patient.name || "el paciente").trim().split(/\s+/)[0];
+        reviewPatient.textContent = `para ${firstName.toLocaleLowerCase("es-AR")}`;
     };
 
     const selectPatient = (item) => {
