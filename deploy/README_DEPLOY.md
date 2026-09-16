@@ -50,3 +50,7 @@ docker-compose down
 ## Notas
 - `ALLOWED_HOSTS = ["*"]`.
 - `Dockerfile` incluye librerías para PDF (pango/cairo) y `tzdata`.
+- El entrypoint ejecuta Django con `--noreload` para evitar un segundo proceso
+  residente en QA.
+- Ver `QA_RUNBOOK.md` para limites de recursos, preflight y rollback. La suite
+  de tests nunca se ejecuta en el servidor de QA.

@@ -1,0 +1,7 @@
+ARG BASE_IMAGE=hhcc_app:latest
+FROM ${BASE_IMAGE}
+
+# Runtime-only adjustments can be released without rebuilding all application
+# dependencies. The base image is supplied explicitly by the deploy command.
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod 0755 /app/docker-entrypoint.sh

@@ -21,4 +21,10 @@ else
   echo "INFO: skipping migrations on startup. Run manage.py migrate as a release step, or set RUN_MIGRATIONS_ON_STARTUP=1 explicitly."
 fi
 
-exec python3 manage.py runserver 0.0.0.0:8000
+if [ "$#" -gt 0 ]; then
+  exec "$@"
+fi
+
+# QA runs on a small single-vCPU host. Django's autoreloader creates a second
+# process and duplicates memory without adding value inside an immutable image.
+exec python3 manage.py runserver 0.0.0.0:8000 --noreload
