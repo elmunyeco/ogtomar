@@ -828,8 +828,27 @@ def _espontanea_2_safe_data(data: dict[str, Any]) -> dict[str, Any]:
         "fechaEmision": _normalize_fecha_emision(data.get("fechaEmision", "")),
         "ocultarPaciente": data.get("ocultarPaciente", False),
     }
-    safe_data.update(_espontanea_2_defaults(patient_record)["payload"])
+    patient_payload = _espontanea_2_defaults(patient_record)["payload"]
+    if not _espontanea_2_uses_coverage(data.get("usarCobertura", True)):
+        for field in (
+            "idFinanciador",
+            "nroFinanciador",
+            "planId",
+            "plan",
+            "afiliadoNumero",
+            "dniTitular",
+        ):
+            patient_payload.pop(field, None)
+    safe_data.update(patient_payload)
     return safe_data
+
+
+def _espontanea_2_uses_coverage(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value in (None, ""):
+        return True
+    return str(value).strip().lower() in {"1", "true", "t", "yes", "s", "si", "on"}
 
 
 def _espontanea_2_safe_medications(raw_items: Any) -> list[dict[str, Any]]:

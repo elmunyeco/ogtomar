@@ -187,6 +187,10 @@ class EspontaneaPocTests(TestCase):
         self.assertIn(b'class="global-search-input-wrap"', response.content)
         self.assertIn(b'id="patient-search-form"', response.content)
         self.assertIn(b"autofocus", response.content)
+        self.assertIn(b'id="recipe-v2-coverage-hhcc"', response.content)
+        self.assertIn(b'id="recipe-v2-coverage-none"', response.content)
+        self.assertIn(b"Sin cobertura", response.content)
+        self.assertIn(b"usarCobertura: state.useCoverage", response.content)
         self.assertIn(b"Editar datos del paciente", response.content)
         self.assertIn(b"QBI2 homologaci", response.content)
         self.assertNotIn(b"Perfil de receta", response.content)
@@ -352,6 +356,27 @@ class EspontaneaPocTests(TestCase):
         self.assertEqual(data["payload"]["diagnostico"], "I10")
         self.assertNotIn("fechaNacimiento", data["payload"]["medico"])
         self.assertNotIn("idTributario", data["payload"]["medico"])
+        emit.assert_not_called()
+
+    @patch("Qbi2.views.emit_spontaneous_payload")
+    def test_simplified_preview_can_omit_patient_coverage(self, emit):
+        response = self.client.post(
+            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            data=json.dumps(
+                {
+                    "pacienteId": self.patient.id,
+                    "usarCobertura": False,
+                    "diagnostico": "Hipertension arterial",
+                    "codigoDiagnostico": "I10",
+                    "medicamentos": [{"regNo": "34959", "nombreProducto": "LOTRIAL"}],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("cobertura", data["payload"]["paciente"])
         emit.assert_not_called()
 
     @patch("Qbi2.views.emit_spontaneous_payload")
