@@ -3,44 +3,6 @@ from django.db import models
 from django.utils import timezone
 
 
-class Qbi2CacheEntry(models.Model):
-    key_hash = models.CharField(max_length=64, primary_key=True)
-    cache_key = models.TextField()
-    namespace = models.CharField(max_length=80, default="vademecum")
-    provider = models.CharField(max_length=40, default="qbi2")
-    endpoint = models.CharField(max_length=120, default="")
-    cliente_app_id = models.CharField(max_length=80, default="", blank=True)
-    normalized_query = models.CharField(max_length=255, default="", blank=True)
-    page = models.PositiveIntegerField(default=1)
-    params_hash = models.CharField(max_length=64, default="", blank=True)
-    schema_version = models.PositiveIntegerField(default=1)
-    status = models.CharField(max_length=40, default="ok")
-    value = models.JSONField()
-    metadata = models.JSONField(default=dict, blank=True)
-    fetched_at = models.DateTimeField()
-    fresh_until = models.DateTimeField()
-    stale_until = models.DateTimeField()
-    refresh_locked_until = models.DateTimeField(null=True, blank=True)
-    refresh_token = models.CharField(max_length=64, null=True, blank=True)
-    refresh_started_at = models.DateTimeField(null=True, blank=True)
-    last_refresh_error = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = "qbi2_cache_entries"
-        indexes = [
-            models.Index(fields=["namespace", "provider"], name="qbi2_cache_ns_provider_idx"),
-            models.Index(fields=["normalized_query"], name="qbi2_cache_query_idx"),
-            models.Index(fields=["fresh_until"], name="qbi2_cache_fresh_idx"),
-            models.Index(fields=["stale_until"], name="qbi2_cache_stale_idx"),
-            models.Index(fields=["refresh_locked_until"], name="qbi2_cache_lock_idx"),
-        ]
-
-    def __str__(self):
-        return f"{self.namespace}:{self.normalized_query}:{self.page}"
-
-
 class SolicitudReceta(models.Model):
     class Estado(models.TextChoices):
         PENDIENTE = "pendiente", "Pendiente"

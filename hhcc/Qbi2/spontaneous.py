@@ -53,25 +53,12 @@ def anular_documento_hash(hash_id: str, operation: str = "receta", client: Qbi2C
 
 def build_receta_payload(data: dict[str, Any]) -> dict[str, Any]:
     diagnostico = _text(data, "diagnostico", "Hipertension arterial")
-    medicamento = {
-        "nombreProducto": _text(data, "nombreProducto", "LOTRIAL"),
-        "nombreDroga": _text(data, "nombreDroga", "enalapril"),
-        "presentacion": _text(data, "presentacion", "10 mg comp.x 30"),
-        "cantidad": _int(data, "cantidad", 1),
-        "permiteSustitucion": _text(data, "permiteSustitucion", ""),
-        "regNo": _text(data, "regNo", "34959"),
-        "tratamiento": _int(data, "tratamiento", 0),
-        "diagnostico": diagnostico,
-        "codigoDiagnostico": _text(data, "codigoDiagnostico", ""),
-        "posologia": _text(data, "posologia", "Tomar segun indicacion medica."),
-        "observaciones": _text(data, "itemObservaciones", ""),
-        "forzarDuplicado": _bool(data, "forzarDuplicado", False),
-    }
+    medicamentos = build_medicamentos(data, diagnostico)
 
     payload = {
         "paciente": build_paciente(data),
         "medico": build_medico(data),
-        "medicamentos": [medicamento],
+        "medicamentos": medicamentos,
         "diagnostico": diagnostico,
         "imprimirDiagnostico": _text(data, "imprimirDiagnostico", "S"),
         "indicaciones": _text(data, "indicaciones", ""),
@@ -83,6 +70,55 @@ def build_receta_payload(data: dict[str, Any]) -> dict[str, Any]:
     }
     _maybe_add_postdatadas(payload, data)
     return _strip_empty(payload)
+
+
+def build_medicamentos(data: dict[str, Any], diagnostico: str) -> list[dict[str, Any]]:
+    """Build one or more prescription items while keeping the original PoC shape compatible."""
+    if "medicamentos" not in data:
+        raw_items: list[dict[str, Any]] = [data]
+    else:
+        supplied = data.get("medicamentos")
+        if not isinstance(supplied, list):
+            raise ValueError("Los medicamentos deben enviarse como una lista.")
+        raw_items = [item for item in supplied if isinstance(item, dict)]
+        if len(raw_items) != len(supplied):
+            raise ValueError("Cada medicamento debe ser un objeto.")
+        if not raw_items:
+            raise ValueError("Debe seleccionar al menos un medicamento.")
+
+    medicamentos: list[dict[str, Any]] = []
+    for raw_item in raw_items:
+        reg_no = _text(raw_item, "regNo", "34959" if raw_item is data else "")
+        nombre_producto = _text(raw_item, "nombreProducto", "LOTRIAL" if raw_item is data else "")
+        if not reg_no or not nombre_producto:
+            raise ValueError("Cada medicamento debe tener RegNo y nombre de producto.")
+        medicamentos.append(
+            _strip_empty(
+                {
+                    "nombreProducto": nombre_producto,
+                    "nombreDroga": _text(raw_item, "nombreDroga", "enalapril" if raw_item is data else ""),
+                    "presentacion": _text(
+                        raw_item,
+                        "presentacion",
+                        "10 mg comp.x 30" if raw_item is data else "",
+                    ),
+                    "cantidad": max(1, _int(raw_item, "cantidad", 1)),
+                    "permiteSustitucion": _text(raw_item, "permiteSustitucion", ""),
+                    "regNo": reg_no,
+                    "tratamiento": _int(raw_item, "tratamiento", 0),
+                    "diagnostico": _text(raw_item, "diagnostico", diagnostico),
+                    "codigoDiagnostico": _text(
+                        raw_item,
+                        "codigoDiagnostico",
+                        _text(data, "codigoDiagnostico", ""),
+                    ),
+                    "posologia": _text(raw_item, "posologia", "Tomar segun indicacion medica."),
+                    "observaciones": _text(raw_item, "observaciones", ""),
+                    "forzarDuplicado": _bool(raw_item, "forzarDuplicado", False),
+                }
+            )
+        )
+    return medicamentos
 
 
 def build_practica_payload(data: dict[str, Any]) -> dict[str, Any]:
@@ -161,6 +197,7 @@ def build_medico(data: dict[str, Any]) -> dict[str, Any]:
         "especialidad": especialidad,
         "firmalink": _text(data, "medicoFirmaLink", ""),
         "firmabase64": _text(data, "medicoFirmaBase64", ""),
+        "logoInstitucion": _text(data, "medicoLogoInstitucion", ""),
         "matricula": {
             "tipo": matricula_tipo,
             "numero": matricula_numero,
@@ -299,9 +336,9 @@ def _client_app_id() -> int | str:
 
 
 def _text(data: dict[str, Any], key: str, default: str = "") -> str:
-    value = data.get(key)
-    if value is None or value == "":
+    if key not in data or data.get(key) is None:
         return default
+    value = data.get(key)
     return str(value).strip()
 
 

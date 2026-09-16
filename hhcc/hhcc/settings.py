@@ -211,3 +211,7 @@ QBI2_INCLUDE_CLIENT_APP_ID_IN_VADEMECUM = (
     os.getenv("QBI2_INCLUDE_CLIENT_APP_ID_IN_VADEMECUM", "1") == "1"
 )
 QBI2_VADEMECUM_MIN_QUERY_LENGTH = int(os.getenv("QBI2_VADEMECUM_MIN_QUERY_LENGTH", "2"))
+QBI2_PROFILE_YAML_PATH = os.getenv(
+    "QBI2_PROFILE_YAML_PATH",
+    str(BASE_DIR / "private" / "qbi2" / "profile.yaml"),
+)

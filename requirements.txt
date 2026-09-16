@@ -21,6 +21,7 @@ pillow>=12.1.0
 prompt_toolkit==3.0.47
 ptyprocess==0.7.0
 pure_eval==0.2.3
+PyYAML==6.0.2
 pycparser==2.22
 pydyf==0.11.0
 Pygments==2.18.0

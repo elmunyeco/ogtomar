@@ -7,7 +7,7 @@ Fecha: 2026-08-11.
 La verificacion cubre el nucleo de Historias Clinicas que usa la integracion QBI2 y la prueba piloto de receta/practica espontanea.
 
 - `main`: creacion de paciente e historia clinica asociada, rutas principales y proteccion de acceso.
-- `Qbi2`: cache/vademecum existente, portal de solicitud, cola de aprobacion y receta espontanea.
+- `Qbi2`: busqueda directa de vademecum, portal de solicitud, cola de aprobacion y receta espontanea.
 - Receta espontanea: payload de receta, payload de practica, catalogos por contrato, emision simulada, error exacto del proveedor, anulacion por hash y separacion entre hash y numero documental.
 
 No certifica exhaustivamente los modulos clinicos especializados (`ecocardiograma`, `carotidas`, `ecostress`, `mmii`). Esos modulos no tienen cobertura automatizada propia suficiente y requieren una etapa de pruebas separada.

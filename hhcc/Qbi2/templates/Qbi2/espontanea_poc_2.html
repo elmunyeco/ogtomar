@@ -1,0 +1,883 @@
+{% extends "base.html" %}
+
+{% block title %}Crear receta · versión 2 - Dr. Omar Prieto{% endblock %}
+
+{% block content %}
+<section
+    id="recipe-v2"
+    class="recipe-v2-page"
+    data-med-endpoint="{% url 'qbi2_poc:api_lab_espontanea_catalogo' 'medicamentos' %}"
+    data-dx-endpoint="{% url 'qbi2_poc:api_lab_espontanea_catalogo' 'diagnosticos' %}"
+    data-patient-endpoint="{% url 'qbi2_poc:api_lab_espontanea_2_pacientes' %}"
+    data-preview-endpoint="{% url 'qbi2_poc:api_lab_espontanea_2_preview' %}"
+    data-emit-endpoint="{% url 'qbi2_poc:api_lab_espontanea_2_emitir' %}"
+>
+    <header class="recipe-v2-heading">
+        <div>
+            <p class="recipe-v2-kicker">QBI2 · homologación</p>
+            <h1>Crear receta</h1>
+            <p>Una pantalla clínica breve, con el perfil administrativo ya configurado.</p>
+        </div>
+        <span class="recipe-v2-safe-badge">QBI2 homologación</span>
+    </header>
+
+    <section class="recipe-v2-patient-card" aria-labelledby="recipe-v2-patient-title">
+        <div id="recipe-v2-patient-avatar" class="recipe-v2-avatar" aria-hidden="true">—</div>
+        <div class="recipe-v2-patient-main">
+            <span>Paciente de historias clínicas</span>
+            <h2 id="recipe-v2-patient-title">Seleccioná un paciente</h2>
+            <p id="recipe-v2-patient-details">Buscá por apellido, nombre o documento.</p>
+            <p id="recipe-v2-patient-contact" class="recipe-v2-patient-contact"></p>
+            <button id="toggle-patient-search" class="recipe-v2-change-patient" type="button" aria-expanded="false" aria-controls="patient-search-panel">Cambiar paciente</button>
+        </div>
+        <div class="recipe-v2-patient-coverage">
+            <span>Cobertura cargada en HHCC</span>
+            <strong id="recipe-v2-coverage-name">Sin cobertura</strong>
+            <small id="recipe-v2-coverage-member">Sin número de afiliado</small>
+            <small id="recipe-v2-coverage-mapping" class="recipe-v2-coverage-mapping"></small>
+        </div>
+        <div id="patient-search-panel" class="recipe-v2-patient-search hidden">
+            <label class="recipe-v2-label" for="patient-search">Buscar paciente</label>
+            <div class="recipe-v2-search-row">
+                <input class="recipe-v2-input" id="patient-search" type="search" placeholder="Apellido, nombre o DNI" autocomplete="off">
+                <button class="recipe-v2-secondary-button" id="search-patient" type="button">Buscar</button>
+            </div>
+            <div id="patient-search-status" class="recipe-v2-search-status" aria-live="polite"></div>
+            <div id="patient-results" class="recipe-v2-results"></div>
+        </div>
+    </section>
+    {{ initial_patient|json_script:"recipe-v2-initial-patient" }}
+
+    <form id="recipe-v2-form" novalidate>
+        <div class="recipe-v2-columns">
+            <div class="recipe-v2-column">
+                {% comment %}
+                Panel de perfil profesional deshabilitado deliberadamente.
+                Los datos siguen configurándose en el YAML externo y este bloque
+                queda preservado para una eventual reincorporación en la interfaz.
+                <section class="recipe-v2-card">
+                    <header class="recipe-v2-card-header">
+                        <div class="recipe-v2-card-title">
+                            <span class="recipe-v2-icon" aria-hidden="true">✚</span>
+                            <h2>Perfil de receta</h2>
+                        </div>
+                    </header>
+                    <div class="recipe-v2-profile">
+                        <div>
+                            <strong>Dr. {{ doctor.name }} {{ doctor.last_name }}</strong>
+                            <span>{{ doctor.profession }} · {{ doctor.specialty }}</span>
+                        </div>
+                        <span class="recipe-v2-profile-registration">{{ doctor.registration_display }}</span>
+                    </div>
+                    <details class="recipe-v2-details">
+                        <summary>Ver sello configurado</summary>
+                        <p>{{ doctor.seal_line_1 }}<br>{{ doctor.seal_line_2 }}<br>{{ doctor.seal_line_3 }}</p>
+                        <div class="recipe-v2-profile-assets">
+                            <span class="{% if doctor.signature_configured %}is-ready{% endif %}">Firma {% if doctor.signature_configured %}configurada{% else %}pendiente{% endif %}</span>
+                            <span class="{% if doctor.logo_configured %}is-ready{% endif %}">Logo {% if doctor.logo_configured %}configurado{% else %}pendiente{% endif %}</span>
+                        </div>
+                    </details>
+                </section>
+                {% endcomment %}
+
+                <section class="recipe-v2-card">
+                    <header class="recipe-v2-card-header">
+                        <div class="recipe-v2-card-title">
+                            <span class="recipe-v2-icon" aria-hidden="true">▣</span>
+                            <h2>Fecha de la receta</h2>
+                        </div>
+                    </header>
+                    <div class="recipe-v2-card-body">
+                        <label class="recipe-v2-label" for="recipe-date">Fecha</label>
+                        <input class="recipe-v2-input" id="recipe-date" name="fechaEmision" type="date" value="{{ today }}">
+                    </div>
+                </section>
+
+                <section class="recipe-v2-card recipe-v2-medications-card">
+                    <header class="recipe-v2-card-header">
+                        <div class="recipe-v2-card-title">
+                            <span class="recipe-v2-icon" aria-hidden="true">⌁</span>
+                            <div>
+                                <h2>Medicamentos</h2>
+                                <small id="medicine-count">Ninguno seleccionado</small>
+                            </div>
+                        </div>
+                        <button class="recipe-v2-add" id="toggle-medicine-search" type="button" aria-expanded="false" aria-controls="medicine-search-panel">
+                            <span aria-hidden="true">＋</span><span class="sr-only">Añadir medicamento</span>
+                        </button>
+                    </header>
+                    <div id="medicine-search-panel" class="recipe-v2-search-panel hidden">
+                        <label class="recipe-v2-label" for="medicine-search">Buscar por producto, droga o presentación</label>
+                        <div class="recipe-v2-search-row">
+                            <input class="recipe-v2-input" id="medicine-search" type="search" placeholder="Ej.: enalapril" autocomplete="off">
+                            <button class="recipe-v2-secondary-button" id="search-medicine" type="button">Buscar</button>
+                        </div>
+                        <div id="medicine-search-status" class="recipe-v2-search-status" aria-live="polite"></div>
+                        <div id="medicine-results" class="recipe-v2-results"></div>
+                    </div>
+                    <div id="selected-medicines" class="recipe-v2-selected-list">
+                        <p class="recipe-v2-empty">Aún no hay medicamentos seleccionados para esta receta.</p>
+                    </div>
+                </section>
+            </div>
+
+            <div class="recipe-v2-column">
+                <section class="recipe-v2-card">
+                    <header class="recipe-v2-card-header">
+                        <div class="recipe-v2-card-title">
+                            <span class="recipe-v2-icon" aria-hidden="true">☷</span>
+                            <h2>Otras configuraciones</h2>
+                        </div>
+                    </header>
+                    <div class="recipe-v2-options">
+                        <label class="recipe-v2-option">
+                            <span><strong>Tratamiento prolongado</strong><small>Se aplica a todos los medicamentos.</small></span>
+                            <input id="long-treatment" type="checkbox" role="switch">
+                        </label>
+                        <label class="recipe-v2-option">
+                            <span><strong>Ocultar datos del paciente</strong><small>Protege sus datos en el documento.</small></span>
+                            <input id="hide-patient" type="checkbox" role="switch">
+                        </label>
+                    </div>
+                </section>
+
+                <section class="recipe-v2-card">
+                    <header class="recipe-v2-card-header">
+                        <div class="recipe-v2-card-title">
+                            <span class="recipe-v2-icon" aria-hidden="true">⌁</span>
+                            <h2>Diagnóstico <span aria-hidden="true">*</span></h2>
+                        </div>
+                    </header>
+                    <div class="recipe-v2-card-body">
+                        <label class="recipe-v2-label" for="diagnosis-search">Elegir del catálogo QBI2</label>
+                        <div class="recipe-v2-search-row">
+                            <input class="recipe-v2-input" id="diagnosis-search" type="search" placeholder="Ej.: hipertensión" autocomplete="off">
+                            <button class="recipe-v2-secondary-button" id="search-diagnosis" type="button">Buscar</button>
+                        </div>
+                        <div id="diagnosis-search-status" class="recipe-v2-search-status" aria-live="polite"></div>
+                        <div id="diagnosis-results" class="recipe-v2-results"></div>
+                        <div class="recipe-v2-diagnosis-divider"><span>o</span></div>
+                        <label class="recipe-v2-label" for="diagnosis-free-text">Escribir un diagnóstico libre</label>
+                        <div class="recipe-v2-search-row">
+                            <input class="recipe-v2-input" id="diagnosis-free-text" type="text" maxlength="255" placeholder="Ej.: control cardiológico por palpitaciones" autocomplete="off">
+                            <button class="recipe-v2-secondary-button" id="use-free-diagnosis" type="button">Usar texto</button>
+                        </div>
+                        <small class="recipe-v2-help">El texto se enviará tal como fue escrito, sin código CIE-10.</small>
+                        <div id="selected-diagnosis" class="recipe-v2-diagnosis hidden">
+                            <span id="selected-diagnosis-code"></span>
+                            <strong id="selected-diagnosis-text"></strong>
+                            <button type="button" id="clear-diagnosis" aria-label="Quitar diagnóstico">×</button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="recipe-v2-card">
+                    <header class="recipe-v2-card-header">
+                        <div class="recipe-v2-card-title">
+                            <span class="recipe-v2-icon" aria-hidden="true">≡</span>
+                            <h2>Indicaciones</h2>
+                        </div>
+                    </header>
+                    <div class="recipe-v2-card-body">
+                        <label class="sr-only" for="recipe-indications">Indicaciones para el paciente</label>
+                        <textarea class="recipe-v2-textarea" id="recipe-indications" placeholder="Añadí aquí las indicaciones para el paciente"></textarea>
+                    </div>
+                </section>
+
+                <section class="recipe-v2-card">
+                    <header class="recipe-v2-card-header">
+                        <div class="recipe-v2-card-title">
+                            <span class="recipe-v2-icon" aria-hidden="true">✎</span>
+                            <h2>Texto adicional <small>(opcional)</small></h2>
+                        </div>
+                    </header>
+                    <div class="recipe-v2-card-body">
+                        <label class="sr-only" for="recipe-observations">Texto adicional</label>
+                        <textarea class="recipe-v2-textarea" id="recipe-observations" placeholder="Aclaraciones generales de la receta"></textarea>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div id="recipe-v2-alert" class="recipe-v2-alert hidden" role="alert"></div>
+
+        <section id="recipe-v2-preview" class="recipe-v2-preview hidden" aria-live="polite">
+            <div>
+                <span>Vista previa técnica</span>
+                <h2>Payload preparado, sin enviar</h2>
+                <p>Se validó localmente la receta para <strong id="recipe-v2-preview-patient">el paciente seleccionado</strong>. No hubo una llamada de emisión a QBI2.</p>
+            </div>
+            <details>
+                <summary>Ver JSON preparado</summary>
+                <pre id="recipe-v2-json"></pre>
+            </details>
+        </section>
+
+        <section id="recipe-v2-result" class="recipe-v2-result-panel hidden" aria-live="polite">
+            <div>
+                <span>Receta emitida en homologación</span>
+                <h2>QBI2 confirmó la operación</h2>
+            </div>
+            <dl>
+                <div><dt>ID receta</dt><dd data-result="idReceta">—</dd></div>
+                <div><dt>Hash</dt><dd data-result="id">—</dd></div>
+                <div><dt>Estado</dt><dd data-result="status">—</dd></div>
+            </dl>
+            <div class="recipe-v2-result-links">
+                <a data-result-link="s3Link" class="hidden" href="#" target="_blank" rel="noopener">Abrir PDF</a>
+                <a data-result-link="verificador" class="hidden" href="#" target="_blank" rel="noopener">Abrir verificador</a>
+            </div>
+        </section>
+
+        <footer class="recipe-v2-footer">
+            <div>
+                <strong>Primero revisá; después confirmá la emisión.</strong>
+                <span id="recipe-v2-footer-patient">Seleccioná un paciente de historias clínicas.</span>
+            </div>
+            <div class="recipe-v2-footer-actions">
+                <button id="preview-recipe" class="recipe-v2-review-button" type="button">Revisar datos</button>
+                <button id="emit-recipe" class="recipe-v2-emit-button" type="button" disabled>Emitir en HML</button>
+            </div>
+        </footer>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .recipe-v2-page {
+        --v2-red: #9a4035;
+        --v2-red-dark: #7a332b;
+        --v2-red-soft: #f8ece9;
+        --v2-red-border: #e7c8c2;
+        --v2-ink: #252a31;
+        --v2-muted: #6f7782;
+        --v2-border: #eadedb;
+        --v2-bg: #faf7f6;
+        margin: 0 auto;
+        max-width: 82rem;
+        padding: 1.5rem 1rem 3rem;
+        color: var(--v2-ink);
+    }
+    .recipe-v2-heading {
+        align-items: flex-start;
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+    .recipe-v2-heading h1 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1; margin: 0.15rem 0 0.45rem; }
+    .recipe-v2-heading p { color: var(--v2-muted); margin: 0; }
+    .recipe-v2-kicker { color: var(--v2-red-dark) !important; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+    .recipe-v2-safe-badge { background: var(--v2-red-soft); border: 1px solid var(--v2-red-border); border-radius: 999px; color: var(--v2-red-dark); flex: none; font-size: 0.78rem; font-weight: 800; padding: 0.55rem 0.85rem; }
+    .recipe-v2-patient-card, .recipe-v2-card, .recipe-v2-preview, .recipe-v2-result-panel, .recipe-v2-footer {
+        background: #fff;
+        border: 1px solid var(--v2-border);
+        border-radius: 1.15rem;
+        box-shadow: 0 0.22rem 0.8rem rgba(28, 39, 49, 0.08);
+    }
+    .recipe-v2-patient-card { align-items: center; display: grid; gap: 1rem; grid-template-columns: auto 1fr auto; margin-bottom: 1.4rem; padding: 1rem 1.2rem; }
+    .recipe-v2-avatar { align-items: center; background: linear-gradient(145deg, #b8574b, var(--v2-red-dark)); border-radius: 999px; color: #fff; display: flex; font-weight: 900; height: 3rem; justify-content: center; width: 3rem; }
+    .recipe-v2-patient-main span, .recipe-v2-patient-coverage span { color: var(--v2-muted); display: block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+    .recipe-v2-patient-main h2 { font-size: 1.15rem; font-weight: 800; margin: 0.1rem 0; }
+    .recipe-v2-patient-main p, .recipe-v2-patient-coverage small { color: var(--v2-muted); margin: 0; }
+    .recipe-v2-patient-contact { font-size: 0.78rem; margin-top: 0.18rem !important; }
+    .recipe-v2-patient-coverage { border-left: 1px solid var(--v2-border); display: grid; gap: 0.1rem; min-width: 14rem; padding-left: 1.2rem; }
+    .recipe-v2-change-patient { background: transparent; border: 0; color: var(--v2-red); cursor: pointer; font-size: 0.78rem; font-weight: 850; margin-top: 0.3rem; padding: 0; text-align: left; }
+    .recipe-v2-change-patient:hover { color: var(--v2-red-dark); text-decoration: underline; }
+    .recipe-v2-patient-search { background: var(--v2-bg); border-radius: 0.85rem; grid-column: 1 / -1; padding: 0.9rem; }
+    .recipe-v2-coverage-mapping { color: var(--v2-red-dark) !important; font-weight: 700; }
+    .recipe-v2-columns { align-items: start; display: grid; gap: 1.4rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .recipe-v2-column { display: grid; gap: 1.4rem; }
+    .recipe-v2-card { overflow: hidden; }
+    .recipe-v2-card-header { align-items: center; border-bottom: 1px solid var(--v2-border); display: flex; justify-content: space-between; min-height: 4rem; padding: 0.85rem 1rem; }
+    .recipe-v2-card-title { align-items: center; display: flex; gap: 0.8rem; }
+    .recipe-v2-card-title h2 { font-size: 1rem; font-weight: 800; margin: 0; }
+    .recipe-v2-card-title h2 small, .recipe-v2-card-title small { color: var(--v2-muted); font-size: 0.72rem; font-weight: 500; }
+    .recipe-v2-icon { align-items: center; background: var(--v2-red-soft); border-radius: 0.55rem; color: var(--v2-red-dark); display: flex; flex: none; font-size: 1.05rem; font-weight: 900; height: 2rem; justify-content: center; width: 2rem; }
+    .recipe-v2-card-body { padding: 1rem; }
+    .recipe-v2-profile { align-items: center; display: flex; gap: 1rem; justify-content: space-between; padding: 1rem; }
+    .recipe-v2-profile div { display: grid; gap: 0.1rem; }
+    .recipe-v2-profile span { color: var(--v2-muted); }
+    .recipe-v2-profile-registration { background: var(--v2-bg); border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; padding: 0.45rem 0.6rem; }
+    .recipe-v2-details { border-top: 1px solid var(--v2-border); color: var(--v2-muted); font-size: 0.83rem; padding: 0.75rem 1rem; }
+    .recipe-v2-details summary { color: var(--v2-red-dark); cursor: pointer; font-weight: 700; }
+    .recipe-v2-details p { line-height: 1.5; margin: 0.7rem 0 0; }
+    .recipe-v2-profile-assets { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.7rem; }
+    .recipe-v2-profile-assets span { background: #fff1ef; border-radius: 999px; color: #8e2f26; font-size: 0.72rem; font-weight: 800; padding: 0.35rem 0.55rem; }
+    .recipe-v2-profile-assets span.is-ready { background: var(--v2-red-soft); color: var(--v2-red-dark); }
+    .recipe-v2-label { color: #4e5661; display: block; font-size: 0.78rem; font-weight: 750; margin-bottom: 0.38rem; }
+    .recipe-v2-input, .recipe-v2-textarea { background: #fff; border: 1px solid #d9dde2; border-radius: 0.7rem; color: var(--v2-ink); outline: 0; padding: 0.72rem 0.8rem; width: 100%; }
+    .recipe-v2-input:focus, .recipe-v2-textarea:focus { border-color: var(--v2-red); box-shadow: 0 0 0 3px rgba(154, 64, 53, 0.14); }
+    .recipe-v2-textarea { min-height: 8rem; resize: vertical; }
+    .recipe-v2-search-row { display: flex; gap: 0.55rem; }
+    .recipe-v2-secondary-button { background: var(--v2-red-soft); border: 0; border-radius: 0.7rem; color: var(--v2-red-dark); cursor: pointer; font-weight: 800; padding: 0.7rem 0.9rem; }
+    .recipe-v2-add { align-items: center; background: var(--v2-red); border: 0; border-radius: 999px; color: #fff; cursor: pointer; display: flex; font-size: 1.5rem; height: 2.65rem; justify-content: center; width: 2.65rem; }
+    .recipe-v2-add[aria-expanded="true"] { background: var(--v2-red-dark); transform: rotate(45deg); }
+    .recipe-v2-search-panel { background: #fbfcfc; border-bottom: 1px solid var(--v2-border); padding: 1rem; }
+    .recipe-v2-search-status { color: var(--v2-muted); font-size: 0.78rem; min-height: 1.25rem; padding-top: 0.4rem; }
+    .recipe-v2-results { display: grid; gap: 0.45rem; max-height: 17rem; overflow: auto; }
+    .recipe-v2-result { background: #fff; border: 1px solid var(--v2-border); border-radius: 0.7rem; cursor: pointer; display: grid; gap: 0.12rem; padding: 0.65rem 0.75rem; text-align: left; width: 100%; }
+    .recipe-v2-result:hover { border-color: var(--v2-red); }
+    .recipe-v2-result span { color: var(--v2-muted); font-size: 0.78rem; }
+    .recipe-v2-selected-list { display: grid; gap: 0.75rem; padding: 1rem; }
+    .recipe-v2-empty { color: var(--v2-muted); margin: 0; text-align: center; }
+    .recipe-v2-medicine { background: var(--v2-bg); border: 1px solid var(--v2-border); border-radius: 0.85rem; display: grid; gap: 0.75rem; padding: 0.85rem; }
+    .recipe-v2-medicine-head { align-items: flex-start; display: flex; gap: 0.75rem; justify-content: space-between; }
+    .recipe-v2-medicine-head div { display: grid; gap: 0.12rem; }
+    .recipe-v2-medicine-head span { color: var(--v2-muted); font-size: 0.78rem; }
+    .recipe-v2-remove { background: transparent; border: 0; color: #b43b32; cursor: pointer; font-size: 1.3rem; }
+    .recipe-v2-medicine-fields { display: grid; gap: 0.65rem; grid-template-columns: 6rem minmax(0, 1fr); }
+    .recipe-v2-options { display: grid; }
+    .recipe-v2-option { align-items: center; display: flex; gap: 1rem; justify-content: space-between; padding: 0.9rem 1rem; }
+    .recipe-v2-option + .recipe-v2-option { border-top: 1px solid var(--v2-border); }
+    .recipe-v2-option span { display: grid; }
+    .recipe-v2-option small { color: var(--v2-muted); }
+    .recipe-v2-option input { accent-color: var(--v2-red); height: 1.15rem; width: 2.4rem; }
+    .recipe-v2-diagnosis-divider { align-items: center; color: var(--v2-muted); display: flex; font-size: 0.72rem; font-weight: 800; gap: 0.65rem; margin: 0.65rem 0; text-transform: uppercase; }
+    .recipe-v2-diagnosis-divider::before, .recipe-v2-diagnosis-divider::after { background: var(--v2-border); content: ""; flex: 1; height: 1px; }
+    .recipe-v2-help { color: var(--v2-muted); display: block; line-height: 1.4; margin-top: 0.4rem; }
+    .recipe-v2-diagnosis { align-items: center; background: var(--v2-red-soft); border: 1px solid var(--v2-red-border); border-radius: 0.7rem; display: grid; gap: 0.15rem; grid-template-columns: auto 1fr auto; margin-top: 0.75rem; padding: 0.7rem; }
+    .recipe-v2-diagnosis > span { background: #fff; border-radius: 0.4rem; color: var(--v2-red-dark); font-size: 0.78rem; font-weight: 900; padding: 0.3rem 0.45rem; }
+    .recipe-v2-diagnosis button { background: transparent; border: 0; color: var(--v2-muted); cursor: pointer; font-size: 1.3rem; }
+    .recipe-v2-alert { background: #fff1ef; border: 1px solid #f2c7c0; border-radius: 0.8rem; color: #8e2f26; margin-top: 1.4rem; padding: 0.85rem 1rem; }
+    .recipe-v2-preview { border-left: 0.35rem solid var(--v2-red); margin-top: 1.4rem; padding: 1rem 1.2rem; }
+    .recipe-v2-preview > div span { color: var(--v2-red-dark); font-size: 0.72rem; font-weight: 900; text-transform: uppercase; }
+    .recipe-v2-preview h2 { font-size: 1.15rem; font-weight: 800; margin: 0.12rem 0; }
+    .recipe-v2-preview p { color: var(--v2-muted); margin: 0; }
+    .recipe-v2-preview details { margin-top: 0.85rem; }
+    .recipe-v2-preview summary { color: var(--v2-red-dark); cursor: pointer; font-weight: 800; }
+    .recipe-v2-preview pre { background: #3a1815; border-radius: 0.7rem; color: #fde9e5; font-size: 0.72rem; margin-top: 0.65rem; max-height: 28rem; overflow: auto; padding: 0.9rem; white-space: pre-wrap; }
+    .recipe-v2-result-panel { border-left: 0.35rem solid var(--v2-red); margin-top: 1.4rem; padding: 1rem 1.2rem; }
+    .recipe-v2-result-panel > div:first-child span { color: var(--v2-red-dark); font-size: 0.72rem; font-weight: 900; text-transform: uppercase; }
+    .recipe-v2-result-panel h2 { font-size: 1.15rem; font-weight: 800; margin: 0.12rem 0 0.8rem; }
+    .recipe-v2-result-panel dl { display: grid; gap: 0.7rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
+    .recipe-v2-result-panel dl div { background: var(--v2-bg); border-radius: 0.65rem; display: grid; padding: 0.65rem; }
+    .recipe-v2-result-panel dt { color: var(--v2-muted); font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
+    .recipe-v2-result-panel dd { font-weight: 800; margin: 0; overflow-wrap: anywhere; }
+    .recipe-v2-result-links { display: flex; flex-wrap: wrap; gap: 0.65rem; margin-top: 0.85rem; }
+    .recipe-v2-result-links a { background: var(--v2-red-soft); border-radius: 999px; color: var(--v2-red-dark); font-weight: 800; padding: 0.55rem 0.8rem; text-decoration: none; }
+    .recipe-v2-footer { align-items: center; display: flex; gap: 1rem; justify-content: space-between; margin-top: 1.4rem; padding: 1rem 1.2rem; }
+    .recipe-v2-footer div { display: grid; }
+    .recipe-v2-footer span { color: var(--v2-muted); font-size: 0.82rem; }
+    .recipe-v2-footer .recipe-v2-footer-actions { display: flex; flex: none; gap: 0.65rem; }
+    .recipe-v2-footer button { border: 0; border-radius: 999px; cursor: pointer; font-weight: 850; min-width: 9rem; padding: 0.8rem 1.15rem; }
+    .recipe-v2-review-button { background: var(--v2-red-soft); color: var(--v2-red-dark); }
+    .recipe-v2-emit-button { background: var(--v2-red-dark); color: #fff; }
+    .recipe-v2-footer button:disabled { cursor: not-allowed; opacity: 0.5; }
+    .recipe-v2-secondary-button:disabled { cursor: wait; opacity: 0.6; }
+    .hidden { display: none !important; }
+    @media (max-width: 860px) {
+        .recipe-v2-columns { grid-template-columns: 1fr; }
+        .recipe-v2-patient-card { grid-template-columns: auto 1fr; }
+        .recipe-v2-patient-coverage { border-left: 0; border-top: 1px solid var(--v2-border); grid-column: 1 / -1; min-width: 0; padding: 0.8rem 0 0; }
+    }
+    @media (max-width: 560px) {
+        .recipe-v2-heading, .recipe-v2-footer, .recipe-v2-profile { align-items: stretch; flex-direction: column; }
+        .recipe-v2-footer .recipe-v2-footer-actions { display: grid; }
+        .recipe-v2-result-panel dl { grid-template-columns: 1fr; }
+        .recipe-v2-safe-badge { align-self: flex-start; }
+        .recipe-v2-search-row { flex-direction: column; }
+        .recipe-v2-medicine-fields { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const root = document.getElementById("recipe-v2");
+    const form = document.getElementById("recipe-v2-form");
+    const initialPatient = JSON.parse(document.getElementById("recipe-v2-initial-patient").textContent);
+    const state = {
+        patient: initialPatient?.patient?.id ? initialPatient : null,
+        medicines: [],
+        diagnosis: null,
+        lastPreview: null,
+    };
+    const endpoints = {
+        patients: root.dataset.patientEndpoint,
+        medicines: root.dataset.medEndpoint,
+        diagnoses: root.dataset.dxEndpoint,
+        preview: root.dataset.previewEndpoint,
+        emit: root.dataset.emitEndpoint,
+    };
+
+    const getCookie = (name) => document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`))?.split("=").slice(1).join("=") || "";
+    const alertBox = document.getElementById("recipe-v2-alert");
+    const previewBox = document.getElementById("recipe-v2-preview");
+    const resultBox = document.getElementById("recipe-v2-result");
+    const emitButton = document.getElementById("emit-recipe");
+    const setAlert = (message = "") => {
+        alertBox.textContent = message;
+        alertBox.classList.toggle("hidden", !message);
+    };
+    const invalidatePreview = () => {
+        state.lastPreview = null;
+        emitButton.disabled = true;
+        resultBox.classList.add("hidden");
+    };
+
+    const setSearchStatus = (kind, message) => {
+        document.getElementById(`${kind}-search-status`).textContent = message;
+    };
+
+    const patientDisplayName = () => {
+        const patient = state.patient?.patient;
+        return patient ? [patient.last_name, patient.name].filter(Boolean).join(", ") : "el paciente seleccionado";
+    };
+
+    const renderPatient = () => {
+        const patient = state.patient?.patient;
+        const coverage = state.patient?.coverage;
+        const avatar = document.getElementById("recipe-v2-patient-avatar");
+        const title = document.getElementById("recipe-v2-patient-title");
+        const details = document.getElementById("recipe-v2-patient-details");
+        const contact = document.getElementById("recipe-v2-patient-contact");
+        const coverageName = document.getElementById("recipe-v2-coverage-name");
+        const coverageMember = document.getElementById("recipe-v2-coverage-member");
+        const coverageMapping = document.getElementById("recipe-v2-coverage-mapping");
+        const footerPatient = document.getElementById("recipe-v2-footer-patient");
+
+        if (!patient) {
+            avatar.textContent = "—";
+            title.textContent = "Seleccioná un paciente";
+            details.textContent = "Buscá por apellido, nombre o documento.";
+            contact.textContent = "";
+            coverageName.textContent = "Sin cobertura";
+            coverageMember.textContent = "Sin número de afiliado";
+            coverageMapping.textContent = "";
+            footerPatient.textContent = "Seleccioná un paciente de historias clínicas.";
+            return;
+        }
+
+        avatar.textContent = `${patient.name?.[0] || ""}${patient.last_name?.[0] || ""}`.toUpperCase() || "HC";
+        title.textContent = patientDisplayName();
+        details.textContent = [
+            [patient.document_type, patient.document].filter(Boolean).join(" "),
+            patient.sex_label,
+            patient.birth_date,
+        ].filter(Boolean).join(" · ");
+        contact.textContent = [
+            [patient.street, patient.street_number].filter(Boolean).join(" "),
+            patient.locality,
+            patient.phone,
+            patient.email,
+        ].filter(Boolean).join(" · ");
+        coverageName.textContent = [coverage?.name, coverage?.plan].filter(Boolean).join(" · ") || "Sin cobertura";
+        coverageMember.textContent = coverage?.member_number ? `Afiliado ${coverage.member_number}` : "Sin número de afiliado";
+        coverageMapping.textContent = coverage?.mapped ? "Cobertura vinculada con QBI2" : "Cobertura aún sin mapeo QBI2";
+        footerPatient.textContent = `La receta se enviará a QBI2 homologación para ${patientDisplayName()}.`;
+    };
+
+    const selectPatient = (item) => {
+        state.patient = item;
+        invalidatePreview();
+        renderPatient();
+        document.getElementById("patient-results").replaceChildren();
+        document.getElementById("patient-search").value = "";
+        setSearchStatus("patient", "Paciente seleccionado desde historias clínicas.");
+        document.getElementById("patient-search-panel").classList.add("hidden");
+        document.getElementById("toggle-patient-search").setAttribute("aria-expanded", "false");
+        setAlert();
+    };
+
+    const renderPatientResults = (items) => {
+        const box = document.getElementById("patient-results");
+        box.replaceChildren();
+        items.forEach((item) => {
+            const patient = item.patient || {};
+            const coverage = item.coverage || {};
+            const title = [patient.last_name, patient.name].filter(Boolean).join(", ");
+            const subtitle = [
+                [patient.document_type, patient.document].filter(Boolean).join(" "),
+                coverage.name,
+                coverage.member_number ? `Af. ${coverage.member_number}` : "",
+            ].filter(Boolean).join(" · ");
+            box.append(createResultButton(title, subtitle, () => selectPatient(item)));
+        });
+    };
+
+    const searchPatients = async () => {
+        const input = document.getElementById("patient-search");
+        const button = document.getElementById("search-patient");
+        const query = input.value.trim();
+        if (query.length < 3) {
+            setSearchStatus("patient", "Ingresá al menos 3 caracteres.");
+            return;
+        }
+        button.disabled = true;
+        setSearchStatus("patient", "Buscando en historias clínicas…");
+        setAlert();
+        try {
+            const response = await fetch(`${endpoints.patients}?q=${encodeURIComponent(query)}`, {
+                credentials: "same-origin",
+                headers: {Accept: "application/json"},
+            });
+            const data = await response.json();
+            if (!response.ok || data.status !== "success") throw new Error(data.message || "No se pudo buscar el paciente.");
+            const items = Array.isArray(data.items) ? data.items : [];
+            renderPatientResults(items);
+            setSearchStatus("patient", items.length ? `${items.length} paciente${items.length === 1 ? "" : "s"}.` : "No se encontraron pacientes.");
+        } catch (error) {
+            document.getElementById("patient-results").replaceChildren();
+            setSearchStatus("patient", "");
+            setAlert(error.message || "No se pudo buscar el paciente.");
+        } finally {
+            button.disabled = false;
+        }
+    };
+
+    async function searchCatalog(kind, query) {
+        const minimum = kind === "diagnosis" ? 3 : 2;
+        if (query.trim().length < minimum) {
+            setSearchStatus(kind, `Ingresá al menos ${minimum} caracteres.`);
+            return [];
+        }
+        setSearchStatus(kind, "Buscando…");
+        const endpoint = kind === "diagnosis" ? endpoints.diagnoses : endpoints.medicines;
+        const response = await fetch(`${endpoint}?q=${encodeURIComponent(query.trim())}`, {
+            credentials: "same-origin",
+            headers: {Accept: "application/json"},
+        });
+        const data = await response.json();
+        if (!response.ok || data.status !== "success") throw new Error(data.message || "No se pudo consultar el catálogo.");
+        const items = Array.isArray(data.items) ? data.items : [];
+        setSearchStatus(kind, items.length ? `${items.length} resultado${items.length === 1 ? "" : "s"}.` : "Sin resultados.");
+        return items;
+    }
+
+    const createResultButton = (title, subtitle, onSelect) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "recipe-v2-result";
+        const strong = document.createElement("strong");
+        strong.textContent = title || "Sin descripción";
+        const span = document.createElement("span");
+        span.textContent = subtitle || "";
+        button.append(strong, span);
+        button.addEventListener("click", onSelect);
+        return button;
+    };
+
+    const renderMedicineResults = (items) => {
+        const box = document.getElementById("medicine-results");
+        box.replaceChildren();
+        items.forEach((item) => {
+            const title = item.nombreProducto || item.display;
+            const subtitle = [item.nombreDroga, item.presentacion, item.regNo ? `RegNo ${item.regNo}` : ""].filter(Boolean).join(" · ");
+            box.append(createResultButton(title, subtitle, () => addMedicine(item)));
+        });
+    };
+
+    const addMedicine = (item) => {
+        const regNo = String(item.regNo || "");
+        if (!regNo) return;
+        if (state.medicines.some((medicine) => medicine.regNo === regNo)) {
+            setAlert("Ese medicamento ya está incluido en la receta.");
+            return;
+        }
+        state.medicines.push({
+            regNo,
+            nombreProducto: item.nombreProducto || item.display || "Medicamento",
+            nombreDroga: item.nombreDroga || "",
+            presentacion: item.presentacion || "",
+            cantidad: 1,
+            posologia: "Tomar según indicación médica.",
+            permiteSustitucion: "",
+        });
+        invalidatePreview();
+        setAlert();
+        renderMedicines();
+        document.getElementById("medicine-search").value = "";
+        document.getElementById("medicine-results").replaceChildren();
+        setSearchStatus("medicine", "Medicamento añadido.");
+    };
+
+    const renderMedicines = () => {
+        const box = document.getElementById("selected-medicines");
+        const count = document.getElementById("medicine-count");
+        box.replaceChildren();
+        count.textContent = state.medicines.length ? `${state.medicines.length} seleccionado${state.medicines.length === 1 ? "" : "s"}` : "Ninguno seleccionado";
+        if (!state.medicines.length) {
+            const empty = document.createElement("p");
+            empty.className = "recipe-v2-empty";
+            empty.textContent = "Aún no hay medicamentos seleccionados para esta receta.";
+            box.append(empty);
+            return;
+        }
+        state.medicines.forEach((medicine, index) => {
+            const article = document.createElement("article");
+            article.className = "recipe-v2-medicine";
+            const head = document.createElement("div");
+            head.className = "recipe-v2-medicine-head";
+            const description = document.createElement("div");
+            const name = document.createElement("strong");
+            name.textContent = medicine.nombreProducto;
+            const detail = document.createElement("span");
+            detail.textContent = [medicine.nombreDroga, medicine.presentacion, `RegNo ${medicine.regNo}`].filter(Boolean).join(" · ");
+            description.append(name, detail);
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "recipe-v2-remove";
+            remove.setAttribute("aria-label", `Quitar ${medicine.nombreProducto}`);
+            remove.textContent = "×";
+            remove.addEventListener("click", () => { state.medicines.splice(index, 1); invalidatePreview(); renderMedicines(); });
+            head.append(description, remove);
+
+            const fields = document.createElement("div");
+            fields.className = "recipe-v2-medicine-fields";
+            const quantityLabel = document.createElement("label");
+            quantityLabel.className = "recipe-v2-label";
+            quantityLabel.textContent = "Cantidad";
+            const quantity = document.createElement("input");
+            quantity.type = "number";
+            quantity.min = "1";
+            quantity.className = "recipe-v2-input";
+            quantity.value = medicine.cantidad;
+            quantity.addEventListener("change", () => { medicine.cantidad = Math.max(1, Number(quantity.value) || 1); quantity.value = medicine.cantidad; invalidatePreview(); });
+            quantityLabel.append(quantity);
+            const dosageLabel = document.createElement("label");
+            dosageLabel.className = "recipe-v2-label";
+            dosageLabel.textContent = "Posología";
+            const dosage = document.createElement("input");
+            dosage.type = "text";
+            dosage.className = "recipe-v2-input";
+            dosage.value = medicine.posologia;
+            dosage.addEventListener("input", () => { medicine.posologia = dosage.value; invalidatePreview(); });
+            dosageLabel.append(dosage);
+            fields.append(quantityLabel, dosageLabel);
+            article.append(head, fields);
+            box.append(article);
+        });
+    };
+
+    const renderDiagnosisResults = (items) => {
+        const box = document.getElementById("diagnosis-results");
+        box.replaceChildren();
+        items.forEach((item) => {
+            box.append(createResultButton(item.descdiagnostico || item.display, item.coddiagnostico || "", () => selectDiagnosis(item)));
+        });
+    };
+
+    const setDiagnosis = ({code = "", text = "", source = "catalog"}) => {
+        state.diagnosis = {code: String(code).trim(), text: String(text).trim(), source};
+        invalidatePreview();
+        document.getElementById("selected-diagnosis-code").textContent = state.diagnosis.code || "Texto libre";
+        document.getElementById("selected-diagnosis-text").textContent = state.diagnosis.text;
+        document.getElementById("selected-diagnosis").classList.remove("hidden");
+        document.getElementById("diagnosis-results").replaceChildren();
+        document.getElementById("diagnosis-search").value = "";
+        setAlert();
+    };
+
+    const selectDiagnosis = (item) => {
+        setDiagnosis({
+            code: item.coddiagnostico || "",
+            text: item.descdiagnostico || item.display || "",
+            source: "catalog",
+        });
+        document.getElementById("diagnosis-free-text").value = "";
+        setSearchStatus("diagnosis", "Diagnóstico seleccionado del catálogo.");
+    };
+
+    const useFreeDiagnosis = () => {
+        const input = document.getElementById("diagnosis-free-text");
+        const text = input.value.trim();
+        if (!text) {
+            setAlert("Escribí un diagnóstico para usar como texto libre.");
+            input.focus();
+            return;
+        }
+        setDiagnosis({text, source: "free"});
+        setSearchStatus("diagnosis", "Diagnóstico de texto libre seleccionado.");
+    };
+
+    const clearDiagnosis = () => {
+        state.diagnosis = null;
+        invalidatePreview();
+        document.getElementById("selected-diagnosis").classList.add("hidden");
+        document.getElementById("diagnosis-free-text").value = "";
+        setSearchStatus("diagnosis", "");
+    };
+
+    const requestSearch = async (kind) => {
+        const button = document.getElementById(kind === "diagnosis" ? "search-diagnosis" : "search-medicine");
+        const input = document.getElementById(kind === "diagnosis" ? "diagnosis-search" : "medicine-search");
+        button.disabled = true;
+        setAlert();
+        try {
+            const items = await searchCatalog(kind, input.value);
+            if (kind === "diagnosis") renderDiagnosisResults(items); else renderMedicineResults(items);
+        } catch (error) {
+            setSearchStatus(kind, "");
+            setAlert(error.message || "No se pudo completar la búsqueda.");
+        } finally {
+            button.disabled = false;
+        }
+    };
+
+    const bodyForPreview = () => ({
+        operation: "receta",
+        pacienteId: state.patient?.patient?.id || null,
+        fechaEmision: document.getElementById("recipe-date").value,
+        medicamentos: state.medicines.map((medicine) => ({
+            ...medicine,
+            tratamiento: document.getElementById("long-treatment").checked ? 1 : 0,
+        })),
+        diagnostico: state.diagnosis?.text || "",
+        codigoDiagnostico: state.diagnosis?.code || "",
+        indicaciones: document.getElementById("recipe-indications").value,
+        observaciones: document.getElementById("recipe-observations").value,
+        ocultarPaciente: document.getElementById("hide-patient").checked,
+    });
+
+    const previewRecipe = async () => {
+        setAlert();
+        previewBox.classList.add("hidden");
+        invalidatePreview();
+        if (!state.patient?.patient?.id) {
+            setAlert("Seleccioná un paciente de historias clínicas.");
+            return;
+        }
+        if (!state.medicines.length) {
+            setAlert("Seleccioná al menos un medicamento.");
+            return;
+        }
+        if (!state.diagnosis?.text) {
+            setAlert("Elegí un diagnóstico del catálogo o escribí uno como texto libre.");
+            return;
+        }
+        const button = document.getElementById("preview-recipe");
+        button.disabled = true;
+        button.textContent = "Revisando…";
+        try {
+            const body = bodyForPreview();
+            const response = await fetch(endpoints.preview, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": decodeURIComponent(getCookie("csrftoken")),
+                },
+                body: JSON.stringify(body),
+            });
+            const data = await response.json();
+            if (!response.ok || data.status !== "success") throw new Error(data.message || "No se pudo preparar la receta.");
+            document.getElementById("recipe-v2-json").textContent = JSON.stringify(data.payload, null, 2);
+            document.getElementById("recipe-v2-preview-patient").textContent = patientDisplayName();
+            state.lastPreview = JSON.stringify(body);
+            emitButton.disabled = false;
+            previewBox.classList.remove("hidden");
+            previewBox.scrollIntoView({behavior: "smooth", block: "nearest"});
+        } catch (error) {
+            setAlert(error.message || "No se pudo preparar la receta.");
+        } finally {
+            button.disabled = false;
+            button.textContent = "Revisar datos";
+        }
+    };
+
+    const setResultField = (name, value) => {
+        const element = resultBox.querySelector(`[data-result="${name}"]`);
+        if (element) element.textContent = value || "—";
+    };
+
+    const setResultLink = (name, value) => {
+        const element = resultBox.querySelector(`[data-result-link="${name}"]`);
+        if (!element) return;
+        if (value) {
+            element.href = value;
+            element.classList.remove("hidden");
+        } else {
+            element.href = "#";
+            element.classList.add("hidden");
+        }
+    };
+
+    const emitRecipe = async () => {
+        setAlert();
+        resultBox.classList.add("hidden");
+        const body = bodyForPreview();
+        if (!state.lastPreview || state.lastPreview !== JSON.stringify(body)) {
+            invalidatePreview();
+            setAlert("Los datos cambiaron. Revisá nuevamente el payload antes de emitir.");
+            return;
+        }
+        if (!window.confirm(`Se emitirá una receta en QBI2 homologación para ${patientDisplayName()}. ¿Continuar?`)) return;
+
+        emitButton.disabled = true;
+        emitButton.textContent = "Emitiendo…";
+        try {
+            const response = await fetch(endpoints.emit, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": decodeURIComponent(getCookie("csrftoken")),
+                },
+                body: JSON.stringify(body),
+            });
+            const data = await response.json();
+            if (!response.ok || data.status !== "success") {
+                const providerMessage = data.provider_payload?.mensaje || data.provider_payload?.errores?.[0]?.mensaje;
+                throw new Error(providerMessage || data.message || "No se pudo emitir la receta.");
+            }
+            const providerErrors = data.response?.errores || data.summary?.errores;
+            if (Array.isArray(providerErrors) && providerErrors.length) {
+                throw new Error(providerErrors[0]?.mensaje || "QBI2 devolvió errores al emitir.");
+            }
+            const summary = data.summary || {};
+            setResultField("idReceta", summary.idReceta);
+            setResultField("id", summary.id);
+            setResultField("status", summary.status || "OK");
+            setResultLink("s3Link", summary.s3Link);
+            setResultLink("verificador", summary.verificador);
+            resultBox.classList.remove("hidden");
+            state.lastPreview = null;
+            resultBox.scrollIntoView({behavior: "smooth", block: "nearest"});
+        } catch (error) {
+            setAlert(error.message || "No se pudo emitir la receta.");
+            emitButton.disabled = false;
+        } finally {
+            emitButton.textContent = "Emitir en HML";
+        }
+    };
+
+    document.getElementById("toggle-medicine-search").addEventListener("click", (event) => {
+        const panel = document.getElementById("medicine-search-panel");
+        const expanded = event.currentTarget.getAttribute("aria-expanded") === "true";
+        event.currentTarget.setAttribute("aria-expanded", String(!expanded));
+        panel.classList.toggle("hidden", expanded);
+        if (!expanded) document.getElementById("medicine-search").focus();
+    });
+    document.getElementById("toggle-patient-search").addEventListener("click", (event) => {
+        const panel = document.getElementById("patient-search-panel");
+        const expanded = event.currentTarget.getAttribute("aria-expanded") === "true";
+        event.currentTarget.setAttribute("aria-expanded", String(!expanded));
+        panel.classList.toggle("hidden", expanded);
+        if (!expanded) document.getElementById("patient-search").focus();
+    });
+    document.getElementById("search-patient").addEventListener("click", searchPatients);
+    document.getElementById("search-medicine").addEventListener("click", () => requestSearch("medicine"));
+    document.getElementById("search-diagnosis").addEventListener("click", () => requestSearch("diagnosis"));
+    document.getElementById("use-free-diagnosis").addEventListener("click", useFreeDiagnosis);
+    document.getElementById("medicine-search").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); requestSearch("medicine"); } });
+    document.getElementById("diagnosis-search").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); requestSearch("diagnosis"); } });
+    document.getElementById("diagnosis-free-text").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); useFreeDiagnosis(); } });
+    document.getElementById("patient-search").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); searchPatients(); } });
+    document.getElementById("clear-diagnosis").addEventListener("click", clearDiagnosis);
+    document.getElementById("preview-recipe").addEventListener("click", previewRecipe);
+    emitButton.addEventListener("click", emitRecipe);
+    ["recipe-date", "long-treatment", "hide-patient", "recipe-indications", "recipe-observations"].forEach((id) => {
+        document.getElementById(id).addEventListener("input", invalidatePreview);
+        document.getElementById(id).addEventListener("change", invalidatePreview);
+    });
+    form.addEventListener("submit", (event) => event.preventDefault());
+    renderPatient();
+    renderMedicines();
+})();
+</script>
+{% endblock %}

@@ -50,7 +50,6 @@ Modelos actuales relevantes:
     main.ComentariosVisitas
     main.IndicacionesVisitas
     Qbi2.SolicitudReceta
-    Qbi2.Qbi2CacheEntry
 
 Vistas actuales relevantes:
 
@@ -872,14 +871,10 @@ Secuencia:
 08. Cambiar cola medica para leer Qbi2Solicitud.
 09. Migrar datos historicos de SolicitudReceta si corresponde.
 10. Desactivar rutas de laboratorio.
-11. Retirar cache operativo.
-12. Eliminar Qbi2CacheEntry en migracion posterior si no queda uso.
 
 Rutas POC a retirar o reclasificar:
 
     /qbi2-poc/lab/receta/
-    /qbi2-poc/medicamentos/cache/
-    /qbi2-poc/api/cache/recientes/
 
 
 ========================================================================

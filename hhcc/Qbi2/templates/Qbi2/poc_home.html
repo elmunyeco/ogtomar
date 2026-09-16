@@ -17,12 +17,7 @@
             <a class="global-search-card" href="{% url 'qbi2_poc:medicamentos_directo' %}">
                 <span>Medicamentos</span>
                 <strong>Buscador directo</strong>
-                <p>Consulta QBI2 sin cache.</p>
-            </a>
-            <a class="global-search-card" href="{% url 'qbi2_poc:medicamentos_cache' %}">
-                <span>Medicamentos</span>
-                <strong>Buscador con cache</strong>
-                <p>Prueba la cache persistente de vademécum.</p>
+                <p>Consulta QBI2 en vivo.</p>
             </a>
             <a class="global-search-card" href="{% url 'qbi2_poc:paciente_receta_nueva' %}">
                 <span>Paciente</span>
@@ -43,6 +38,11 @@
                 <span>Lab</span>
                 <strong>Pedido espontáneo</strong>
                 <p>Cliente de prueba piloto para receta o práctica directa del médico.</p>
+            </a>
+            <a class="global-search-card" href="{% url 'qbi2_poc:lab_espontanea_2' %}">
+                <span>Lab · QBI2 HML</span>
+                <strong>Crear receta · versión 2</strong>
+                <p>Cliente simplificado inspirado en RCTA, con revisión previa y emisión confirmada.</p>
             </a>
         </div>
     </div>

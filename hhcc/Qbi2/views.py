@@ -1,22 +1,31 @@
+import base64
+import copy
 import json
+import re
+import unicodedata
+from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from django.contrib import messages
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
 from django.views.decorators.http import require_POST
 
-from .cache import MySQLCache
-from .client import Qbi2ConfigurationError, Qbi2Error, Qbi2HTTPError
-from .models import Qbi2CacheEntry, SolicitudReceta
+from .client import Qbi2ConfigurationError, Qbi2HTTPError
+from .models import SolicitudReceta
 from .portal import create_prescription_request, find_patient_history, get_client_ip
+from .professional_profile import load_professional_profile, resolve_profile_asset
 from .recipes import (
     build_hml_receta_poc_payload,
     build_receta_payload_from_solicitud,
@@ -29,33 +38,15 @@ from .spontaneous import (
     build_spontaneous_payload,
     emit_spontaneous_payload,
 )
-from .vademecum_cache import CachedVademecumService
+from main.models import Paciente
 
 
-def _cached_vademecum_service() -> CachedVademecumService:
-    return CachedVademecumService(
-        VademecumService(),
-        cache=MySQLCache(),
-        cliente_app_id=settings.QBI2_CLIENT_APP_ID,
-        base_url=settings.QBI2_BASE_URL,
-    )
+ESPONTANEA_2_PATIENT_DOCUMENT = "23101065"
 
 
 @require_GET
 def qbi2_poc_home(request):
     return render(request, "Qbi2/poc_home.html")
-
-
-@require_GET
-def vademecum_demo(request):
-    return render(
-        request,
-        "Qbi2/vademecum_demo.html",
-        {
-            "min_query_length": getattr(settings, "QBI2_VADEMECUM_MIN_QUERY_LENGTH", 2),
-            "debounce_ms": 250,
-        },
-    )
 
 
 @require_GET
@@ -76,6 +67,25 @@ def espontanea_poc_page(request):
         {
             "client_app_id": getattr(settings, "QBI2_CLIENT_APP_ID", ""),
             "base_url": getattr(settings, "QBI2_BASE_URL", ""),
+        },
+    )
+
+
+@ensure_csrf_cookie
+def espontanea_poc_2_page(request):
+    defaults = _espontanea_2_defaults()
+    return render(
+        request,
+        "Qbi2/espontanea_poc_2.html",
+        {
+            "patient": defaults["patient"],
+            "doctor": defaults["doctor"],
+            "coverage": defaults["coverage"],
+            "initial_patient": {
+                "patient": defaults["patient"],
+                "coverage": defaults["coverage"],
+            },
+            "today": timezone.localdate().isoformat(),
         },
     )
 
@@ -125,50 +135,6 @@ def health(request):
             "token_configured": bool(getattr(settings, "QBI2_BEARER_TOKEN", "")),
             "client_app_id_configured": bool(getattr(settings, "QBI2_CLIENT_APP_ID", "")),
             "vademecum_path": getattr(settings, "QBI2_VADEMECUM_PATH", ""),
-        }
-    )
-
-
-@require_GET
-def vademecum_search_api(request):
-    query = request.GET.get("q", "")
-    page = _positive_int(request.GET.get("page"), default=1)
-    allow_stale = request.GET.get("allow_stale", "1") != "0"
-    extra_params = _parse_extra_params(request.GET.get("extra_params", ""))
-
-    if isinstance(extra_params, JsonResponse):
-        return extra_params
-
-    service = _cached_vademecum_service()
-    try:
-        result = service.buscar(
-            query,
-            page=page,
-            extra_params=extra_params,
-            allow_stale=allow_stale,
-            include_cache_metadata=True,
-        )
-    except Qbi2Error as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "error": str(exc),
-                "error_type": exc.__class__.__name__,
-                "data": None,
-                "cache": {"hit": False, "stale": False, "status": "provider_error"},
-            },
-            status=502,
-        )
-
-    data = result.get("data")
-    items = data.get("items", []) if isinstance(data, dict) else data
-    return JsonResponse(
-        {
-            "ok": True,
-            "query": query,
-            "normalized_count": len(items or []),
-            "data": data,
-            "cache": result.get("cache", {}),
         }
     )
 
@@ -276,6 +242,44 @@ def espontanea_catalogo_api(request, catalogo):
     )
 
 
+@require_GET
+def espontanea_2_pacientes_api(request):
+    """Search active HHCC patients and expose only fields needed by the recipe selector."""
+    query = str(request.GET.get("q") or "").strip()
+    compact_query = re.sub(r"[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+", "", query)
+    if len(compact_query) < 3:
+        return JsonResponse(
+            {"status": "error", "message": "Ingresá al menos 3 caracteres para buscar un paciente."},
+            status=400,
+        )
+
+    filters = Q()
+    for token in query.split():
+        token_filter = Q(apellido__icontains=token) | Q(nombre__icontains=token)
+        document_token = re.sub(r"\D", "", token)
+        if document_token:
+            token_filter |= Q(numDoc__icontains=document_token)
+            if document_token.isdigit():
+                token_filter |= Q(pk=int(document_token))
+        filters &= token_filter
+
+    patients = (
+        Paciente.objects.select_related("idTipoDoc")
+        .filter(filters, deBaja=False)
+        .order_by("apellido", "nombre", "id")[:12]
+    )
+    items = []
+    for patient_record in patients:
+        patient_data = _espontanea_2_patient_data(patient_record)
+        items.append(
+            {
+                "patient": patient_data["patient"],
+                "coverage": patient_data["coverage"],
+            }
+        )
+    return JsonResponse({"status": "success", "count": len(items), "items": items})
+
+
 @csrf_protect
 @require_POST
 def espontanea_preview_api(request):
@@ -288,6 +292,76 @@ def espontanea_preview_api(request):
     except (TypeError, ValueError) as exc:
         return JsonResponse({"status": "error", "message": str(exc)}, status=400)
     return JsonResponse({"status": "success", "operation": operation, "endpoint": endpoint, "payload": payload})
+
+
+@csrf_protect
+@require_POST
+def espontanea_2_preview_api(request):
+    """Build the simplified recipe payload without making a QBI2 write request."""
+    data_or_response = _json_body(request)
+    if isinstance(data_or_response, JsonResponse):
+        return data_or_response
+
+    try:
+        safe_data = _espontanea_2_safe_data(data_or_response)
+        endpoint, payload = build_spontaneous_payload(safe_data, "receta")
+    except (TypeError, ValueError) as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+    except Qbi2ConfigurationError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "mode": "preview_only",
+            "message": "Payload preparado localmente. No se emitió ninguna receta.",
+            "operation": "receta",
+            "endpoint": endpoint,
+            "payload": _redact_profile_images(payload),
+        }
+    )
+
+
+@csrf_protect
+@require_POST
+def espontanea_2_emit_api(request):
+    """Emit from the simplified client, with patient and professional data owned by the server."""
+    data_or_response = _json_body(request)
+    if isinstance(data_or_response, JsonResponse):
+        return data_or_response
+
+    try:
+        safe_data = _espontanea_2_safe_data(data_or_response)
+        result = emit_spontaneous_payload(safe_data, "receta")
+    except (TypeError, ValueError) as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+    except Qbi2ConfigurationError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
+    except Qbi2HTTPError as exc:
+        endpoint, payload = build_spontaneous_payload(safe_data, "receta")
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": str(exc),
+                "operation": "receta",
+                "endpoint": endpoint,
+                "payload": _redact_profile_images(payload),
+                "provider_status": exc.status_code,
+                "provider_payload": exc.payload,
+            },
+            status=502,
+        )
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "operation": result.operation,
+            "endpoint": result.endpoint,
+            "payload": _redact_profile_images(result.payload),
+            "summary": result.summary,
+            "response": result.response,
+        }
+    )
 
 
 @csrf_protect
@@ -498,26 +572,343 @@ def rechazar_solicitud_receta(request, solicitud_id):
     return _decidir_solicitud_receta(request, solicitud_id, aprobar=False)
 
 
-@require_GET
-def cache_recent_api(request):
-    limit = min(_positive_int(request.GET.get("limit"), default=15), 50)
-    rows = []
-    for entry in Qbi2CacheEntry.objects.filter(namespace="vademecum").order_by("-updated_at")[:limit]:
-        value = entry.value if isinstance(entry.value, dict) else {}
-        rows.append(
+def _espontanea_2_defaults(patient_record: Paciente | None = None) -> dict[str, Any]:
+    """Professional defaults plus a patient profile read from the HHCC database."""
+    if patient_record is None:
+        patient_record = (
+            Paciente.objects.select_related("idTipoDoc")
+            .filter(numDoc=ESPONTANEA_2_PATIENT_DOCUMENT, apellido__iexact="Bergonzi", deBaja=False)
+            .order_by("id")
+            .first()
+        )
+    patient_data = _espontanea_2_patient_data(patient_record)
+    patient = patient_data["patient"]
+    coverage = patient_data["coverage"]
+    profile = load_professional_profile()
+    medico_profile = profile["medico"]
+    matricula = _profile_section(medico_profile, "matricula")
+    sello = _profile_section(medico_profile, "sello")
+    firma = _profile_section(medico_profile, "firma")
+    logo = _profile_section(medico_profile, "logo")
+    consultorio = profile["consultorio"]
+    consultorio_domicilio = _profile_section(consultorio, "domicilio")
+    signature_base64 = _configured_image_base64(
+        resolve_profile_asset(profile, _profile_text(firma, "archivo"))
+    )
+    logo_base64 = _configured_image_base64(
+        resolve_profile_asset(profile, _profile_text(logo, "archivo"))
+    )
+    registration_type = _profile_text(matricula, "tipo")
+    registration_number = _profile_text(matricula, "numero")
+    doctor = {
+        "name": _profile_text(medico_profile, "nombre"),
+        "last_name": _profile_text(medico_profile, "apellido"),
+        "specialty": _profile_text(medico_profile, "especialidad"),
+        "profession": _profile_text(medico_profile, "profesion"),
+        "registration_type": registration_type,
+        "registration_number": registration_number,
+        "registration_display": _profile_text(
+            matricula,
+            "display",
+            f"{registration_type} {registration_number}".strip(),
+        ),
+        "seal_line_1": _profile_text(sello, "linea_1"),
+        "seal_line_2": _profile_text(sello, "linea_2"),
+        "seal_line_3": _profile_text(sello, "linea_3"),
+        "signature_configured": bool(signature_base64),
+        "logo_configured": bool(logo_base64),
+    }
+    payload = {
+        "pacienteNombre": patient["name"],
+        "pacienteApellido": patient["last_name"],
+        "pacienteTipoDoc": patient["document_type"],
+        "pacienteNroDoc": patient["document"],
+        "pacienteSexo": patient["sex"],
+        "pacienteFechaNacimiento": patient["birth_date"],
+        "pacienteCuil": "",
+        "pacienteEmail": patient["email"],
+        "pacienteTelefono": patient["phone"],
+        "pacienteLocalidad": patient["locality"],
+        "pacienteProvincia": patient["province"],
+        "pacientePais": "AR",
+        "pacienteCalle": patient["street"],
+        "pacienteNumero": patient["street_number"],
+        "pacienteCodigoPostal": "",
+        "idFinanciador": coverage["financier_id"],
+        "nroFinanciador": "",
+        "planId": coverage["plan_id"],
+        "plan": coverage["payload_plan"],
+        "afiliadoNumero": coverage["member_number"],
+        "dniTitular": patient["document"],
+        "medicoNombre": doctor["name"],
+        "medicoApellido": doctor["last_name"],
+        "medicoTipoDoc": _profile_text(medico_profile, "tipo_documento"),
+        "medicoNroDoc": _profile_text(medico_profile, "numero_documento"),
+        "medicoSexo": _profile_text(medico_profile, "sexo"),
+        "medicoFechaNacimiento": _profile_text(medico_profile, "fecha_nacimiento"),
+        "medicoEmail": _profile_text(medico_profile, "email"),
+        "medicoTelefono": _profile_text(medico_profile, "telefono"),
+        "medicoPais": _profile_text(medico_profile, "pais"),
+        "medicoMatriculaTipo": doctor["registration_type"],
+        "medicoMatriculaNumero": doctor["registration_number"],
+        "medicoMatriculaProvincia": _profile_text(matricula, "provincia"),
+        "medicoEspecialidad": doctor["specialty"],
+        "medicoProfesion": doctor["profession"],
+        "medicoIdTributario": _profile_text(medico_profile, "id_tributario"),
+        "medicoIdRefeps": _profile_text(medico_profile, "id_refeps"),
+        "medicoFirmaLink": _profile_text(firma, "link"),
+        "medicoFirmaBase64": signature_base64,
+        "medicoLogoInstitucion": logo_base64,
+        "selloLinea1": doctor["seal_line_1"],
+        "selloLinea2": doctor["seal_line_2"],
+        "selloLinea3": doctor["seal_line_3"],
+        "consultorioNombre": _profile_text(consultorio, "nombre"),
+        "consultorioCalle": _profile_text(consultorio_domicilio, "calle"),
+        "consultorioNumero": _profile_text(consultorio_domicilio, "numero"),
+        "consultorioPiso": _profile_text(consultorio_domicilio, "piso"),
+        "consultorioDepto": _profile_text(consultorio_domicilio, "depto"),
+        "consultorioCodigoPostal": _profile_text(consultorio_domicilio, "codigo_postal"),
+        "consultorioLocalidad": _profile_text(consultorio_domicilio, "localidad"),
+        "consultorioMunicipio": _profile_text(consultorio_domicilio, "municipio"),
+        "consultorioProvincia": _profile_text(consultorio_domicilio, "provincia"),
+        "consultorioPais": _profile_text(consultorio_domicilio, "pais"),
+        "consultorioContacto": _profile_text(consultorio, "contacto"),
+        "consultorioEmail": _profile_text(consultorio, "email"),
+        "consultorioLogo": _profile_text(consultorio, "logo"),
+    }
+    return {"patient": patient, "doctor": doctor, "coverage": coverage, "payload": payload}
+
+
+def _espontanea_2_patient_data(patient_record: Paciente | None) -> dict[str, Any]:
+    if patient_record is None:
+        patient = {
+            "id": None,
+            "name": "",
+            "last_name": "",
+            "document_type": "",
+            "document": "",
+            "birth_date": "",
+            "sex": "",
+            "sex_label": "Sin especificar",
+            "email": "",
+            "phone": "",
+            "street": "",
+            "street_number": "",
+            "locality": "",
+            "province": "",
+        }
+        coverage = {
+            "name": "Sin cobertura",
+            "financier_id": "",
+            "plan_id": "",
+            "plan": "",
+            "payload_plan": "",
+            "member_number": "",
+            "environment": "HHCC",
+            "mapped": False,
+        }
+        return {"patient": patient, "coverage": coverage, "payload": {}}
+
+    street, street_number = _split_street_address(patient_record.direccion or "")
+    local_sex = (patient_record.sexo or "").upper()
+    qbi2_sex = "M" if local_sex == "H" else "F" if local_sex == "M" else ""
+    sex_label = "Masculino" if qbi2_sex == "M" else "Femenino" if qbi2_sex == "F" else "Sin especificar"
+    document_type = (getattr(patient_record.idTipoDoc, "nombre", "") or "DNI").strip()
+    raw_plan = (patient_record.plan or "").strip()
+    financier_id, plan_id, payload_plan = _qbi2_coverage_mapping(patient_record.obraSocial, raw_plan)
+
+    patient = {
+        "id": patient_record.id,
+        "name": (patient_record.nombre or "").strip(),
+        "last_name": (patient_record.apellido or "").strip(),
+        "document_type": document_type,
+        "document": (patient_record.numDoc or "").strip(),
+        "birth_date": patient_record.fechaNac.isoformat() if patient_record.fechaNac else "",
+        "sex": qbi2_sex,
+        "sex_label": sex_label,
+        "email": (patient_record.mail or "").strip(),
+        "phone": (patient_record.celular or patient_record.telefono or "").strip(),
+        "street": street,
+        "street_number": street_number,
+        "locality": (patient_record.localidad or "").strip(),
+        "province": "",
+    }
+    coverage = {
+        "name": (patient_record.obraSocial or "").strip() or "Sin cobertura",
+        "financier_id": financier_id,
+        "plan_id": plan_id,
+        "plan": raw_plan,
+        "payload_plan": payload_plan,
+        "member_number": (patient_record.afiliado or "").strip(),
+        "environment": "HHCC",
+        "mapped": bool(financier_id),
+    }
+    payload = {
+        "pacienteNombre": patient["name"],
+        "pacienteApellido": patient["last_name"],
+        "pacienteTipoDoc": patient["document_type"],
+        "pacienteNroDoc": patient["document"],
+        "pacienteSexo": patient["sex"],
+        "pacienteFechaNacimiento": patient["birth_date"],
+        "pacienteCuil": "",
+        "pacienteEmail": patient["email"],
+        "pacienteTelefono": patient["phone"],
+        "pacienteLocalidad": patient["locality"],
+        "pacienteProvincia": patient["province"],
+        "pacientePais": "AR",
+        "pacienteCalle": patient["street"],
+        "pacienteNumero": patient["street_number"],
+        "pacienteCodigoPostal": "",
+        "idFinanciador": coverage["financier_id"],
+        "nroFinanciador": "",
+        "planId": coverage["plan_id"],
+        "plan": coverage["payload_plan"],
+        "afiliadoNumero": coverage["member_number"],
+        "dniTitular": patient["document"],
+    }
+    return {"patient": patient, "coverage": coverage, "payload": payload}
+
+
+def _qbi2_coverage_mapping(raw_name: Any, raw_plan: Any) -> tuple[str, str, str]:
+    normalized_name = _normalize_identifier(raw_name)
+    plan = str(raw_plan or "").strip()
+    plan_digits = re.sub(r"\D", "", plan)
+
+    if normalized_name.split(" ", 1)[0:1] == ["OSDE"]:
+        plan_ids = {"210": "42", "310": "43", "410": "44", "450": "45", "510": "46"}
+        plan_id = plan_ids.get(plan_digits, "")
+        return "28", plan_id, f"Plan{plan_digits}" if plan_id else plan
+    if normalized_name.replace(" ", "") == "ACCORDSALUD":
+        return "96", "", plan
+    return "", "", plan
+
+
+def _normalize_identifier(value: Any) -> str:
+    text = unicodedata.normalize("NFKD", str(value or "").upper())
+    text = "".join(character for character in text if not unicodedata.combining(character))
+    return re.sub(r"\s+", " ", re.sub(r"[^A-Z0-9]+", " ", text)).strip()
+
+
+def _espontanea_2_safe_data(data: dict[str, Any]) -> dict[str, Any]:
+    diagnostico = str(data.get("diagnostico") or "").strip()
+    if not diagnostico:
+        raise ValueError("El diagnóstico es obligatorio.")
+    if len(diagnostico) > 255:
+        raise ValueError("El diagnóstico no puede superar los 255 caracteres.")
+    codigo_diagnostico = str(data.get("codigoDiagnostico") or "").strip()
+    try:
+        patient_id = int(data.get("pacienteId"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Seleccioná un paciente de la base de historias clínicas.") from exc
+    patient_record = (
+        Paciente.objects.select_related("idTipoDoc")
+        .filter(pk=patient_id, deBaja=False)
+        .first()
+    )
+    if patient_record is None:
+        raise ValueError("El paciente seleccionado no existe o está dado de baja.")
+
+    safe_data = {
+        "medicamentos": _espontanea_2_safe_medications(data.get("medicamentos", [])),
+        # QBI2 resolves a general CIE-10 code to its printable description.
+        "diagnostico": codigo_diagnostico or diagnostico,
+        "codigoDiagnostico": codigo_diagnostico,
+        "imprimirDiagnostico": "S",
+        "indicaciones": data.get("indicaciones", ""),
+        "observaciones": data.get("observaciones", ""),
+        "fechaEmision": _normalize_fecha_emision(data.get("fechaEmision", "")),
+        "ocultarPaciente": data.get("ocultarPaciente", False),
+    }
+    safe_data.update(_espontanea_2_defaults(patient_record)["payload"])
+    return safe_data
+
+
+def _espontanea_2_safe_medications(raw_items: Any) -> list[dict[str, Any]]:
+    """Whitelist clinical item fields and keep diagnosis only at recipe level."""
+    if not isinstance(raw_items, list):
+        raise ValueError("Los medicamentos deben enviarse como una lista.")
+
+    safe_items: list[dict[str, Any]] = []
+    for item in raw_items:
+        if not isinstance(item, dict):
+            raise ValueError("Cada medicamento debe ser un objeto.")
+        safe_items.append(
             {
-                "query": entry.normalized_query,
-                "page": entry.page,
-                "status": entry.status,
-                "items": len(value.get("items", [])),
-                "fetched_at": entry.fetched_at.isoformat(),
-                "fresh_until": entry.fresh_until.isoformat(),
-                "stale_until": entry.stale_until.isoformat(),
-                "last_refresh_error": entry.last_refresh_error,
-                "key_hash": entry.key_hash,
+                "regNo": item.get("regNo", ""),
+                "nombreProducto": item.get("nombreProducto", ""),
+                "nombreDroga": item.get("nombreDroga", ""),
+                "presentacion": item.get("presentacion", ""),
+                "cantidad": item.get("cantidad", 1),
+                "posologia": item.get("posologia", ""),
+                "tratamiento": item.get("tratamiento", 0),
+                "permiteSustitucion": item.get("permiteSustitucion", ""),
+                "diagnostico": "",
+                "codigoDiagnostico": "",
+                "forzarDuplicado": False,
             }
         )
-    return JsonResponse({"ok": True, "rows": rows})
+    return safe_items
+
+
+def _redact_profile_images(payload: dict[str, Any]) -> dict[str, Any]:
+    redacted = copy.deepcopy(payload)
+    medico = redacted.get("medico")
+    if not isinstance(medico, dict):
+        return redacted
+    for key, label in (("firmabase64", "firma PNG configurada"), ("logoInstitucion", "logo PNG configurado")):
+        value = medico.get(key)
+        if value:
+            medico[key] = f"[{label}; {len(value)} caracteres Base64]"
+    return redacted
+
+
+def _normalize_fecha_emision(raw_value: Any) -> str:
+    value = str(raw_value or "").strip()
+    if not value:
+        return ""
+    try:
+        selected = datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError("La fecha de emisión debe tener formato AAAA-MM-DD.") from exc
+    if selected == timezone.localdate():
+        return ""
+    return f"{selected.isoformat()}T00:00:00Z"
+
+
+def _configured_image_base64(raw_path: str) -> str:
+    path = Path(raw_path).expanduser() if raw_path else None
+    if not path or path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".bmp"}:
+        return ""
+    try:
+        stat = path.stat()
+    except OSError:
+        return ""
+    return _image_file_base64(str(path.resolve()), stat.st_mtime_ns)
+
+
+def _profile_section(data: dict[str, Any], key: str) -> dict[str, Any]:
+    value = data.get(key)
+    return value if isinstance(value, dict) else {}
+
+
+def _profile_text(data: dict[str, Any], key: str, default: str = "") -> str:
+    value = data.get(key, default)
+    return str(value if value is not None else "").strip()
+
+
+@lru_cache(maxsize=8)
+def _image_file_base64(path: str, _mtime_ns: int) -> str:
+    try:
+        return base64.b64encode(Path(path).read_bytes()).decode("ascii")
+    except OSError:
+        return ""
+
+
+def _split_street_address(value: str) -> tuple[str, str]:
+    match = re.match(r"^\s*(.*?)\s+(\d+[A-Za-z]?)\s*$", value or "")
+    if not match:
+        return (value or "").strip(), ""
+    return match.group(1).strip().title(), match.group(2).strip()
 
 
 def _positive_int(value: Any, *, default: int) -> int:
@@ -526,25 +917,6 @@ def _positive_int(value: Any, *, default: int) -> int:
     except (TypeError, ValueError):
         return default
     return parsed if parsed > 0 else default
-
-
-def _parse_extra_params(raw: str) -> dict[str, Any] | JsonResponse:
-    raw = (raw or "").strip()
-    if not raw:
-        return {}
-    try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        return JsonResponse(
-            {"ok": False, "error": f"extra_params no es JSON valido: {exc}"},
-            status=400,
-        )
-    if not isinstance(parsed, dict):
-        return JsonResponse(
-            {"ok": False, "error": "extra_params debe ser un objeto JSON."},
-            status=400,
-        )
-    return parsed
 
 
 def _qbi2_prefixed_params(request) -> dict[str, Any]:

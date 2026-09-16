@@ -1,17 +1,15 @@
 import json
-from datetime import timedelta
-from typing import Any
+from datetime import date
+from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import resolve, Resolver404
-from django.utils import timezone
 
 from Qbi2 import views
-from Qbi2.cache import MySQLCache, hash_key
 from Qbi2.client import Qbi2HTTPError
-from Qbi2.models import Qbi2CacheEntry, SolicitudReceta
+from Qbi2.models import SolicitudReceta
 from Qbi2.portal import normalize_document
 from Qbi2.recipes import RecetaPocResult
 from Qbi2.spontaneous import (
@@ -19,206 +17,7 @@ from Qbi2.spontaneous import (
     build_spontaneous_payload,
     summarize_document_response,
 )
-from Qbi2.vademecum_cache import CachedVademecumService, VademecumCachePolicy
 from main.models import HistoriaClinica, Paciente, TipoDocumento
-
-
-class FakeVademecumService:
-    def __init__(self):
-        self.calls: list[tuple[str, int, dict[str, Any]]] = []
-        self.responses: list[Any] = []
-        self.by_regno: dict[str, dict[str, Any]] = {}
-        self.fail = False
-
-    def buscar(self, query: str, page: int = 1, extra_params: dict[str, Any] | None = None):
-        self.calls.append((query, page, extra_params or {}))
-        if self.fail:
-            raise RuntimeError("qbi2 caido")
-        if self.responses:
-            return self.responses.pop(0)
-        return {"items": []}
-
-    def obtener_por_regno(self, reg_no: str):
-        if self.fail:
-            raise RuntimeError("qbi2 caido")
-        return self.by_regno.get(reg_no, {})
-
-
-class MySQLCacheTests(TestCase):
-    def test_set_get_persists_in_mysql(self):
-        cache = MySQLCache()
-
-        cache.set(
-            "qbi2:vademecum:test",
-            {"items": [{"regNo": "1"}]},
-            timedelta(days=15),
-            stale_ttl=timedelta(days=75),
-            metadata={"normalized_query": "at", "page": 1},
-        )
-
-        self.assertEqual(Qbi2CacheEntry.objects.count(), 1)
-        result = MySQLCache().get("qbi2:vademecum:test")
-
-        self.assertTrue(result.hit)
-        self.assertFalse(result.stale)
-        self.assertEqual(result.value, {"items": [{"regNo": "1"}]})
-
-    def test_defensive_copy_on_get(self):
-        cache = MySQLCache()
-        cache.set(
-            "copy:test",
-            {"items": [{"nombreProducto": "A"}]},
-            timedelta(days=15),
-            stale_ttl=timedelta(days=75),
-        )
-
-        result = cache.get("copy:test")
-        result.value["items"][0]["nombreProducto"] = "mutado"
-
-        again = cache.get("copy:test")
-        self.assertEqual(again.value["items"][0]["nombreProducto"], "A")
-
-    def test_stale_and_lease_are_per_key(self):
-        cache = MySQLCache()
-        cache.set("a", {"value": 1}, timedelta(days=15), stale_ttl=timedelta(days=75))
-        entry = Qbi2CacheEntry.objects.get(key_hash=hash_key("a"))
-        entry.fresh_until = timezone.now() - timedelta(seconds=1)
-        entry.stale_until = timezone.now() + timedelta(days=1)
-        entry.save(update_fields=["fresh_until", "stale_until"])
-
-        stale = cache.get("a", allow_stale=True)
-        lease_a = cache.try_acquire_refresh_lease("a")
-        lease_a_again = cache.try_acquire_refresh_lease("a")
-        lease_b = cache.try_acquire_refresh_lease("b")
-
-        self.assertTrue(stale.hit)
-        self.assertTrue(stale.stale)
-        self.assertTrue(lease_a.acquired)
-        self.assertFalse(lease_a_again.acquired)
-        self.assertTrue(lease_b.acquired)
-
-
-class CachedVademecumServiceTests(TestCase):
-    def build_service(self, live: FakeVademecumService | None = None):
-        policy = VademecumCachePolicy(
-            fresh_ttl=timedelta(days=15),
-            stale_ttl=timedelta(days=75),
-            lease_ttl=timedelta(seconds=45),
-        )
-        return CachedVademecumService(
-            live or FakeVademecumService(),
-            policy=policy,
-            cliente_app_id=563,
-            base_url="https://apirecipe.hml.qbitos.com",
-        )
-
-    def test_autocomplete_from_two_letters_is_cached_by_prefix(self):
-        live = FakeVademecumService()
-        live.responses.extend(
-            [
-                {"items": [{"regNo": "1", "nombreProducto": "Atorva"}]},
-                {"items": [{"regNo": "1", "nombreProducto": "Atorva"}]},
-            ]
-        )
-        service = self.build_service(live)
-
-        self.assertEqual(service.buscar("a"), [])
-        service.buscar("at")
-        service.buscar("ato")
-        service.buscar(" at ")
-
-        self.assertEqual([call[0] for call in live.calls], ["at", "ato"])
-        self.assertEqual(Qbi2CacheEntry.objects.count(), 2)
-
-    def test_stale_refreshes_only_requested_key(self):
-        live = FakeVademecumService()
-        live.responses.extend(
-            [
-                {"items": [{"regNo": "1"}]},
-                {"items": [{"regNo": "2"}]},
-                {"items": [{"regNo": "3"}]},
-            ]
-        )
-        service = self.build_service(live)
-
-        service.buscar("at")
-        service.buscar("bi")
-
-        for entry in Qbi2CacheEntry.objects.all():
-            entry.fresh_until = timezone.now() - timedelta(seconds=1)
-            entry.stale_until = timezone.now() + timedelta(days=1)
-            entry.save(update_fields=["fresh_until", "stale_until"])
-
-        service.buscar("at")
-
-        self.assertEqual(len(live.calls), 3)
-        self.assertEqual(live.calls[-1][0], "at")
-
-    def test_stale_provider_error_records_error_and_returns_stale(self):
-        live = FakeVademecumService()
-        live.responses.append({"items": [{"regNo": "1"}]})
-        service = self.build_service(live)
-
-        service.buscar("at")
-        entry = Qbi2CacheEntry.objects.get()
-        entry.fresh_until = timezone.now() - timedelta(seconds=1)
-        entry.stale_until = timezone.now() + timedelta(days=1)
-        entry.save(update_fields=["fresh_until", "stale_until"])
-        live.fail = True
-
-        result = service.buscar("at", include_cache_metadata=True)
-        entry.refresh_from_db()
-
-        self.assertTrue(result["cache"]["stale"])
-        self.assertEqual(result["cache"]["refresh"], "provider_error")
-        self.assertIn("qbi2 caido", entry.last_refresh_error)
-
-    def test_validation_uses_live_service_not_cache(self):
-        live = FakeVademecumService()
-        live.by_regno["123"] = {
-            "regNo": "123",
-            "nombreProducto": "Atorva",
-            "presentacion": "20 mg x 30",
-        }
-        service = self.build_service(live)
-
-        result = service.validar_medicamento_seleccionado(
-            {
-                "regNo": "123",
-                "nombreProducto": "Atorva",
-                "presentacion": "10 mg x 30",
-            }
-        )
-
-        self.assertFalse(result.valid)
-        self.assertEqual(result.status, "changed")
-
-
-class VademecumDemoViewTests(TestCase):
-    def test_search_api_short_query_does_not_call_provider(self):
-        response = self.client.get("/qbi2-poc/api/medicamentos/cache/", {"q": "a"})
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload["ok"])
-        self.assertEqual(payload["cache"]["status"], "too_short")
-        self.assertEqual(payload["data"], [])
-
-    def test_recent_cache_api_returns_rows(self):
-        MySQLCache().set(
-            "recent:test",
-            {"items": [{"regNo": "1"}]},
-            timedelta(days=15),
-            stale_ttl=timedelta(days=75),
-            metadata={"namespace": "vademecum", "normalized_query": "recent", "page": 1},
-        )
-
-        response = self.client.get("/qbi2-poc/api/cache/recientes/")
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload["ok"])
-        self.assertEqual(payload["rows"][0]["query"], "recent")
 
 
 class VademecumLegacyViewTests(TestCase):
@@ -267,14 +66,16 @@ class Qbi2PocRoutingTests(TestCase):
         expected = {
             "/qbi2-poc/": "qbi2_poc:home",
             "/qbi2-poc/medicamentos/directo/": "qbi2_poc:medicamentos_directo",
-            "/qbi2-poc/medicamentos/cache/": "qbi2_poc:medicamentos_cache",
             "/qbi2-poc/paciente/recetas/nueva/": "qbi2_poc:paciente_receta_nueva",
             "/qbi2-poc/medico/solicitudes/": "qbi2_poc:medico_solicitudes",
             "/qbi2-poc/lab/receta/": "qbi2_poc:lab_receta",
             "/qbi2-poc/lab/rcta-espontanea/": "qbi2_poc:lab_espontanea",
+            "/qbi2-poc/lab/rcta-espontanea-2/": "qbi2_poc:lab_espontanea_2",
             "/qbi2-poc/api/medicamentos/directo/": "qbi2_poc:api_medicamentos_directo",
-            "/qbi2-poc/api/medicamentos/cache/": "qbi2_poc:api_medicamentos_cache",
             "/qbi2-poc/api/lab/espontanea/preview/": "qbi2_poc:api_lab_espontanea_preview",
+            "/qbi2-poc/api/lab/espontanea-2/preview/": "qbi2_poc:api_lab_espontanea_2_preview",
+            "/qbi2-poc/api/lab/espontanea-2/pacientes/": "qbi2_poc:api_lab_espontanea_2_pacientes",
+            "/qbi2-poc/api/lab/espontanea-2/emitir/": "qbi2_poc:api_lab_espontanea_2_emitir",
             "/qbi2-poc/api/lab/espontanea/emitir/": "qbi2_poc:api_lab_espontanea_emitir",
             "/qbi2-poc/api/lab/espontanea/anular/": "qbi2_poc:api_lab_espontanea_anular",
         }
@@ -332,10 +133,31 @@ class RecetaPortalViewTests(TestCase):
         self.assertIn(b"No hay solicitudes", response.content)
 
 
+@override_settings(
+    QBI2_PROFILE_YAML_PATH=str(
+        Path(__file__).resolve().parents[1] / "private" / "qbi2" / "profile.example.yaml"
+    )
+)
 class EspontaneaPocTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="espontanea", password="test")
         self.client.force_login(self.user)
+        document_type = TipoDocumento.objects.create(nombre="DNI", descripcion="Documento nacional")
+        self.patient = Paciente.objects.create(
+            idTipoDoc=document_type,
+            numDoc="23101065",
+            nombre="Ezequiel",
+            apellido="Bergonzi",
+            fechaNac=date(1972, 12, 18),
+            sexo="H",
+            mail="ezequiel@example.com",
+            direccion="Zelarrayan 1492",
+            localidad="CAPITAL",
+            obraSocial="OSDE",
+            plan="310",
+            afiliado="62333891101",
+            celular="1558467544",
+        )
 
     def test_page_renders_direct_medical_request_form(self):
         request = RequestFactory().get("/qbi2-poc/lab/rcta-espontanea/")
@@ -347,6 +169,244 @@ class EspontaneaPocTests(TestCase):
         self.assertIn(b"Prueba piloto Pedido espont", response.content)
         self.assertIn(b"Receta", response.content)
         self.assertIn("Práctica".encode(), response.content)
+
+    def test_simplified_page_uses_bergonzi_and_two_step_flow(self):
+        request = RequestFactory().get("/qbi2-poc/lab/rcta-espontanea-2/")
+        request.user = self.user
+
+        response = views.espontanea_poc_2_page(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Bergonzi", response.content)
+        self.assertIn(b"23101065", response.content)
+        self.assertIn(b"62333891101", response.content)
+        self.assertIn(b"Cambiar paciente", response.content)
+        self.assertIn(b"QBI2 homologaci", response.content)
+        self.assertNotIn(b"Perfil de receta", response.content)
+        self.assertIn(b"Escribir un diagn", response.content)
+        self.assertIn(b"Usar texto", response.content)
+        self.assertIn(b"/qbi2-poc/api/lab/espontanea-2/pacientes/", response.content)
+        self.assertIn(b"/qbi2-poc/api/lab/espontanea-2/preview/", response.content)
+        self.assertIn(b"/qbi2-poc/api/lab/espontanea-2/emitir/", response.content)
+
+    def test_simplified_profile_payload_comes_from_external_yaml(self):
+        defaults = views._espontanea_2_defaults(self.patient)
+
+        self.assertEqual(defaults["payload"]["medicoNombre"], "Omar")
+        self.assertEqual(defaults["payload"]["medicoApellido"], "Prieto")
+        self.assertEqual(defaults["payload"]["medicoMatriculaNumero"], "109347")
+        self.assertEqual(defaults["payload"]["consultorioNombre"], "Cardiología Integral")
+
+    def test_simplified_patient_search_returns_hhcc_data(self):
+        response = self.client.get(
+            "/qbi2-poc/api/lab/espontanea-2/pacientes/",
+            {"q": "bergonzi"},
+        )
+
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["count"], 1)
+        self.assertEqual(data["items"][0]["patient"]["id"], self.patient.id)
+        self.assertEqual(data["items"][0]["patient"]["document"], "23101065")
+        self.assertEqual(data["items"][0]["patient"]["sex_label"], "Masculino")
+        self.assertEqual(data["items"][0]["coverage"]["name"], "OSDE")
+        self.assertEqual(data["items"][0]["coverage"]["plan_id"], "43")
+        self.assertEqual(data["items"][0]["coverage"]["member_number"], "62333891101")
+
+    def test_simplified_preview_rejects_unknown_patient(self):
+        response = self.client.post(
+            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            data=json.dumps(
+                {
+                    "pacienteId": 999999,
+                    "diagnostico": "Hipertension arterial",
+                    "medicamentos": [{"regNo": "34959", "nombreProducto": "LOTRIAL"}],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("no existe", response.json()["message"])
+
+    @patch("Qbi2.views.emit_spontaneous_payload")
+    def test_simplified_preview_never_emits_and_server_owns_patient_identity(self, emit):
+        response = self.client.post(
+            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            data=json.dumps(
+                {
+                    "operation": "receta",
+                    "pacienteId": self.patient.id,
+                    "pacienteNombre": "Otra",
+                    "pacienteApellido": "Persona",
+                    "pacienteNroDoc": "99999999",
+                    "diagnostico": "Hipertension arterial",
+                    "codigoDiagnostico": "I10",
+                    "medicamentos": [
+                        {
+                            "regNo": "34959",
+                            "nombreProducto": "LOTRIAL",
+                            "nombreDroga": "enalapril",
+                            "presentacion": "10 mg comp.x 30",
+                            "cantidad": 1,
+                            "posologia": "Tomar un comprimido por dia.",
+                            "diagnostico": "Diagnóstico inyectado",
+                            "codigoDiagnostico": "Z99",
+                            "forzarDuplicado": True,
+                        },
+                        {
+                            "regNo": "24818",
+                            "nombreProducto": "AMPLIAR",
+                            "nombreDroga": "atorvastatina",
+                            "presentacion": "20 mg x 30",
+                            "cantidad": 1,
+                            "posologia": "Tomar segun indicacion medica.",
+                        },
+                    ],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["mode"], "preview_only")
+        self.assertEqual(data["payload"]["paciente"]["nombre"], "Ezequiel")
+        self.assertEqual(data["payload"]["paciente"]["apellido"], "Bergonzi")
+        self.assertEqual(data["payload"]["paciente"]["nroDoc"], "23101065")
+        self.assertEqual(data["payload"]["paciente"]["email"], "ezequiel@example.com")
+        self.assertEqual(data["payload"]["paciente"]["telefono"], "1558467544")
+        self.assertEqual(data["payload"]["paciente"]["domicilio"]["calle"], "Zelarrayan")
+        self.assertEqual(data["payload"]["paciente"]["domicilio"]["numero"], "1492")
+        self.assertEqual(data["payload"]["paciente"]["cobertura"]["idFinanciador"], "28")
+        self.assertEqual(data["payload"]["paciente"]["cobertura"]["numero"], "62333891101")
+        self.assertEqual(data["payload"]["paciente"]["cobertura"]["planId"], 43)
+        self.assertEqual(data["payload"]["paciente"]["cobertura"]["plan"], "Plan310")
+        self.assertEqual(len(data["payload"]["medicamentos"]), 2)
+        self.assertNotIn("diagnostico", data["payload"]["medicamentos"][0])
+        self.assertNotIn("codigoDiagnostico", data["payload"]["medicamentos"][0])
+        self.assertFalse(data["payload"]["medicamentos"][0]["forzarDuplicado"])
+        self.assertEqual(data["payload"]["diagnostico"], "I10")
+        self.assertNotIn("fechaNacimiento", data["payload"]["medico"])
+        self.assertNotIn("idTributario", data["payload"]["medico"])
+        emit.assert_not_called()
+
+    @patch("Qbi2.views.emit_spontaneous_payload")
+    def test_simplified_emit_uses_server_owned_patient_identity(self, emit):
+        emit.return_value = SpontaneousPocResult(
+            operation="receta",
+            endpoint="/apirecipe/Receta",
+            payload={"paciente": {"nombre": "Ezequiel", "apellido": "Bergonzi", "nroDoc": "23101065"}},
+            response={
+                "recetas": [{"id": "hash-v2", "idReceta": "100-v2", "s3Link": "https://example.invalid/v2.pdf"}],
+                "errores": [],
+                "response": [{"status": "OK"}],
+            },
+            summary={"id": "hash-v2", "idReceta": "100-v2", "status": "OK"},
+        )
+
+        response = self.client.post(
+            "/qbi2-poc/api/lab/espontanea-2/emitir/",
+            data=json.dumps(
+                {
+                    "pacienteId": self.patient.id,
+                    "pacienteNombre": "Otra",
+                    "pacienteApellido": "Persona",
+                    "pacienteNroDoc": "99999999",
+                    "diagnostico": "Hipertension arterial",
+                    "codigoDiagnostico": "I10",
+                    "medicamentos": [{"regNo": "34959", "nombreProducto": "LOTRIAL", "cantidad": 1}],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["summary"]["idReceta"], "100-v2")
+        safe_data, operation = emit.call_args.args
+        self.assertEqual(operation, "receta")
+        self.assertEqual(safe_data["pacienteNombre"], "Ezequiel")
+        self.assertEqual(safe_data["pacienteApellido"], "Bergonzi")
+        self.assertEqual(safe_data["pacienteNroDoc"], "23101065")
+
+    def test_simplified_preview_requires_diagnosis_and_medicine(self):
+        no_diagnosis = self.client.post(
+            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            data=json.dumps({"pacienteId": self.patient.id, "medicamentos": []}),
+            content_type="application/json",
+        )
+        no_medicine = self.client.post(
+            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            data=json.dumps({"pacienteId": self.patient.id, "diagnostico": "Control cardiologico", "medicamentos": []}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(no_diagnosis.status_code, 400)
+        self.assertEqual(no_medicine.status_code, 400)
+        self.assertIn("diagnóstico es obligatorio", no_diagnosis.json()["message"])
+        self.assertIn("al menos un medicamento", no_medicine.json()["message"])
+
+    @patch("Qbi2.views.emit_spontaneous_payload")
+    def test_simplified_preview_accepts_free_text_diagnosis_without_catalog_code(self, emit):
+        response = self.client.post(
+            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            data=json.dumps(
+                {
+                    "pacienteId": self.patient.id,
+                    "diagnostico": "Control cardiológico por palpitaciones",
+                    "codigoDiagnostico": "",
+                    "medicamentos": [{"regNo": "34959", "nombreProducto": "LOTRIAL"}],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(data["payload"]["diagnostico"], "Control cardiológico por palpitaciones")
+        self.assertNotIn("codigoDiagnostico", data["payload"])
+        self.assertNotIn("diagnostico", data["payload"]["medicamentos"][0])
+        emit.assert_not_called()
+
+    def test_simplified_preview_rejects_overlong_free_text_diagnosis(self):
+        response = self.client.post(
+            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            data=json.dumps(
+                {
+                    "pacienteId": self.patient.id,
+                    "diagnostico": "x" * 256,
+                    "medicamentos": [{"regNo": "34959", "nombreProducto": "LOTRIAL"}],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("255 caracteres", response.json()["message"])
+
+    @patch("Qbi2.views.emit_spontaneous_payload")
+    def test_simplified_emit_preserves_direct_provider_error(self, emit):
+        emit.side_effect = Qbi2HTTPError(
+            "QBI2 devolvio un error HTTP.",
+            status_code=400,
+            payload={"error": "QBI184", "mensaje": "EL NÚMERO DE AFILIADO INGRESADO ES INVÁLIDO"},
+        )
+
+        response = self.client.post(
+            "/qbi2-poc/api/lab/espontanea-2/emitir/",
+            data=json.dumps(
+                {
+                    "pacienteId": self.patient.id,
+                    "diagnostico": "Hipertension arterial",
+                    "medicamentos": [{"regNo": "34959", "nombreProducto": "LOTRIAL"}],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()["provider_payload"]["error"], "QBI184")
+        self.assertIn("AFILIADO", response.json()["provider_payload"]["mensaje"])
 
     def test_receta_payload_uses_catalog_identifiers(self):
         endpoint, payload = build_spontaneous_payload(

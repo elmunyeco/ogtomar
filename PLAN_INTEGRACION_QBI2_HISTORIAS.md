@@ -66,7 +66,7 @@ La POC actual contiene piezas utiles:
 
 Pero tambien tiene limites que no deben arrastrarse a produccion:
 
-- Incluye cache (`Qbi2CacheEntry`, `CachedVademecumService`, `MySQLCache`), que queda fuera.
+- La cache de vademecum ya fue retirada; los catalogos se consultan en vivo.
 - Guarda una receta emitida dentro de una solicitud, con pocos campos normalizados.
 - No modela documentos emitidos como entidad propia.
 - No distingue suficientemente hash de anulacion, numero documental, transaccion y estado.
@@ -744,7 +744,7 @@ Entregables:
 - Confirmar campos exactos para postdatadas y confidencialidad.
 - Confirmar datos obligatorios de paciente/medico/cobertura.
 - Decidir si `Qbi2` deja de llamarse POC en rutas y namespace.
-- Marcar cache como legado y no usarlo en nuevas vistas.
+- Mantener los catalogos en consulta directa, sin cache operativo.
 
 Resultado esperado: contrato operativo cerrado para desarrollo.
 
@@ -896,10 +896,7 @@ Mantener de la POC:
 
 Reemplazar:
 
-- `Qbi2CacheEntry`.
-- `MySQLCache`.
-- `CachedVademecumService`.
-- Pantallas `/qbi2-poc/...` como entrada principal.
+- Las rutas y pantallas POC como entrada principal.
 - Payloads con defaults ficticios.
 - `SolicitudReceta` como unico lugar donde vive la receta emitida.
 
