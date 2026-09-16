@@ -16,6 +16,7 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -696,6 +697,7 @@ def _espontanea_2_patient_data(patient_record: Paciente | None) -> dict[str, Any
             "street_number": "",
             "locality": "",
             "province": "",
+            "edit_url": "",
         }
         coverage = {
             "name": "Sin cobertura",
@@ -732,6 +734,7 @@ def _espontanea_2_patient_data(patient_record: Paciente | None) -> dict[str, Any
         "street_number": street_number,
         "locality": (patient_record.localidad or "").strip(),
         "province": "",
+        "edit_url": reverse("editar_paciente", args=[patient_record.id]),
     }
     coverage = {
         "name": (patient_record.obraSocial or "").strip() or "Sin cobertura",

@@ -19,7 +19,10 @@
             <h2 id="recipe-v2-patient-title">Seleccioná un paciente</h2>
             <p id="recipe-v2-patient-details">Buscá por apellido, nombre o documento.</p>
             <p id="recipe-v2-patient-contact" class="recipe-v2-patient-contact"></p>
-            <button id="toggle-patient-search" class="recipe-v2-change-patient" type="button" aria-expanded="false" aria-controls="patient-search-panel">Cambiar paciente</button>
+            <div class="recipe-v2-patient-actions">
+                <button id="toggle-patient-search" class="recipe-v2-change-patient" type="button" aria-expanded="false" aria-controls="patient-search-panel">Cambiar paciente</button>
+                <a id="edit-recipe-patient" class="recipe-v2-edit-patient{% if not patient.id %} hidden{% endif %}" href="{{ patient.edit_url|default:'#' }}" target="_blank" rel="noopener">Editar datos del paciente</a>
+            </div>
         </div>
         <div class="recipe-v2-patient-coverage">
             <span>Cobertura cargada en HHCC</span>
@@ -265,9 +268,10 @@
     .recipe-v2-patient-main h2 { font-size: 1.15rem; font-weight: 800; margin: 0.1rem 0; }
     .recipe-v2-patient-main p, .recipe-v2-patient-coverage small { color: var(--v2-muted); margin: 0; }
     .recipe-v2-patient-contact { font-size: 0.78rem; margin-top: 0.18rem !important; }
+    .recipe-v2-patient-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.3rem; }
     .recipe-v2-patient-coverage { border-left: 1px solid var(--v2-border); display: grid; gap: 0.1rem; min-width: 14rem; padding-left: 1.2rem; }
-    .recipe-v2-change-patient { background: transparent; border: 0; color: var(--v2-red); cursor: pointer; font-size: 0.78rem; font-weight: 850; margin-top: 0.3rem; padding: 0; text-align: left; }
-    .recipe-v2-change-patient:hover { color: var(--v2-red-dark); text-decoration: underline; }
+    .recipe-v2-change-patient, .recipe-v2-edit-patient { background: transparent; border: 0; color: var(--v2-red); cursor: pointer; font-size: 0.78rem; font-weight: 850; padding: 0; text-align: left; text-decoration: none; }
+    .recipe-v2-change-patient:hover, .recipe-v2-edit-patient:hover { color: var(--v2-red-dark); text-decoration: underline; }
     .recipe-v2-patient-search { background: var(--v2-bg); border-radius: 0.85rem; grid-column: 1 / -1; padding: 0.9rem; }
     .recipe-v2-coverage-mapping { color: var(--v2-red-dark) !important; font-weight: 700; }
     .recipe-v2-columns { align-items: start; display: grid; gap: 1.4rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -423,6 +427,7 @@
         const coverageMapping = document.getElementById("recipe-v2-coverage-mapping");
         const footerPatient = document.getElementById("recipe-v2-footer-patient");
         const reviewPatient = document.getElementById("recipe-v2-review-patient");
+        const editPatient = document.getElementById("edit-recipe-patient");
 
         if (!patient) {
             avatar.textContent = "—";
@@ -434,6 +439,8 @@
             coverageMapping.textContent = "";
             footerPatient.textContent = "Seleccioná un paciente de historias clínicas.";
             reviewPatient.textContent = "sin paciente";
+            editPatient.href = "#";
+            editPatient.classList.add("hidden");
             return;
         }
 
@@ -456,6 +463,8 @@
         footerPatient.textContent = `La receta se enviará a QBI2 homologación para ${patientDisplayName()}.`;
         const firstName = String(patient.name || "el paciente").trim().split(/\s+/)[0];
         reviewPatient.textContent = `para ${firstName.toLocaleLowerCase("es-AR")}`;
+        editPatient.href = patient.edit_url || "#";
+        editPatient.classList.toggle("hidden", !patient.edit_url);
     };
 
     const selectPatient = (item) => {
