@@ -12,6 +12,27 @@
     data-preview-endpoint="{% url 'qbi2_poc:api_lab_espontanea_2_preview' %}"
     data-emit-endpoint="{% url 'qbi2_poc:api_lab_espontanea_2_emitir' %}"
 >
+    <header id="patient-search-panel" class="recipe-v2-patient-search" aria-label="Buscar paciente de historias clínicas">
+        <form id="patient-search-form" class="global-search-form">
+            <label for="patient-search" class="sr-only">Buscar paciente por apellido, nombre o documento</label>
+            <div class="global-search-input-wrap">
+                <svg class="global-search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                    type="search"
+                    id="patient-search"
+                    placeholder="Apellido, nombre o DNI"
+                    autocomplete="off"
+                    autofocus
+                >
+                <button id="search-patient" type="submit">Buscar</button>
+            </div>
+        </form>
+        <div id="patient-search-status" class="recipe-v2-search-status" aria-live="polite"></div>
+        <div id="patient-results" class="recipe-v2-results"></div>
+    </header>
+
     <section id="recipe-v2-patient-card" class="recipe-v2-patient-card" aria-labelledby="recipe-v2-patient-title" tabindex="-1">
         <div id="recipe-v2-patient-avatar" class="recipe-v2-avatar" aria-hidden="true">—</div>
         <div class="recipe-v2-patient-main">
@@ -20,7 +41,6 @@
             <p id="recipe-v2-patient-details">Buscá por apellido, nombre o documento.</p>
             <p id="recipe-v2-patient-contact" class="recipe-v2-patient-contact"></p>
             <div class="recipe-v2-patient-actions">
-                <button id="toggle-patient-search" class="recipe-v2-change-patient" type="button" aria-expanded="false" aria-controls="patient-search-panel">Cambiar paciente</button>
                 <a id="edit-recipe-patient" class="recipe-v2-edit-patient{% if not patient.id %} hidden{% endif %}" href="{{ patient.edit_url|default:'#' }}">Editar datos del paciente</a>
             </div>
         </div>
@@ -29,15 +49,6 @@
             <strong id="recipe-v2-coverage-name">Sin cobertura</strong>
             <small id="recipe-v2-coverage-member">Sin número de afiliado</small>
             <small id="recipe-v2-coverage-mapping" class="recipe-v2-coverage-mapping"></small>
-        </div>
-        <div id="patient-search-panel" class="recipe-v2-patient-search hidden">
-            <label class="recipe-v2-label" for="patient-search">Buscar paciente</label>
-            <div class="recipe-v2-search-row">
-                <input class="recipe-v2-input" id="patient-search" type="search" placeholder="Apellido, nombre o DNI" autocomplete="off">
-                <button class="recipe-v2-secondary-button" id="search-patient" type="button">Buscar</button>
-            </div>
-            <div id="patient-search-status" class="recipe-v2-search-status" aria-live="polite"></div>
-            <div id="patient-results" class="recipe-v2-results"></div>
         </div>
     </section>
     {{ initial_patient|json_script:"recipe-v2-initial-patient" }}
@@ -270,9 +281,12 @@
     .recipe-v2-patient-contact { font-size: 0.78rem; margin-top: 0.18rem !important; }
     .recipe-v2-patient-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.3rem; }
     .recipe-v2-patient-coverage { border-left: 1px solid var(--v2-border); display: grid; gap: 0.1rem; min-width: 14rem; padding-left: 1.2rem; }
-    .recipe-v2-change-patient, .recipe-v2-edit-patient { background: transparent; border: 0; color: var(--v2-red); cursor: pointer; font-size: 0.78rem; font-weight: 850; padding: 0; text-align: left; text-decoration: none; }
-    .recipe-v2-change-patient:hover, .recipe-v2-edit-patient:hover { color: var(--v2-red-dark); text-decoration: underline; }
-    .recipe-v2-patient-search { background: var(--v2-bg); border-radius: 0.85rem; grid-column: 1 / -1; padding: 0.9rem; }
+    .recipe-v2-edit-patient { background: transparent; border: 0; color: var(--v2-red); cursor: pointer; font-size: 0.78rem; font-weight: 850; padding: 0; text-align: left; text-decoration: none; }
+    .recipe-v2-edit-patient:hover { color: var(--v2-red-dark); text-decoration: underline; }
+    .recipe-v2-patient-search { margin: 0 auto 1rem; max-width: 54rem; width: 100%; }
+    .recipe-v2-patient-search .global-search-form { margin-bottom: 0; }
+    .recipe-v2-patient-search .recipe-v2-search-status { padding-left: 1.35rem; }
+    .recipe-v2-patient-search .recipe-v2-results { margin-top: 0.3rem; }
     .recipe-v2-coverage-mapping { color: var(--v2-red-dark) !important; font-weight: 700; }
     .recipe-v2-columns { align-items: start; display: grid; gap: 1.4rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .recipe-v2-column { display: grid; gap: 1.4rem; }
@@ -477,12 +491,11 @@
         invalidatePreview();
         renderPatient();
         document.getElementById("patient-results").replaceChildren();
-        document.getElementById("patient-search").value = "";
+        const input = document.getElementById("patient-search");
+        input.value = "";
         setSearchStatus("patient", "Paciente seleccionado desde historias clínicas.");
-        document.getElementById("patient-search-panel").classList.add("hidden");
-        document.getElementById("toggle-patient-search").setAttribute("aria-expanded", "false");
         setAlert();
-        focusRecipePatient();
+        input.focus({preventScroll: true});
     };
 
     const refreshSelectedPatient = async (patientId) => {
@@ -899,14 +912,10 @@
         panel.classList.toggle("hidden", expanded);
         if (!expanded) document.getElementById("medicine-search").focus();
     });
-    document.getElementById("toggle-patient-search").addEventListener("click", (event) => {
-        const panel = document.getElementById("patient-search-panel");
-        const expanded = event.currentTarget.getAttribute("aria-expanded") === "true";
-        event.currentTarget.setAttribute("aria-expanded", String(!expanded));
-        panel.classList.toggle("hidden", expanded);
-        if (!expanded) document.getElementById("patient-search").focus();
+    document.getElementById("patient-search-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        searchPatients();
     });
-    document.getElementById("search-patient").addEventListener("click", searchPatients);
     document.getElementById("edit-recipe-patient").addEventListener("click", openPatientEditor);
     document.getElementById("search-medicine").addEventListener("click", () => requestSearch("medicine"));
     document.getElementById("search-diagnosis").addEventListener("click", () => requestSearch("diagnosis"));
@@ -914,7 +923,6 @@
     document.getElementById("medicine-search").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); requestSearch("medicine"); } });
     document.getElementById("diagnosis-search").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); requestSearch("diagnosis"); } });
     document.getElementById("diagnosis-free-text").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); useFreeDiagnosis(); } });
-    document.getElementById("patient-search").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); searchPatients(); } });
     document.getElementById("clear-diagnosis").addEventListener("click", clearDiagnosis);
     document.getElementById("preview-recipe").addEventListener("click", previewRecipe);
     emitButton.addEventListener("click", emitRecipe);
