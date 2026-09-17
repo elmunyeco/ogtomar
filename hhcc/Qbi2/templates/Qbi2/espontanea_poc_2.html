@@ -251,7 +251,7 @@
             <div class="recipe-v2-footer-actions">
                 <div class="recipe-v2-review-action">
                     <button id="preview-recipe" class="recipe-v2-review-button" type="button">Revisar datos</button>
-                    <small id="recipe-v2-review-patient">sin paciente</small>
+                    <small>exclusivo Ezequiel</small>
                 </div>
                 <button id="emit-recipe" class="recipe-v2-emit-button" type="button" disabled>Emitir en HML</button>
             </div>
@@ -475,7 +475,6 @@
         const coverageHhcc = document.getElementById("recipe-v2-coverage-hhcc");
         const coverageNone = document.getElementById("recipe-v2-coverage-none");
         const footerPatient = document.getElementById("recipe-v2-footer-patient");
-        const reviewPatient = document.getElementById("recipe-v2-review-patient");
         const editPatient = document.getElementById("edit-recipe-patient");
 
         if (!patient) {
@@ -491,7 +490,6 @@
             coverageNone.checked = true;
             coverageNone.disabled = true;
             footerPatient.textContent = "Seleccioná un paciente de historias clínicas.";
-            reviewPatient.textContent = "sin paciente";
             editPatient.href = "#";
             editPatient.classList.add("hidden");
             return;
@@ -520,8 +518,6 @@
         coverageNone.disabled = false;
         coverageNone.checked = !coverageHhcc.checked;
         footerPatient.textContent = `La receta se enviará a QBI2 homologación para ${patientDisplayName()}.`;
-        const firstName = String(patient.name || "el paciente").trim().split(/\s+/)[0];
-        reviewPatient.textContent = `para ${firstName.toLocaleLowerCase("es-AR")}`;
         editPatient.href = patient.edit_url || "#";
         editPatient.classList.toggle("hidden", !patient.edit_url);
     };
