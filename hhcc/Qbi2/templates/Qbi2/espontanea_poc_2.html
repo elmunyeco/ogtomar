@@ -252,7 +252,7 @@
                     <button id="preview-recipe" class="recipe-v2-review-button" type="button">Revisar datos</button>
                     <small>exclusivo Ezequiel</small>
                 </div>
-                <button id="emit-recipe" class="recipe-v2-emit-button" type="button" disabled>Emitir en HML</button>
+                <button id="emit-recipe" class="recipe-v2-emit-button" type="button">Emitir en HML</button>
             </div>
         </footer>
     </form>
@@ -410,7 +410,6 @@
         useCoverage: false,
         medicines: [],
         diagnosis: null,
-        lastPreview: null,
     };
     const endpoints = {
         patients: root.dataset.patientEndpoint,
@@ -430,8 +429,6 @@
         alertBox.classList.toggle("hidden", !message);
     };
     const invalidatePreview = () => {
-        state.lastPreview = null;
-        emitButton.disabled = true;
         resultBox.classList.add("hidden");
     };
 
@@ -859,8 +856,6 @@
             if (!response.ok || data.status !== "success") throw new Error(data.message || "No se pudo preparar la receta.");
             document.getElementById("recipe-v2-json").textContent = JSON.stringify(data.payload, null, 2);
             document.getElementById("recipe-v2-preview-patient").textContent = patientDisplayName();
-            state.lastPreview = JSON.stringify(body);
-            emitButton.disabled = false;
             previewBox.classList.remove("hidden");
             previewBox.scrollIntoView({behavior: "smooth", block: "nearest"});
         } catch (error) {
@@ -892,14 +887,8 @@
         setAlert();
         resultBox.classList.add("hidden");
         const body = bodyForPreview();
-        if (!state.lastPreview || state.lastPreview !== JSON.stringify(body)) {
-            invalidatePreview();
-            setAlert("Los datos cambiaron. Revisá nuevamente el payload antes de emitir.");
-            return;
-        }
         if (!window.confirm(`Se emitirá una receta en QBI2 homologación para ${patientDisplayName()}. ¿Continuar?`)) return;
 
-        emitButton.disabled = true;
         emitButton.textContent = "Emitiendo…";
         try {
             const response = await fetch(endpoints.emit, {
@@ -928,11 +917,9 @@
             setResultLink("s3Link", summary.s3Link);
             setResultLink("verificador", summary.verificador);
             resultBox.classList.remove("hidden");
-            state.lastPreview = null;
             resultBox.scrollIntoView({behavior: "smooth", block: "nearest"});
         } catch (error) {
             setAlert(error.message || "No se pudo emitir la receta.");
-            emitButton.disabled = false;
         } finally {
             emitButton.textContent = "Emitir en HML";
         }

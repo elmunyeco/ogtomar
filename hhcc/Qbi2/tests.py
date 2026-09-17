@@ -200,6 +200,12 @@ class EspontaneaPocTests(TestCase):
         self.assertIn("💊".encode(), response.content)
         self.assertIn(b"exclusivo Ezequiel", response.content)
         self.assertNotIn(b"sin mapeo QBI2", response.content)
+        self.assertIn(
+            b'<button id="emit-recipe" class="recipe-v2-emit-button" type="button">Emitir en HML</button>',
+            response.content,
+        )
+        self.assertNotIn(b"Revis\xc3\xa1 nuevamente el payload antes de emitir", response.content)
+        self.assertNotIn(b"emitButton.disabled", response.content)
         self.assertIn(b"Escribir un diagn", response.content)
         self.assertIn(b"Usar texto", response.content)
         self.assertIn(b"/qbi2-poc/api/lab/espontanea-2/pacientes/", response.content)
