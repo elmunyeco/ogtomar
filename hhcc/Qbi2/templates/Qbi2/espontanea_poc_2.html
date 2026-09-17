@@ -51,7 +51,6 @@
                 <span class="recipe-v2-coverage-copy">
                     <strong id="recipe-v2-coverage-name">Sin cobertura cargada</strong>
                     <small id="recipe-v2-coverage-member">Sin número de afiliado</small>
-                    <small id="recipe-v2-coverage-mapping" class="recipe-v2-coverage-mapping"></small>
                 </span>
             </label>
             <label class="recipe-v2-coverage-option">
@@ -303,7 +302,6 @@
     .recipe-v2-patient-search .global-search-form { margin-bottom: 0; }
     .recipe-v2-patient-search .recipe-v2-search-status { padding-left: 1.35rem; }
     .recipe-v2-patient-search .recipe-v2-results { margin-top: 0.3rem; }
-    .recipe-v2-coverage-mapping { color: var(--v2-red-dark) !important; font-weight: 700; }
     .recipe-v2-columns { align-items: start; display: grid; gap: 1.4rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .recipe-v2-column { display: grid; gap: 1.4rem; }
     .recipe-v2-card { overflow: hidden; }
@@ -471,7 +469,6 @@
         const contact = document.getElementById("recipe-v2-patient-contact");
         const coverageName = document.getElementById("recipe-v2-coverage-name");
         const coverageMember = document.getElementById("recipe-v2-coverage-member");
-        const coverageMapping = document.getElementById("recipe-v2-coverage-mapping");
         const coverageHhcc = document.getElementById("recipe-v2-coverage-hhcc");
         const coverageNone = document.getElementById("recipe-v2-coverage-none");
         const footerPatient = document.getElementById("recipe-v2-footer-patient");
@@ -484,7 +481,6 @@
             contact.textContent = "";
             coverageName.textContent = "Sin cobertura";
             coverageMember.textContent = "Sin número de afiliado";
-            coverageMapping.textContent = "";
             coverageHhcc.checked = false;
             coverageHhcc.disabled = true;
             coverageNone.checked = true;
@@ -512,7 +508,6 @@
         if (!coverageAvailable) state.useCoverage = false;
         coverageName.textContent = [coverage?.name, coverage?.plan].filter(Boolean).join(" · ") || "Sin cobertura cargada";
         coverageMember.textContent = coverage?.member_number ? `Afiliado ${coverage.member_number}` : "Sin número de afiliado";
-        coverageMapping.textContent = coverage?.mapped ? "Cobertura vinculada con QBI2" : "Cobertura aún sin mapeo QBI2";
         coverageHhcc.disabled = !coverageAvailable;
         coverageHhcc.checked = coverageAvailable && state.useCoverage;
         coverageNone.disabled = false;

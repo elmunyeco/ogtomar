@@ -2,7 +2,6 @@ import base64
 import copy
 import json
 import re
-import unicodedata
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -713,7 +712,6 @@ def _espontanea_2_patient_data(patient_record: Paciente | None) -> dict[str, Any
             "payload_plan": "",
             "member_number": "",
             "environment": "HHCC",
-            "mapped": False,
         }
         return {"patient": patient, "coverage": coverage, "payload": {}}
 
@@ -723,7 +721,6 @@ def _espontanea_2_patient_data(patient_record: Paciente | None) -> dict[str, Any
     sex_label = "Masculino" if qbi2_sex == "M" else "Femenino" if qbi2_sex == "F" else "Sin especificar"
     document_type = (getattr(patient_record.idTipoDoc, "nombre", "") or "DNI").strip()
     raw_plan = (patient_record.plan or "").strip()
-    financier_id, plan_id, payload_plan = _qbi2_coverage_mapping(patient_record.obraSocial, raw_plan)
 
     patient = {
         "id": patient_record.id,
@@ -744,13 +741,12 @@ def _espontanea_2_patient_data(patient_record: Paciente | None) -> dict[str, Any
     }
     coverage = {
         "name": (patient_record.obraSocial or "").strip() or "Sin cobertura",
-        "financier_id": financier_id,
-        "plan_id": plan_id,
+        "financier_id": "",
+        "plan_id": "",
         "plan": raw_plan,
-        "payload_plan": payload_plan,
+        "payload_plan": raw_plan,
         "member_number": (patient_record.afiliado or "").strip(),
         "environment": "HHCC",
-        "mapped": bool(financier_id),
     }
     payload = {
         "pacienteNombre": patient["name"],
@@ -776,26 +772,6 @@ def _espontanea_2_patient_data(patient_record: Paciente | None) -> dict[str, Any
         "dniTitular": patient["document"],
     }
     return {"patient": patient, "coverage": coverage, "payload": payload}
-
-
-def _qbi2_coverage_mapping(raw_name: Any, raw_plan: Any) -> tuple[str, str, str]:
-    normalized_name = _normalize_identifier(raw_name)
-    plan = str(raw_plan or "").strip()
-    plan_digits = re.sub(r"\D", "", plan)
-
-    if normalized_name.split(" ", 1)[0:1] == ["OSDE"]:
-        plan_ids = {"210": "42", "310": "43", "410": "44", "450": "45", "510": "46"}
-        plan_id = plan_ids.get(plan_digits, "")
-        return "28", plan_id, f"Plan{plan_digits}" if plan_id else plan
-    if normalized_name.replace(" ", "") == "ACCORDSALUD":
-        return "96", "", plan
-    return "", "", plan
-
-
-def _normalize_identifier(value: Any) -> str:
-    text = unicodedata.normalize("NFKD", str(value or "").upper())
-    text = "".join(character for character in text if not unicodedata.combining(character))
-    return re.sub(r"\s+", " ", re.sub(r"[^A-Z0-9]+", " ", text)).strip()
 
 
 def _espontanea_2_safe_data(data: dict[str, Any]) -> dict[str, Any]:
