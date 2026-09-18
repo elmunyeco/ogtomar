@@ -12,7 +12,7 @@ from Qbi2 import views
 from Qbi2.client import Qbi2HTTPError
 from Qbi2.models import SolicitudReceta
 from Qbi2.portal import find_patient_history, normalize_document
-from Qbi2.recipes import RecetaPocResult
+from Qbi2.recipes import RecetaResult
 from Qbi2.spontaneous import (
     SpontaneousPocResult,
     build_spontaneous_payload,
@@ -72,7 +72,6 @@ class Qbi2PocRoutingTests(TestCase):
             "/qbi2-poc/paciente/salir/": "qbi2_poc:paciente_logout",
             "/qbi2-poc/paciente/recetas/nueva/": "qbi2_poc:paciente_receta_nueva",
             "/qbi2-poc/medico/solicitudes/": "qbi2_poc:medico_solicitudes",
-            "/qbi2-poc/lab/receta/": "qbi2_poc:lab_receta",
             "/qbi2-poc/lab/rcta-espontanea/": "qbi2_poc:lab_espontanea",
             "/qbi2-poc/lab/rcta-espontanea-2/": "qbi2_poc:lab_espontanea_2",
             "/qbi2-poc/api/medicamentos/directo/": "qbi2_poc:api_medicamentos_directo",
@@ -96,6 +95,8 @@ class Qbi2PocRoutingTests(TestCase):
             "/poc-recetas/",
             "/poc-recetas/solicitudes/",
             "/PoC-pacientes-portal/",
+            "/qbi2-poc/lab/receta/",
+            "/qbi2-poc/api/lab/receta/emitir/",
         ]
 
         for path in old_paths:
@@ -108,16 +109,14 @@ class RecetaPortalViewTests(TestCase):
         user_model = get_user_model()
         self.user = user_model.objects.create_user(username="medico", password="test")
 
-    def test_receta_poc_page_renders(self):
-        request = RequestFactory().get("/qbi2-poc/lab/receta/")
+    def test_home_does_not_link_removed_recipe_lab(self):
+        request = RequestFactory().get("/qbi2-poc/")
         request.user = self.user
 
-        response = views.receta_poc_page(request)
+        response = views.qbi2_poc_home(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Proof Of Concept", response.content)
-        self.assertIn(b"Emitir receta HML", response.content)
-        self.assertIn(b"34959", response.content)
+        self.assertNotIn(b"/qbi2-poc/lab/receta/", response.content)
 
     def test_pacientes_portal_requires_patient_session(self):
         response = self.client.get("/qbi2-poc/paciente/recetas/nueva/")
@@ -139,6 +138,7 @@ class RecetaPortalViewTests(TestCase):
         self.assertIn(b"No hay solicitudes", response.content)
         self.assertIn(b'href="/qbi2-poc/medico/solicitudes/"', response.content)
         self.assertIn(b">Recetas</a>", response.content)
+        self.assertNotIn(b"/qbi2-poc/lab/receta/", response.content)
 
 
 @override_settings(
@@ -802,7 +802,7 @@ class SolicitudRecetaQueueTests(TestCase):
 
         with patch(
             "Qbi2.views.emitir_receta_payload",
-            return_value=RecetaPocResult(
+            return_value=RecetaResult(
                 payload={"paciente": {"nroDoc": "12345678"}, "medicamentos": [{"regNo": "34959"}]},
                 response={
                     "recetas": [{"idReceta": "9600000255038", "s3Link": "https://example.invalid/receta.pdf"}],

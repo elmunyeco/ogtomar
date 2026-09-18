@@ -13,7 +13,6 @@ urlpatterns = [
     path("paciente/salir/", views.paciente_logout, name="paciente_logout"),
     path("paciente/recetas/nueva/", views.pacientes_portal_page, name="paciente_receta_nueva"),
     path("medico/solicitudes/", login_required(views.solicitudes_receta_page), name="medico_solicitudes"),
-    path("lab/receta/", login_required(views.receta_poc_page), name="lab_receta"),
     path("lab/rcta-espontanea/", login_required(views.espontanea_poc_page), name="lab_espontanea"),
     path("lab/rcta-espontanea-2/", login_required(views.espontanea_poc_2_page), name="lab_espontanea_2"),
     path("api/health/", login_required(views.health), name="api_health"),
@@ -27,7 +26,6 @@ urlpatterns = [
         views.buscar_vademecum_portal,
         name="api_paciente_medicamentos_directo",
     ),
-    path("api/lab/receta/emitir/", login_required(views.emitir_receta_poc), name="api_lab_receta_emitir"),
     path(
         "api/lab/espontanea/catalogos/<str:catalogo>/",
         login_required(views.espontanea_catalogo_api),

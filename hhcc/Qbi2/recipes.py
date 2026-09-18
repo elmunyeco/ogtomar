@@ -1,31 +1,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 
 from django.conf import settings
-from django.utils import timezone
 
 from .client import Qbi2Client
 
 
-DEFAULT_LOTRIAL_REG_NO = "34959"
-
-
 @dataclass(frozen=True)
-class RecetaPocResult:
+class RecetaResult:
     payload: dict[str, Any]
     response: dict[str, Any] | list[Any] | str | None
 
 
-def build_hml_receta_poc_payload(
+def build_receta_payload(
     *,
-    reg_no: str = DEFAULT_LOTRIAL_REG_NO,
-    nombre_producto: str = "LOTRIAL",
-    nombre_droga: str = "enalapril",
-    presentacion: str = "10 mg comp.x 30",
-    nro_doc: str | None = None,
+    reg_no: str = "",
+    nombre_producto: str = "",
+    nombre_droga: str = "",
+    presentacion: str = "",
+    nro_doc: str = "",
     paciente_nombre: str = "Prueba",
     paciente_apellido: str = "Paciente",
     paciente_sexo: str = "M",
@@ -54,20 +49,16 @@ def build_hml_receta_poc_payload(
     consultorio_email: str = "consultorio.prueba@example.com",
     consultorio_contacto: str = "1100000002",
 ) -> dict[str, Any]:
-    """Payload HML con datos ficticios para entender el contrato de Receta.
+    """Construye el payload de receta que consume la cola médica."""
 
-    El unico dato clinico deliberadamente real del proveedor es `regNo`.
-    """
-
-    patient_doc = nro_doc or _fake_patient_doc()
     client_app_id = int(getattr(settings, "QBI2_CLIENT_APP_ID", 563))
 
     return {
         "clienteAppId": client_app_id,
         "diagnostico": diagnostico,
         "imprimirDiagnostico": "S",
-        "indicaciones": "Control de presion arterial. PoC HML con datos ficticios.",
-        "observaciones": "PoC de homologacion Qbi2. No usar como receta real.",
+        "indicaciones": "Segun indicacion medica.",
+        "observaciones": "",
         "medicamentos": [
             {
                 "nombreProducto": nombre_producto,
@@ -79,7 +70,7 @@ def build_hml_receta_poc_payload(
                 "tratamiento": tratamiento,
                 "diagnostico": diagnostico,
                 "posologia": posologia,
-                "observaciones": "PoC HML",
+                "observaciones": "",
                 "forzarDuplicado": False,
             }
         ],
@@ -87,7 +78,7 @@ def build_hml_receta_poc_payload(
             "apellido": paciente_apellido,
             "nombre": paciente_nombre,
             "tipoDoc": "DNI",
-            "nroDoc": patient_doc,
+            "nroDoc": nro_doc,
             "sexo": paciente_sexo,
             "fechaNacimiento": paciente_fecha_nacimiento,
             "email": paciente_email,
@@ -152,7 +143,7 @@ def build_receta_payload_from_solicitud(
     tratamiento: int = 0,
 ) -> dict[str, Any]:
     paciente = solicitud.paciente
-    payload = build_hml_receta_poc_payload(
+    payload = build_receta_payload(
         reg_no=solicitud.medicamento_reg_no,
         nombre_producto=solicitud.medicamento_nombre_producto,
         nombre_droga=solicitud.medicamento_nombre_droga,
@@ -185,7 +176,7 @@ def build_receta_payload_from_solicitud(
                 "tratamiento": tratamiento,
                 "diagnostico": diagnostico,
                 "posologia": posologia,
-                "observaciones": "PoC HML",
+                "observaciones": "",
                 "forzarDuplicado": False,
             }
             for item in medicamentos[:2]
@@ -212,25 +203,9 @@ def _medicamentos_from_solicitud(solicitud) -> list[dict[str, Any]]:
     ]
 
 
-def emitir_receta_hml_poc(
-    *,
-    reg_no: str = DEFAULT_LOTRIAL_REG_NO,
-    nro_doc: str | None = None,
-    diagnostico: str = "Hipertension arterial",
-    client: Qbi2Client | None = None,
-) -> RecetaPocResult:
-    payload = build_hml_receta_poc_payload(
-        reg_no=reg_no,
-        nro_doc=nro_doc,
-        diagnostico=diagnostico,
-    )
+def emitir_receta_payload(payload: dict[str, Any], client: Qbi2Client | None = None) -> RecetaResult:
     response = (client or Qbi2Client()).post("/apirecipe/Receta", payload)
-    return RecetaPocResult(payload=payload, response=response)
-
-
-def emitir_receta_payload(payload: dict[str, Any], client: Qbi2Client | None = None) -> RecetaPocResult:
-    response = (client or Qbi2Client()).post("/apirecipe/Receta", payload)
-    return RecetaPocResult(payload=payload, response=response)
+    return RecetaResult(payload=payload, response=response)
 
 
 def summarize_receta_response(response: Any) -> dict[str, Any]:
@@ -253,11 +228,6 @@ def summarize_receta_response(response: Any) -> dict[str, Any]:
         "status": response_item.get("status") if isinstance(response_item, dict) else None,
         "fechavencimiento": response_item.get("fechavencimiento") if isinstance(response_item, dict) else None,
     }
-
-
-def _fake_patient_doc() -> str:
-    now = timezone.localtime(timezone.now()) if settings.USE_TZ else datetime.now()
-    return "99" + now.strftime("%H%M%S")
 
 
 def _format_qbi2_date(value) -> str:

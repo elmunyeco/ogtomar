@@ -45,7 +45,6 @@ Uso: actualizar solo la imagen de la app Django sobre el stack QA ya existente.
 Patron usado por paquetes como:
 
 - `qa_app_only_bundle_qbi2_vademecum_*`
-- `qa_app_only_bundle_qbi2_receta_poc_*`
 - `qa_app_only_bundle_qbi2_portal_recetas_*`
 
 Hace normalmente:

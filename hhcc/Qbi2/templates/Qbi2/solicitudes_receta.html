@@ -6,10 +6,9 @@
 <section class="solicitudes-page">
     <div class="solicitudes-head">
         <div>
-            <p>qbi2 receta poc</p>
+            <p>gestión médica</p>
             <h1>Solicitudes de receta</h1>
         </div>
-        <a href="{% url 'qbi2_poc:lab_receta' %}">Volver a lab de receta</a>
     </div>
 
     <nav class="solicitudes-tabs" aria-label="Estados">
@@ -158,10 +157,6 @@
         {% endfor %}
     </div>
 
-    <div class="solicitudes-footer">
-        <span>Proof Of Concept</span>
-        <span>experimental</span>
-    </div>
 </section>
 {% endblock %}
 
@@ -479,15 +474,6 @@
         font-weight: 800;
         padding: 1rem;
         text-align: center;
-    }
-    .solicitudes-footer {
-        color: rgba(107, 114, 128, 0.6);
-        display: flex;
-        font-size: 0.72rem;
-        font-weight: 800;
-        justify-content: space-between;
-        margin-top: 1rem;
-        text-transform: lowercase;
     }
     @media (max-width: 900px) {
         .solicitud-main,

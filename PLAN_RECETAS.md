@@ -872,9 +872,9 @@ Secuencia:
 09. Migrar datos historicos de SolicitudReceta si corresponde.
 10. Desactivar rutas de laboratorio.
 
-Rutas POC a retirar o reclasificar:
+Ruta POC retirada:
 
-    /qbi2-poc/lab/receta/
+    /qbi2-poc/lab/receta/ (eliminada junto con su API y artefactos)
 
 
 ========================================================================
