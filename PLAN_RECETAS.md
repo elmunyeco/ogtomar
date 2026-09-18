@@ -1030,7 +1030,9 @@ Registrados el 18/09/2026 para la siguiente iteracion:
     de los datos personales ya habilitados. La escritura debe seguir limitada
     mediante una lista explicita de campos en el servidor.
 03. Mantener una unica busqueda de medicamentos que contemple tanto nombre
-    comercial como droga o principio activo.
+    comercial como droga o principio activo. La interfaz no debe limitarse a
+    la primera pagina del proveedor y debe priorizar coincidencias por prefijo
+    del nombre comercial antes de mostrar coincidencias internas o por droga.
 
 Verificacion HML del punto 03:
 
@@ -1039,3 +1041,7 @@ Verificacion HML del punto 03:
   `nombreDroga` contiene enalapril.
 - El endpoint `GetMedicamento/{search}` ya resuelve ambos criterios con el
   mismo parametro libre; no hace falta agregar un selector de modalidad.
+- Buscar "Lot" devuelve 180 resultados en 9 paginas. LOTRIAL aparece recien
+  en la pagina 5, mientras el portal actual sólo consulta la pagina 1.
+- La correccion debe incorporar paginacion o agregacion acotada y ranking por
+  relevancia; cambiar solamente el texto del campo no resuelve el problema.
