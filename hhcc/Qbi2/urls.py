@@ -77,4 +77,9 @@ urlpatterns = [
         login_required(views.rechazar_solicitud_receta),
         name="api_medico_solicitud_rechazar",
     ),
+    path(
+        "api/medico/solicitudes/<int:solicitud_id>/correo/",
+        login_required(views.preparar_correo_receta),
+        name="api_medico_solicitud_correo",
+    ),
 ]

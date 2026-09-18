@@ -1,16 +1,25 @@
 import json
 from datetime import date
+from email import policy
+from email.parser import BytesParser
 from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
+from django.http import Http404
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import resolve, Resolver404
 
 from Qbi2 import views
 from Qbi2.client import Qbi2HTTPError
 from Qbi2.models import SolicitudReceta
+from Qbi2.notifications import (
+    PRESCRIPTION_EMAIL_BODY,
+    PRESCRIPTION_EMAIL_SUBJECT,
+    PrescriptionNotificationError,
+    download_prescription_pdf,
+)
 from Qbi2.portal import find_patient_history, normalize_document
 from Qbi2.recipes import RecetaResult
 from Qbi2.services import VademecumService
@@ -203,6 +212,7 @@ class Qbi2PocRoutingTests(TestCase):
             "/recetas/api/lab/espontanea-2/preview/": "qbi2_poc:api_lab_espontanea_2_preview",
             "/recetas/api/lab/espontanea-2/pacientes/": "qbi2_poc:api_lab_espontanea_2_pacientes",
             "/recetas/api/lab/espontanea-2/emitir/": "qbi2_poc:api_lab_espontanea_2_emitir",
+            "/recetas/api/medico/solicitudes/1/correo/": "qbi2_poc:api_medico_solicitud_correo",
             "/recetas/api/lab/espontanea/emitir/": "qbi2_poc:api_lab_espontanea_emitir",
             "/recetas/api/lab/espontanea/anular/": "qbi2_poc:api_lab_espontanea_anular",
         }
@@ -935,6 +945,7 @@ class SolicitudRecetaQueueTests(TestCase):
             nombre="Ana",
             apellido="Perez",
             sexo="M",
+            mail="ana@example.com",
         )
         self.historia = HistoriaClinica.objects.create(paciente=self.paciente)
         self.user = get_user_model().objects.create_user(username="omar", password="test")
@@ -1001,9 +1012,86 @@ class SolicitudRecetaQueueTests(TestCase):
         solicitud.refresh_from_db()
 
         self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/recetas/medico/solicitudes/?estado=emitida")
         self.assertEqual(solicitud.estado, SolicitudReceta.Estado.EMITIDA)
         self.assertEqual(solicitud.qbi2_pdf_url, "https://example.invalid/receta.pdf")
         self.assertEqual(solicitud.diagnostico, "Hipertension arterial")
         self.assertEqual(solicitud.medicamento_reg_no, "24818")
         self.assertEqual(solicitud.auditoria["medicamentos"][0]["nombreProducto"], "AMPLIAR")
         self.assertTrue(solicitud.auditoria["medicamentos_editados_por_medico"])
+
+    @patch("Qbi2.views.download_prescription_pdf", return_value=b"%PDF-1.7\nmock")
+    def test_emitted_request_downloads_unsent_email_with_pdf_attached(self, download_pdf):
+        solicitud = SolicitudReceta.objects.create(
+            paciente=self.paciente,
+            historia_clinica=self.historia,
+            medicamento_reg_no="34959",
+            medicamento_nombre_producto="LOTRIAL",
+            estado=SolicitudReceta.Estado.EMITIDA,
+            qbi2_id_receta="9600000255038",
+            qbi2_pdf_url="https://example.invalid/receta.pdf",
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            f"/recetas/api/medico/solicitudes/{solicitud.id}/correo/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "message/rfc822")
+        self.assertIn("receta-9600000255038.eml", response["Content-Disposition"])
+        message = BytesParser(policy=policy.default).parsebytes(response.content)
+        self.assertEqual(message["To"], "ana@example.com")
+        self.assertEqual(message["Subject"], PRESCRIPTION_EMAIL_SUBJECT)
+        self.assertEqual(message["X-Unsent"], "1")
+        self.assertEqual(
+            message.get_body(preferencelist=("plain",)).get_content().replace("\r\n", "\n"),
+            PRESCRIPTION_EMAIL_BODY,
+        )
+        attachments = list(message.iter_attachments())
+        self.assertEqual(len(attachments), 1)
+        self.assertEqual(attachments[0].get_filename(), "receta-9600000255038.pdf")
+        self.assertEqual(attachments[0].get_content(), b"%PDF-1.7\nmock")
+        download_pdf.assert_called_once_with("https://example.invalid/receta.pdf")
+
+    @patch("Qbi2.views.download_prescription_pdf")
+    def test_email_draft_is_not_available_until_rcta_marks_request_emitted(self, download_pdf):
+        solicitud = SolicitudReceta.objects.create(
+            paciente=self.paciente,
+            historia_clinica=self.historia,
+            medicamento_reg_no="34959",
+            estado=SolicitudReceta.Estado.PENDIENTE,
+            qbi2_pdf_url="https://example.invalid/receta.pdf",
+        )
+        request = RequestFactory().get(
+            f"/recetas/api/medico/solicitudes/{solicitud.id}/correo/"
+        )
+        request.user = self.user
+
+        with self.assertRaises(Http404):
+            views.preparar_correo_receta(request, solicitud.id)
+        download_pdf.assert_not_called()
+
+    def test_emitted_queue_shows_notification_button(self):
+        solicitud = SolicitudReceta.objects.create(
+            paciente=self.paciente,
+            historia_clinica=self.historia,
+            medicamento_reg_no="34959",
+            estado=SolicitudReceta.Estado.EMITIDA,
+            qbi2_pdf_url="https://example.invalid/receta.pdf",
+        )
+        request = RequestFactory().get("/recetas/medico/solicitudes/?estado=emitida")
+        request.user = self.user
+        response = views.solicitudes_receta_page(request)
+
+        self.assertContains(response, "Notificar por correo")
+        self.assertContains(
+            response,
+            f"/recetas/api/medico/solicitudes/{solicitud.id}/correo/",
+        )
+
+
+class PrescriptionNotificationSecurityTests(SimpleTestCase):
+    def test_pdf_download_rejects_non_https_links(self):
+        with self.assertRaises(PrescriptionNotificationError):
+            download_prescription_pdf("http://example.invalid/receta.pdf")

@@ -12,9 +12,9 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
@@ -24,6 +24,12 @@ from django.views.decorators.http import require_POST
 
 from .client import Qbi2ConfigurationError, Qbi2HTTPError
 from .models import SolicitudReceta
+from .notifications import (
+    PrescriptionNotificationError,
+    build_prescription_email_draft,
+    download_prescription_pdf,
+    prescription_draft_filename,
+)
 from .portal import (
     create_prescription_request,
     end_patient_session,
@@ -623,6 +629,29 @@ def rechazar_solicitud_receta(request, solicitud_id):
     return _decidir_solicitud_receta(request, solicitud_id, aprobar=False)
 
 
+@require_GET
+def preparar_correo_receta(request, solicitud_id):
+    solicitud = get_object_or_404(
+        SolicitudReceta.objects.select_related("paciente"),
+        pk=solicitud_id,
+        estado=SolicitudReceta.Estado.EMITIDA,
+    )
+    if not solicitud.qbi2_pdf_url:
+        return HttpResponse("La receta emitida no tiene un PDF disponible.", status=409)
+
+    try:
+        pdf = download_prescription_pdf(solicitud.qbi2_pdf_url)
+    except PrescriptionNotificationError as exc:
+        return HttpResponse(str(exc), status=502)
+
+    draft = build_prescription_email_draft(solicitud, pdf)
+    response = HttpResponse(draft, content_type="message/rfc822")
+    response["Content-Disposition"] = (
+        f'attachment; filename="{prescription_draft_filename(solicitud)}"'
+    )
+    return response
+
+
 def _espontanea_2_defaults(patient_record: Paciente | None = None) -> dict[str, Any]:
     """Professional defaults plus a patient profile read from the HHCC database."""
     patient_data = _espontanea_2_patient_data(patient_record)
@@ -1089,7 +1118,7 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
                         "updated_at",
                     ]
                 )
-            _emitir_solicitud_receta(
+            emitted = _emitir_solicitud_receta(
                 solicitud,
                 request.user,
                 diagnostico=diagnostico,
@@ -1098,6 +1127,12 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
                 tratamiento=tratamiento,
                 observacion=observacion,
             )
+            if emitted:
+                messages.success(
+                    request,
+                    "Receta emitida. Ya podés preparar el correo con el PDF adjunto.",
+                )
+                next_url = f'{reverse("qbi2_poc:medico_solicitudes")}?estado=emitida'
         else:
             solicitud.rechazar(request.user, observacion=observacion)
     return HttpResponseRedirect(next_url)
@@ -1131,7 +1166,7 @@ def _emitir_solicitud_receta(
             payload=payload,
             error=str(exc),
         )
-        return
+        return False
     except Qbi2HTTPError as exc:
         solicitud.marcar_error_emision(
             user,
@@ -1142,7 +1177,7 @@ def _emitir_solicitud_receta(
             response=exc.payload,
             error=str(exc),
         )
-        return
+        return False
 
     summary = summarize_receta_response(result.response)
     pdf_url = summary.get("s3Link")
@@ -1156,7 +1191,7 @@ def _emitir_solicitud_receta(
             response=result.response,
             summary=summary,
         )
-        return
+        return True
 
     provider_errors = summary.get("errores") or "Qbi2 no devolvio PDF de receta."
     solicitud.marcar_error_emision(
@@ -1168,3 +1203,4 @@ def _emitir_solicitud_receta(
         response=result.response,
         error=str(provider_errors),
     )
+    return False
