@@ -1098,12 +1098,6 @@ def _emitir_solicitud_receta(
         ]
     medicamentos = [item for item in medicamentos[:10] if isinstance(item, dict)]
     solicitud.emisiones.all().delete()
-    emision = EmisionSolicitudReceta.objects.create(
-        solicitud=solicitud,
-        orden=1,
-        total=1,
-        medicamentos=medicamentos,
-    )
     payload: dict[str, Any] = {}
     try:
         recipe_data = _recipe_data_from_solicitud(
@@ -1122,18 +1116,15 @@ def _emitir_solicitud_receta(
             provider_errors = summary.get("errores") or "QBI2 no devolvió PDF de receta."
             raise ValueError(str(provider_errors))
     except (Qbi2ConfigurationError, ValueError, Qbi2HTTPError) as exc:
-        emision.estado = EmisionSolicitudReceta.Estado.ERROR
-        emision.payload_qbi2 = payload
-        emision.respuesta_qbi2 = getattr(exc, "payload", {}) or {}
-        emision.error_qbi2 = str(exc)
-        emision.save(
-            update_fields=[
-                "estado",
-                "payload_qbi2",
-                "respuesta_qbi2",
-                "error_qbi2",
-                "updated_at",
-            ]
+        EmisionSolicitudReceta.objects.create(
+            solicitud=solicitud,
+            orden=1,
+            total=1,
+            medicamentos=medicamentos,
+            estado=EmisionSolicitudReceta.Estado.ERROR,
+            payload_qbi2=payload,
+            respuesta_qbi2=getattr(exc, "payload", {}) or {},
+            error_qbi2=str(exc),
         )
         solicitud.marcar_error_emision(
             user,
@@ -1146,21 +1137,25 @@ def _emitir_solicitud_receta(
         )
         return False
 
-    emision.estado = EmisionSolicitudReceta.Estado.EMITIDA
-    emision.payload_qbi2 = result.payload
-    emision.respuesta_qbi2 = result.response
-    emision.qbi2_id_receta = summary.get("idReceta") or ""
-    emision.qbi2_pdf_url = pdf_url
-    emision.save(
-        update_fields=[
-            "estado",
-            "payload_qbi2",
-            "respuesta_qbi2",
-            "qbi2_id_receta",
-            "qbi2_pdf_url",
-            "updated_at",
+    emisiones = _replace_emission_records(solicitud, result.payload, result.response)
+    failed_documents = [
+        emision for emision in emisiones
+        if emision.estado != EmisionSolicitudReceta.Estado.EMITIDA
+    ]
+    if summary.get("errores") or failed_documents:
+        provider_errors = summary.get("errores") or [
+            emision.error_qbi2 for emision in failed_documents
         ]
-    )
+        solicitud.marcar_error_emision(
+            user,
+            diagnostico=diagnostico,
+            posologia=posologia,
+            observacion=observacion,
+            payload=result.payload,
+            response=result.response,
+            error=str(provider_errors),
+        )
+        return False
     solicitud.marcar_emitida(
         user,
         diagnostico=diagnostico,
@@ -1171,3 +1166,53 @@ def _emitir_solicitud_receta(
         summary=summary,
     )
     return True
+
+
+def _replace_emission_records(solicitud, payload, response):
+    """Persist every prescription document returned by one RCTA request."""
+    documents = []
+    response_items = []
+    if isinstance(response, dict):
+        raw_documents = (
+            response.get("recetas")
+            or response.get("receta")
+            or response.get("documentos")
+            or []
+        )
+        if isinstance(raw_documents, dict):
+            raw_documents = [raw_documents]
+        if isinstance(raw_documents, list):
+            documents = [item for item in raw_documents if isinstance(item, dict)]
+        raw_response_items = response.get("response") or []
+        if isinstance(raw_response_items, list):
+            response_items = [item for item in raw_response_items if isinstance(item, dict)]
+
+    if not documents:
+        return []
+
+    solicitud.emisiones.all().delete()
+    total = len(documents)
+    emisiones = []
+    for index, document in enumerate(documents, start=1):
+        response_item = response_items[index - 1] if index <= len(response_items) else {}
+        medicamentos = response_item.get("medicamentos") or []
+        pdf_url = document.get("s3Link") or ""
+        emisiones.append(
+            EmisionSolicitudReceta.objects.create(
+                solicitud=solicitud,
+                orden=index,
+                total=total,
+                medicamentos=medicamentos if isinstance(medicamentos, list) else [],
+                estado=(
+                    EmisionSolicitudReceta.Estado.EMITIDA
+                    if pdf_url
+                    else EmisionSolicitudReceta.Estado.ERROR
+                ),
+                payload_qbi2=payload or {},
+                respuesta_qbi2={"receta": document, "response": response_item},
+                error_qbi2="" if pdf_url else "QBI2 no devolvió PDF para este documento.",
+                qbi2_id_receta=document.get("idReceta") or "",
+                qbi2_pdf_url=pdf_url,
+            )
+        )
+    return emisiones

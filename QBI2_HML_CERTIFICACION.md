@@ -43,3 +43,15 @@ se emitió una sola receta de homologación:
 El PDF se verificó visualmente: incluye el paciente, la credencial HML, el
 medicamento, la firma rasterizada, el sello con MN/MP y el logo profesional.
 La receta no fue anulada.
+
+## Agrupación observada de medicamentos — 18/09/2026
+
+Una emisión HML enviada en una única llamada con diez medicamentos confirmó
+un comportamiento que no figuraba en la documentación disponible: RCTA
+respondió `OK`, sin errores, y devolvió cuatro elementos en `recetas`, agrupados
+en `3 + 3 + 3 + 1` medicamentos. Cada elemento incluyó su propio `idReceta`,
+hash, CUIR, enlace PDF y verificador.
+
+Por lo tanto, la integración no debe dividir localmente el pedido ni interpretar
+solamente el primer elemento de `recetas`. Debe enviar el arreglo completo y
+persistir todos los documentos devueltos por RCTA.

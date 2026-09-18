@@ -1023,7 +1023,7 @@ class SolicitudRecetaQueueTests(TestCase):
                 "nombreProducto": f"MEDICAMENTO {index}",
                 "nombreDroga": f"droga {index}",
             }
-            for index in range(1, 6)
+            for index in range(1, 11)
         ]
         solicitud = SolicitudReceta.objects.create(
             paciente=self.paciente,
@@ -1034,15 +1034,20 @@ class SolicitudRecetaQueueTests(TestCase):
         )
         self.client.force_login(self.user)
 
+        groups = [medicamentos[0:3], medicamentos[3:6], medicamentos[6:9], medicamentos[9:10]]
         provider_response = {
             "recetas": [
                 {
-                    "idReceta": "RECETA-COMPLETA",
-                    "s3Link": "https://example.invalid/receta-completa.pdf",
+                    "idReceta": f"RECETA-{index}",
+                    "s3Link": f"https://example.invalid/receta-{index}.pdf",
                 }
+                for index in range(1, 5)
             ],
             "errores": [],
-            "response": [{"status": "OK"}],
+            "response": [
+                {"status": "OK", "medicamentos": group}
+                for group in groups
+            ],
         }
         result = RctaResult(
             operation="receta",
@@ -1065,13 +1070,16 @@ class SolicitudRecetaQueueTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(solicitud.estado, SolicitudReceta.Estado.EMITIDA)
         self.assertEqual(emit.call_count, 1)
-        self.assertEqual(len(emisiones), 1)
+        self.assertEqual(len(emisiones), 4)
         self.assertEqual(
-            [item["regNo"] for item in emisiones[0].medicamentos],
-            [item["regNo"] for item in medicamentos],
+            [len(item.medicamentos) for item in emisiones],
+            [3, 3, 3, 1],
         )
-        self.assertEqual(emisiones[0].qbi2_id_receta, "RECETA-COMPLETA")
-        self.assertEqual(len(emit.call_args.args[0]["medicamentos"]), 5)
+        self.assertEqual(
+            [item.qbi2_id_receta for item in emisiones],
+            ["RECETA-1", "RECETA-2", "RECETA-3", "RECETA-4"],
+        )
+        self.assertEqual(len(emit.call_args.args[0]["medicamentos"]), 10)
 
     def test_complete_order_preserves_provider_error_without_splitting(self):
         medicamentos = [
