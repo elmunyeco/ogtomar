@@ -549,6 +549,30 @@ def rechazar_solicitud_receta(request, solicitud_id):
     return _decidir_solicitud_receta(request, solicitud_id, aprobar=False)
 
 
+@csrf_protect
+@require_POST
+def reabrir_solicitud_receta(request, solicitud_id):
+    with transaction.atomic():
+        solicitud = get_object_or_404(
+            SolicitudReceta.objects.select_for_update(),
+            pk=solicitud_id,
+        )
+        if not solicitud.reabrir_para_reintento(request.user):
+            messages.error(
+                request,
+                f"La solicitud #{solicitud.id} no está en estado de error y no fue modificada.",
+            )
+            return redirect("recetas:medico_solicitudes")
+
+    messages.success(
+        request,
+        f"La solicitud #{solicitud.id} volvió a Pendientes. Corregí los datos necesarios y revisala antes de emitir.",
+    )
+    return HttpResponseRedirect(
+        f'{reverse("recetas:medico_solicitudes")}?estado=pendiente#solicitud-{solicitud.id}'
+    )
+
+
 @require_GET
 def preparar_correo_receta(request, solicitud_id):
     solicitud = get_object_or_404(

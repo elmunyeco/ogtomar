@@ -10,6 +10,7 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 from django.http import Http404
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import resolve, Resolver404
+from django.utils import timezone
 
 from Qbi2 import views
 from Qbi2.client import Qbi2HTTPError, qbi2_error_details, qbi2_error_text
@@ -211,6 +212,7 @@ class RecetasRoutingTests(TestCase):
             "/recetas/api/medico/recetas/pacientes/": "recetas:api_receta_pacientes",
             "/recetas/api/medico/recetas/emitir/": "recetas:api_receta_emitir",
             "/recetas/api/medico/solicitudes/1/correo/": "recetas:api_medico_solicitud_correo",
+            "/recetas/api/medico/solicitudes/1/reabrir/": "recetas:api_medico_solicitud_reabrir",
         }
 
         for path, view_name in expected.items():
@@ -1203,7 +1205,102 @@ class SolicitudRecetaQueueTests(TestCase):
         self.assertContains(response, "DEBE INGRESAR EL SEXO")
         self.assertContains(response, "Código RCTA: QBI206")
         self.assertContains(response, "Referencia técnica: trace-manfil")
+        self.assertContains(response, "Corregir y volver a intentar")
+        self.assertContains(
+            response,
+            f"/recetas/api/medico/solicitudes/{solicitud.id}/reabrir/",
+        )
         self.assertNotContains(response, "QBI2 devolvio un error HTTP.")
+
+    @patch("Qbi2.views.emit_rcta_payload")
+    def test_failed_request_can_be_reopened_without_calling_rcta(self, emit):
+        provider_response = {
+            "error": "QBI206",
+            "mensaje": "DEBE INGRESAR EL SEXO",
+            "requestId": "trace-retry",
+        }
+        medicamentos = [
+            {
+                "regNo": "34959",
+                "nombreProducto": "LOTRIAL",
+                "nombreDroga": "enalapril",
+            }
+        ]
+        solicitud = SolicitudReceta.objects.create(
+            paciente=self.paciente,
+            historia_clinica=self.historia,
+            medicamento_reg_no="34959",
+            medicamento_nombre_producto="LOTRIAL",
+            estado=SolicitudReceta.Estado.ERROR_EMISION,
+            diagnostico="Hipertensión arterial",
+            posologia="Un comprimido por día",
+            auditoria={"medicamentos": medicamentos},
+            payload_qbi2={"medicamentos": medicamentos},
+            respuesta_qbi2=provider_response,
+            error_qbi2="DEBE INGRESAR EL SEXO — Código RCTA: QBI206",
+            aprobado_por=self.user,
+            fecha_decision=timezone.now(),
+        )
+        EmisionSolicitudReceta.objects.create(
+            solicitud=solicitud,
+            orden=1,
+            total=1,
+            medicamentos=medicamentos,
+            estado=EmisionSolicitudReceta.Estado.ERROR,
+            respuesta_qbi2=provider_response,
+            error_qbi2="DEBE INGRESAR EL SEXO",
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            f"/recetas/api/medico/solicitudes/{solicitud.id}/reabrir/"
+        )
+
+        solicitud.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.url,
+            f"/recetas/medico/solicitudes/?estado=pendiente#solicitud-{solicitud.id}",
+        )
+        self.assertEqual(solicitud.estado, SolicitudReceta.Estado.PENDIENTE)
+        self.assertIsNone(solicitud.aprobado_por)
+        self.assertIsNone(solicitud.fecha_decision)
+        self.assertEqual(solicitud.diagnostico, "Hipertensión arterial")
+        self.assertEqual(solicitud.posologia, "Un comprimido por día")
+        self.assertEqual(solicitud.respuesta_qbi2, provider_response)
+        self.assertIn("DEBE INGRESAR EL SEXO", solicitud.error_qbi2)
+        self.assertEqual(solicitud.emisiones.count(), 0)
+        intento = solicitud.auditoria["intentos_emision"][0]
+        self.assertEqual(intento["respuesta"], provider_response)
+        self.assertIn("DEBE INGRESAR EL SEXO", intento["error"])
+        emit.assert_not_called()
+
+        pending = self.client.get(response.url.split("#", 1)[0])
+        self.assertContains(pending, "volvió a Pendientes")
+        self.assertContains(pending, "Aprobar y emitir")
+        self.assertContains(pending, "Hipertensión arterial")
+        self.assertContains(pending, "LOTRIAL")
+        self.assertContains(pending, "Último intento de emisión fallido")
+        self.assertContains(pending, "DEBE INGRESAR EL SEXO")
+        self.assertNotContains(pending, "Corregir y volver a intentar")
+
+    def test_only_failed_requests_can_be_reopened(self):
+        solicitud = SolicitudReceta.objects.create(
+            paciente=self.paciente,
+            historia_clinica=self.historia,
+            medicamento_reg_no="34959",
+            estado=SolicitudReceta.Estado.PENDIENTE,
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            f"/recetas/api/medico/solicitudes/{solicitud.id}/reabrir/"
+        )
+
+        solicitud.refresh_from_db()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(solicitud.estado, SolicitudReceta.Estado.PENDIENTE)
+        self.assertNotIn("intentos_emision", solicitud.auditoria)
 
     @patch("Qbi2.views.download_prescription_pdf", return_value=b"%PDF-1.7\nmock")
     def test_emitted_request_downloads_unsent_email_with_pdf_attached(self, download_pdf):

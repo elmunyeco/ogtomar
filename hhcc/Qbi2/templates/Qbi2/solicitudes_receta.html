@@ -47,6 +47,11 @@
                         <small>{% if resultado_solicitud.error_detalle.code %}Código RCTA: {{ resultado_solicitud.error_detalle.code }}{% endif %}{% if resultado_solicitud.error_detalle.code and resultado_solicitud.error_detalle.request_id %} · {% endif %}{% if resultado_solicitud.error_detalle.request_id %}Referencia técnica: {{ resultado_solicitud.error_detalle.request_id }}{% endif %}</small>
                     {% endif %}
                 </div>
+                <form class="retry-form" method="post" action="{% url 'recetas:api_medico_solicitud_reabrir' resultado_solicitud.id %}">
+                    {% csrf_token %}
+                    <button type="submit">Corregir y volver a intentar</button>
+                    <small>No emite automáticamente: devuelve la orden a Pendientes para revisarla.</small>
+                </form>
             </div>
         </section>
     {% endif %}
@@ -62,7 +67,7 @@
 
     <div class="queue-list">
         {% for solicitud in solicitudes %}
-            <article class="request-card">
+            <article id="solicitud-{{ solicitud.id }}" class="request-card">
                 <header class="request-meta">
                     <span class="request-state state-{{ solicitud.estado }}">{{ solicitud.get_estado_display }}</span>
                     <span>Solicitud #{{ solicitud.id }} · {{ solicitud.created_at|date:"d/m/Y H:i" }}</span>
@@ -182,9 +187,16 @@
 
                 {% if solicitud.error_qbi2 %}
                     <section class="provider-error">
-                        <strong>RCTA no pudo emitir la receta</strong>
+                        <strong>{% if solicitud.estado == estados.PENDIENTE %}Último intento de emisión fallido{% else %}RCTA no pudo emitir la receta{% endif %}</strong>
                         <p>{{ solicitud.error_detalle.message }}</p>
                         {% if solicitud.error_detalle.code or solicitud.error_detalle.request_id %}<small>{% if solicitud.error_detalle.code %}Código RCTA: {{ solicitud.error_detalle.code }}{% endif %}{% if solicitud.error_detalle.code and solicitud.error_detalle.request_id %} · {% endif %}{% if solicitud.error_detalle.request_id %}Referencia técnica: {{ solicitud.error_detalle.request_id }}{% endif %}</small>{% endif %}
+                        {% if solicitud.estado == estados.ERROR_EMISION %}
+                            <form class="retry-form" method="post" action="{% url 'recetas:api_medico_solicitud_reabrir' solicitud.id %}">
+                                {% csrf_token %}
+                                <button type="submit">Corregir y volver a intentar</button>
+                                <small>No emite automáticamente: devuelve la orden a Pendientes para revisarla.</small>
+                            </form>
+                        {% endif %}
                     </section>
                 {% endif %}
 
@@ -246,6 +258,10 @@
     .feedback-error strong,.feedback-error small { display:block; }
     .feedback-error strong { font-weight:850; }
     .feedback-error small,.provider-error small { margin-top:.3rem; opacity:.82; }
+    .retry-form { align-items:center; display:flex; flex-wrap:wrap; gap:.55rem .75rem; margin-top:.75rem; }
+    .retry-form button { background:var(--red); border:0; border-radius:999px; color:white; cursor:pointer; font-weight:850; min-height:2.55rem; padding:0 1rem; }
+    .emission-feedback.error .retry-form button { background:#812f25; }
+    .retry-form small { flex:1 1 18rem; margin:0; }
     .request-card { background:#faf7f6; border:1px solid var(--line); border-radius:1.15rem; box-shadow:0 .22rem .8rem rgba(28,39,49,.08); overflow:hidden; padding:1rem; }
     .request-meta { align-items:center; color:var(--muted); display:flex; font-size:.78rem; font-weight:750; gap:.7rem; justify-content:space-between; margin:0 .15rem .75rem; }
     .request-state { border-radius:999px; font-size:.7rem; font-weight:900; padding:.25rem .6rem; text-transform:uppercase; }

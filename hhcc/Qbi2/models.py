@@ -131,6 +131,43 @@ class SolicitudReceta(models.Model):
             ]
         )
 
+    def reabrir_para_reintento(self, user):
+        """Return a failed request to review while preserving the failed attempt."""
+        if self.estado != self.Estado.ERROR_EMISION:
+            return False
+
+        auditoria = dict(self.auditoria or {})
+        intentos = auditoria.get("intentos_emision")
+        if not isinstance(intentos, list):
+            intentos = []
+        intentos.append(
+            {
+                "estado": self.estado,
+                "fecha": self.fecha_decision.isoformat() if self.fecha_decision else "",
+                "error": self.error_qbi2,
+                "respuesta": self.respuesta_qbi2,
+                "reabierta_en": timezone.now().isoformat(),
+                "reabierta_por": getattr(user, "username", "") or "",
+            }
+        )
+        auditoria["intentos_emision"] = intentos
+
+        self.estado = self.Estado.PENDIENTE
+        self.aprobado_por = None
+        self.fecha_decision = None
+        self.auditoria = auditoria
+        self.save(
+            update_fields=[
+                "estado",
+                "aprobado_por",
+                "fecha_decision",
+                "auditoria",
+                "updated_at",
+            ]
+        )
+        self.emisiones.filter(estado=EmisionSolicitudReceta.Estado.ERROR).delete()
+        return True
+
 
 class EmisionSolicitudReceta(models.Model):
     class Estado(models.TextChoices):
