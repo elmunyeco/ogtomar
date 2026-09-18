@@ -1001,11 +1001,6 @@ def _complete_medication_from_portal_data(medicamento, data=None):
     return medicamento
 
 
-def _chunks(items, size):
-    for index in range(0, len(items), size):
-        yield items[index:index + size]
-
-
 def _patient_api_auth_error():
     return JsonResponse(
         {"status": "error", "message": "Tu sesión venció. Volvé a ingresar."},
@@ -1102,85 +1097,70 @@ def _emitir_solicitud_receta(
             }
         ]
     medicamentos = [item for item in medicamentos[:10] if isinstance(item, dict)]
-    max_por_receta = max(
-        1, int(getattr(settings, "QBI2_MAX_MEDICATIONS_PER_RECIPE", 2))
-    )
-    grupos = list(_chunks(medicamentos, max_por_receta))
     solicitud.emisiones.all().delete()
-    emisiones = [
-        EmisionSolicitudReceta.objects.create(
-            solicitud=solicitud,
-            orden=orden,
-            total=len(grupos),
-            medicamentos=grupo,
+    emision = EmisionSolicitudReceta.objects.create(
+        solicitud=solicitud,
+        orden=1,
+        total=1,
+        medicamentos=medicamentos,
+    )
+    payload: dict[str, Any] = {}
+    try:
+        recipe_data = _recipe_data_from_solicitud(
+            solicitud,
+            diagnostico=diagnostico,
+            posologia=posologia,
+            cantidad=cantidad,
+            tratamiento=tratamiento,
+            medicamentos=medicamentos,
         )
-        for orden, grupo in enumerate(grupos, start=1)
-    ]
-
-    primera_emitida = None
-    for emision, grupo in zip(emisiones, grupos):
-        payload: dict[str, Any] = {}
-        try:
-            recipe_data = _recipe_data_from_solicitud(
-                solicitud,
-                diagnostico=diagnostico,
-                posologia=posologia,
-                cantidad=cantidad,
-                tratamiento=tratamiento,
-                medicamentos=grupo,
-            )
-            _, payload = build_rcta_payload(recipe_data)
-            result = emit_rcta_payload(recipe_data)
-            summary = result.summary
-            pdf_url = summary.get("s3Link")
-            if not pdf_url:
-                provider_errors = (
-                    summary.get("errores") or "QBI2 no devolvió PDF de receta."
-                )
-                raise ValueError(str(provider_errors))
-        except (Qbi2ConfigurationError, ValueError, Qbi2HTTPError) as exc:
-            emision.estado = EmisionSolicitudReceta.Estado.ERROR
-            emision.payload_qbi2 = payload
-            emision.respuesta_qbi2 = getattr(exc, "payload", {}) or {}
-            emision.error_qbi2 = str(exc)
-            emision.save(
-                update_fields=[
-                    "estado",
-                    "payload_qbi2",
-                    "respuesta_qbi2",
-                    "error_qbi2",
-                    "updated_at",
-                ]
-            )
-            solicitud.marcar_error_emision(
-                user,
-                diagnostico=diagnostico,
-                posologia=posologia,
-                observacion=observacion,
-                payload=payload,
-                response=getattr(exc, "payload", {}) or {},
-                error=f"Receta {emision.orden}/{emision.total}: {exc}",
-            )
-            return False
-
-        emision.estado = EmisionSolicitudReceta.Estado.EMITIDA
-        emision.payload_qbi2 = result.payload
-        emision.respuesta_qbi2 = result.response
-        emision.qbi2_id_receta = summary.get("idReceta") or ""
-        emision.qbi2_pdf_url = pdf_url
+        _, payload = build_rcta_payload(recipe_data)
+        result = emit_rcta_payload(recipe_data)
+        summary = result.summary
+        pdf_url = summary.get("s3Link")
+        if not pdf_url:
+            provider_errors = summary.get("errores") or "QBI2 no devolvió PDF de receta."
+            raise ValueError(str(provider_errors))
+    except (Qbi2ConfigurationError, ValueError, Qbi2HTTPError) as exc:
+        emision.estado = EmisionSolicitudReceta.Estado.ERROR
+        emision.payload_qbi2 = payload
+        emision.respuesta_qbi2 = getattr(exc, "payload", {}) or {}
+        emision.error_qbi2 = str(exc)
         emision.save(
             update_fields=[
                 "estado",
                 "payload_qbi2",
                 "respuesta_qbi2",
-                "qbi2_id_receta",
-                "qbi2_pdf_url",
+                "error_qbi2",
                 "updated_at",
             ]
         )
-        primera_emitida = primera_emitida or (result, summary)
+        solicitud.marcar_error_emision(
+            user,
+            diagnostico=diagnostico,
+            posologia=posologia,
+            observacion=observacion,
+            payload=payload,
+            response=getattr(exc, "payload", {}) or {},
+            error=str(exc),
+        )
+        return False
 
-    result, summary = primera_emitida
+    emision.estado = EmisionSolicitudReceta.Estado.EMITIDA
+    emision.payload_qbi2 = result.payload
+    emision.respuesta_qbi2 = result.response
+    emision.qbi2_id_receta = summary.get("idReceta") or ""
+    emision.qbi2_pdf_url = pdf_url
+    emision.save(
+        update_fields=[
+            "estado",
+            "payload_qbi2",
+            "respuesta_qbi2",
+            "qbi2_id_receta",
+            "qbi2_pdf_url",
+            "updated_at",
+        ]
+    )
     solicitud.marcar_emitida(
         user,
         diagnostico=diagnostico,
