@@ -41,7 +41,7 @@ El alcance fue considerablemente mayor que construir una pantalla. Incluyó:
 Al corte de este documento, el cliente simplificado está desplegado en QA y
 responde en:
 
-`http://129.212.132.248/qbi2-poc/lab/rcta-espontanea-2/`
+`http://129.212.132.248/recetas/lab/rcta-espontanea-2/`
 
 La ruta redirige correctamente al login. La aplicación y sus bases están
 activas. No se debe interpretar este estado como habilitación productiva:

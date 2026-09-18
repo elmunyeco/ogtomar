@@ -1014,7 +1014,7 @@ def _patient_api_auth_error():
 
 def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
     observacion = request.POST.get("observacion_medico", "")
-    next_url = request.POST.get("next") or "/qbi2-poc/medico/solicitudes/"
+    next_url = request.POST.get("next") or "/recetas/medico/solicitudes/"
     diagnostico = (request.POST.get("diagnostico") or "").strip()
     posologia = (request.POST.get("posologia") or "Tomar segun indicacion medica.").strip()
     cantidad = _positive_int(request.POST.get("cantidad"), default=1)

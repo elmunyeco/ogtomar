@@ -28,4 +28,4 @@ urlpatterns = [
 ]
 
 if settings.ENABLE_QBI2_POC:
-    urlpatterns.insert(1, path('qbi2-poc/', include(('Qbi2.urls', 'qbi2_poc'), namespace='qbi2_poc')))
+    urlpatterns.insert(1, path('recetas/', include(('Qbi2.urls', 'qbi2_poc'), namespace='qbi2_poc')))

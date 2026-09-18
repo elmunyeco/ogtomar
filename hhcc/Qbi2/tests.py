@@ -28,12 +28,12 @@ class VademecumLegacyViewTests(TestCase):
         self.user = user_model.objects.create_user(username="legacy", password="test")
 
     def test_legacy_page_requires_login(self):
-        response = self.client.get("/qbi2-poc/medicamentos/directo/")
+        response = self.client.get("/recetas/medicamentos/directo/")
 
         self.assertEqual(response.status_code, 302)
 
     def test_legacy_page_renders_after_login(self):
-        request = RequestFactory().get("/qbi2-poc/medicamentos/directo/")
+        request = RequestFactory().get("/recetas/medicamentos/directo/")
         request.user = self.user
 
         response = views.vademecum_legacy(request)
@@ -53,7 +53,7 @@ class VademecumLegacyViewTests(TestCase):
         }
         self.client.force_login(self.user)
 
-        response = self.client.get("/qbi2-poc/api/medicamentos/directo/", {"q": "atorva", "page": "1"})
+        response = self.client.get("/recetas/api/medicamentos/directo/", {"q": "atorva", "page": "1"})
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -66,22 +66,22 @@ class VademecumLegacyViewTests(TestCase):
 class Qbi2PocRoutingTests(TestCase):
     def test_canonical_routes_resolve_under_single_prefix(self):
         expected = {
-            "/qbi2-poc/": "qbi2_poc:home",
-            "/qbi2-poc/medicamentos/directo/": "qbi2_poc:medicamentos_directo",
-            "/qbi2-poc/paciente/ingresar/": "qbi2_poc:paciente_login",
-            "/qbi2-poc/paciente/salir/": "qbi2_poc:paciente_logout",
-            "/qbi2-poc/paciente/recetas/nueva/": "qbi2_poc:paciente_receta_nueva",
-            "/qbi2-poc/medico/solicitudes/": "qbi2_poc:medico_solicitudes",
-            "/qbi2-poc/lab/rcta-espontanea/": "qbi2_poc:lab_espontanea",
-            "/qbi2-poc/lab/rcta-espontanea-2/": "qbi2_poc:lab_espontanea_2",
-            "/qbi2-poc/api/medicamentos/directo/": "qbi2_poc:api_medicamentos_directo",
-            "/qbi2-poc/api/paciente/perfil/actualizar/": "qbi2_poc:api_paciente_perfil_actualizar",
-            "/qbi2-poc/api/lab/espontanea/preview/": "qbi2_poc:api_lab_espontanea_preview",
-            "/qbi2-poc/api/lab/espontanea-2/preview/": "qbi2_poc:api_lab_espontanea_2_preview",
-            "/qbi2-poc/api/lab/espontanea-2/pacientes/": "qbi2_poc:api_lab_espontanea_2_pacientes",
-            "/qbi2-poc/api/lab/espontanea-2/emitir/": "qbi2_poc:api_lab_espontanea_2_emitir",
-            "/qbi2-poc/api/lab/espontanea/emitir/": "qbi2_poc:api_lab_espontanea_emitir",
-            "/qbi2-poc/api/lab/espontanea/anular/": "qbi2_poc:api_lab_espontanea_anular",
+            "/recetas/": "qbi2_poc:home",
+            "/recetas/medicamentos/directo/": "qbi2_poc:medicamentos_directo",
+            "/recetas/paciente/ingresar/": "qbi2_poc:paciente_login",
+            "/recetas/paciente/salir/": "qbi2_poc:paciente_logout",
+            "/recetas/paciente/recetas/nueva/": "qbi2_poc:paciente_receta_nueva",
+            "/recetas/medico/solicitudes/": "qbi2_poc:medico_solicitudes",
+            "/recetas/lab/rcta-espontanea/": "qbi2_poc:lab_espontanea",
+            "/recetas/lab/rcta-espontanea-2/": "qbi2_poc:lab_espontanea_2",
+            "/recetas/api/medicamentos/directo/": "qbi2_poc:api_medicamentos_directo",
+            "/recetas/api/paciente/perfil/actualizar/": "qbi2_poc:api_paciente_perfil_actualizar",
+            "/recetas/api/lab/espontanea/preview/": "qbi2_poc:api_lab_espontanea_preview",
+            "/recetas/api/lab/espontanea-2/preview/": "qbi2_poc:api_lab_espontanea_2_preview",
+            "/recetas/api/lab/espontanea-2/pacientes/": "qbi2_poc:api_lab_espontanea_2_pacientes",
+            "/recetas/api/lab/espontanea-2/emitir/": "qbi2_poc:api_lab_espontanea_2_emitir",
+            "/recetas/api/lab/espontanea/emitir/": "qbi2_poc:api_lab_espontanea_emitir",
+            "/recetas/api/lab/espontanea/anular/": "qbi2_poc:api_lab_espontanea_anular",
         }
 
         for path, view_name in expected.items():
@@ -95,8 +95,8 @@ class Qbi2PocRoutingTests(TestCase):
             "/poc-recetas/",
             "/poc-recetas/solicitudes/",
             "/PoC-pacientes-portal/",
-            "/qbi2-poc/lab/receta/",
-            "/qbi2-poc/api/lab/receta/emitir/",
+            "/recetas/lab/receta/",
+            "/recetas/api/lab/receta/emitir/",
         ]
 
         for path in old_paths:
@@ -110,25 +110,25 @@ class RecetaPortalViewTests(TestCase):
         self.user = user_model.objects.create_user(username="medico", password="test")
 
     def test_home_does_not_link_removed_recipe_lab(self):
-        request = RequestFactory().get("/qbi2-poc/")
+        request = RequestFactory().get("/recetas/")
         request.user = self.user
 
         response = views.qbi2_poc_home(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn(b"/qbi2-poc/lab/receta/", response.content)
+        self.assertNotIn(b"/recetas/lab/receta/", response.content)
 
     def test_pacientes_portal_requires_patient_session(self):
-        response = self.client.get("/qbi2-poc/paciente/recetas/nueva/")
+        response = self.client.get("/recetas/paciente/recetas/nueva/")
 
         self.assertRedirects(
             response,
-            "/qbi2-poc/paciente/ingresar/",
+            "/recetas/paciente/ingresar/",
             fetch_redirect_response=False,
         )
 
     def test_solicitudes_page_renders_empty_queue(self):
-        request = RequestFactory().get("/qbi2-poc/medico/solicitudes/")
+        request = RequestFactory().get("/recetas/medico/solicitudes/")
         request.user = self.user
 
         response = views.solicitudes_receta_page(request)
@@ -136,9 +136,9 @@ class RecetaPortalViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Solicitudes de receta", response.content)
         self.assertIn(b"No hay solicitudes", response.content)
-        self.assertIn(b'href="/qbi2-poc/medico/solicitudes/"', response.content)
+        self.assertIn(b'href="/recetas/medico/solicitudes/"', response.content)
         self.assertIn(b">Recetas</a>", response.content)
-        self.assertNotIn(b"/qbi2-poc/lab/receta/", response.content)
+        self.assertNotIn(b"/recetas/lab/receta/", response.content)
 
 
 @override_settings(
@@ -168,7 +168,7 @@ class EspontaneaPocTests(TestCase):
         )
 
     def test_page_renders_direct_medical_request_form(self):
-        request = RequestFactory().get("/qbi2-poc/lab/rcta-espontanea/")
+        request = RequestFactory().get("/recetas/lab/rcta-espontanea/")
         request.user = self.user
 
         response = views.espontanea_poc_page(request)
@@ -179,7 +179,7 @@ class EspontaneaPocTests(TestCase):
         self.assertIn("Práctica".encode(), response.content)
 
     def test_simplified_page_starts_without_patient_and_keeps_two_step_flow(self):
-        request = RequestFactory().get("/qbi2-poc/lab/rcta-espontanea-2/")
+        request = RequestFactory().get("/recetas/lab/rcta-espontanea-2/")
         request.user = self.user
 
         response = views.espontanea_poc_2_page(request)
@@ -214,9 +214,9 @@ class EspontaneaPocTests(TestCase):
         self.assertNotIn(b"emitButton.disabled", response.content)
         self.assertIn(b"Escribir un diagn", response.content)
         self.assertIn(b"Usar texto", response.content)
-        self.assertIn(b"/qbi2-poc/api/lab/espontanea-2/pacientes/", response.content)
-        self.assertIn(b"/qbi2-poc/api/lab/espontanea-2/preview/", response.content)
-        self.assertIn(b"/qbi2-poc/api/lab/espontanea-2/emitir/", response.content)
+        self.assertIn(b"/recetas/api/lab/espontanea-2/pacientes/", response.content)
+        self.assertIn(b"/recetas/api/lab/espontanea-2/preview/", response.content)
+        self.assertIn(b"/recetas/api/lab/espontanea-2/emitir/", response.content)
         self.assertLess(response.content.index(b"Medicamentos"), response.content.index(b"Indicaciones"))
         self.assertLess(response.content.index(b"Indicaciones"), response.content.index(b"Otras configuraciones"))
 
@@ -230,7 +230,7 @@ class EspontaneaPocTests(TestCase):
 
     def test_simplified_patient_search_returns_hhcc_data(self):
         response = self.client.get(
-            "/qbi2-poc/api/lab/espontanea-2/pacientes/",
+            "/recetas/api/lab/espontanea-2/pacientes/",
             {"q": "bergonzi"},
         )
 
@@ -248,7 +248,7 @@ class EspontaneaPocTests(TestCase):
 
     def test_simplified_patient_refresh_by_id_returns_current_hhcc_data(self):
         response = self.client.get(
-            "/qbi2-poc/api/lab/espontanea-2/pacientes/",
+            "/recetas/api/lab/espontanea-2/pacientes/",
             {"id": self.patient.id},
         )
 
@@ -296,7 +296,7 @@ class EspontaneaPocTests(TestCase):
 
     def test_simplified_preview_rejects_unknown_patient(self):
         response = self.client.post(
-            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            "/recetas/api/lab/espontanea-2/preview/",
             data=json.dumps(
                 {
                     "pacienteId": 999999,
@@ -313,7 +313,7 @@ class EspontaneaPocTests(TestCase):
     @patch("Qbi2.views.emit_spontaneous_payload")
     def test_simplified_preview_never_emits_and_server_owns_patient_identity(self, emit):
         response = self.client.post(
-            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            "/recetas/api/lab/espontanea-2/preview/",
             data=json.dumps(
                 {
                     "operation": "receta",
@@ -375,7 +375,7 @@ class EspontaneaPocTests(TestCase):
     @patch("Qbi2.views.emit_spontaneous_payload")
     def test_simplified_preview_can_omit_patient_coverage(self, emit):
         response = self.client.post(
-            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            "/recetas/api/lab/espontanea-2/preview/",
             data=json.dumps(
                 {
                     "pacienteId": self.patient.id,
@@ -408,7 +408,7 @@ class EspontaneaPocTests(TestCase):
         )
 
         response = self.client.post(
-            "/qbi2-poc/api/lab/espontanea-2/emitir/",
+            "/recetas/api/lab/espontanea-2/emitir/",
             data=json.dumps(
                 {
                     "pacienteId": self.patient.id,
@@ -433,12 +433,12 @@ class EspontaneaPocTests(TestCase):
 
     def test_simplified_preview_requires_diagnosis_and_medicine(self):
         no_diagnosis = self.client.post(
-            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            "/recetas/api/lab/espontanea-2/preview/",
             data=json.dumps({"pacienteId": self.patient.id, "medicamentos": []}),
             content_type="application/json",
         )
         no_medicine = self.client.post(
-            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            "/recetas/api/lab/espontanea-2/preview/",
             data=json.dumps({"pacienteId": self.patient.id, "diagnostico": "Control cardiologico", "medicamentos": []}),
             content_type="application/json",
         )
@@ -451,7 +451,7 @@ class EspontaneaPocTests(TestCase):
     @patch("Qbi2.views.emit_spontaneous_payload")
     def test_simplified_preview_accepts_free_text_diagnosis_without_catalog_code(self, emit):
         response = self.client.post(
-            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            "/recetas/api/lab/espontanea-2/preview/",
             data=json.dumps(
                 {
                     "pacienteId": self.patient.id,
@@ -472,7 +472,7 @@ class EspontaneaPocTests(TestCase):
 
     def test_simplified_preview_rejects_overlong_free_text_diagnosis(self):
         response = self.client.post(
-            "/qbi2-poc/api/lab/espontanea-2/preview/",
+            "/recetas/api/lab/espontanea-2/preview/",
             data=json.dumps(
                 {
                     "pacienteId": self.patient.id,
@@ -495,7 +495,7 @@ class EspontaneaPocTests(TestCase):
         )
 
         response = self.client.post(
-            "/qbi2-poc/api/lab/espontanea-2/emitir/",
+            "/recetas/api/lab/espontanea-2/emitir/",
             data=json.dumps(
                 {
                     "pacienteId": self.patient.id,
@@ -561,7 +561,7 @@ class EspontaneaPocTests(TestCase):
         )
 
         response = self.client.post(
-            "/qbi2-poc/api/lab/espontanea/emitir/",
+            "/recetas/api/lab/espontanea/emitir/",
             data=json.dumps({"operation": "receta", "regNo": "34959"}),
             content_type="application/json",
         )
@@ -580,7 +580,7 @@ class EspontaneaPocTests(TestCase):
         )
 
         response = self.client.post(
-            "/qbi2-poc/api/lab/espontanea/emitir/",
+            "/recetas/api/lab/espontanea/emitir/",
             data=json.dumps({"operation": "receta", "regNo": "34959"}),
             content_type="application/json",
         )
@@ -595,7 +595,7 @@ class EspontaneaPocTests(TestCase):
         anular.return_value = {"ok": True}
 
         response = self.client.post(
-            "/qbi2-poc/api/lab/espontanea/anular/",
+            "/recetas/api/lab/espontanea/anular/",
             data=json.dumps({"operation": "practica", "hash": "hash-practica"}),
             content_type="application/json",
         )
@@ -605,7 +605,7 @@ class EspontaneaPocTests(TestCase):
 
     def test_anular_rejects_missing_hash(self):
         response = self.client.post(
-            "/qbi2-poc/api/lab/espontanea/anular/",
+            "/recetas/api/lab/espontanea/anular/",
             data=json.dumps({"operation": "receta"}),
             content_type="application/json",
         )
@@ -643,7 +643,7 @@ class PacientesPortalTests(TestCase):
 
     def login_patient(self, apellido="De la Fuente"):
         return self.client.post(
-            "/qbi2-poc/paciente/ingresar/",
+            "/recetas/paciente/ingresar/",
             {"documento": "12.345.678", "apellido": apellido},
         )
 
@@ -657,13 +657,13 @@ class PacientesPortalTests(TestCase):
         response = self.login_patient(apellido="  DE   LA fuente ")
         self.assertRedirects(
             response,
-            "/qbi2-poc/paciente/recetas/nueva/",
+            "/recetas/paciente/recetas/nueva/",
             fetch_redirect_response=False,
         )
 
     def test_authenticated_page_only_exposes_non_clinical_patient_fields(self):
         self.login_patient()
-        request = RequestFactory().get("/qbi2-poc/paciente/recetas/nueva/")
+        request = RequestFactory().get("/recetas/paciente/recetas/nueva/")
         request.session = self.client.session
         response = views.pacientes_portal_page(request)
 
@@ -680,7 +680,7 @@ class PacientesPortalTests(TestCase):
     def test_profile_update_ignores_identity_and_coverage_fields(self):
         self.login_patient()
         response = self.client.post(
-            "/qbi2-poc/api/paciente/perfil/actualizar/",
+            "/recetas/api/paciente/perfil/actualizar/",
             {
                 "sexo": "H",
                 "direccion": "Calle Nueva 123",
@@ -710,7 +710,7 @@ class PacientesPortalTests(TestCase):
 
     def test_patient_apis_require_patient_session(self):
         response = self.client.post(
-            "/qbi2-poc/api/paciente/validar-y-solicitar/",
+            "/recetas/api/paciente/validar-y-solicitar/",
             data=json.dumps({}),
             content_type="application/json",
         )
@@ -720,7 +720,7 @@ class PacientesPortalTests(TestCase):
         self.paciente.historias_clinicas.all().delete()
         self.login_patient()
         response = self.client.post(
-            "/qbi2-poc/api/paciente/validar-y-solicitar/",
+            "/recetas/api/paciente/validar-y-solicitar/",
             data=json.dumps({"medicamentosJson": "[]"}),
             content_type="application/json",
         )
@@ -737,7 +737,7 @@ class PacientesPortalTests(TestCase):
             {"regNo": "7799", "nombreProducto": "LOTRIAL"},
         ]
         response = self.client.post(
-            "/qbi2-poc/api/paciente/validar-y-solicitar/",
+            "/recetas/api/paciente/validar-y-solicitar/",
             data=json.dumps(
                 {
                     "medicamentosJson": json.dumps(selected_medications),
@@ -780,7 +780,7 @@ class SolicitudRecetaQueueTests(TestCase):
         self.client.force_login(self.user)
 
         response = self.client.post(
-            f"/qbi2-poc/api/medico/solicitudes/{solicitud.id}/rechazar/",
+            f"/recetas/api/medico/solicitudes/{solicitud.id}/rechazar/",
             {"observacion_medico": "No corresponde"},
         )
         solicitud.refresh_from_db()
@@ -812,7 +812,7 @@ class SolicitudRecetaQueueTests(TestCase):
             ),
         ):
             response = self.client.post(
-                f"/qbi2-poc/api/medico/solicitudes/{solicitud.id}/aprobar/",
+                f"/recetas/api/medico/solicitudes/{solicitud.id}/aprobar/",
                 {
                     "diagnostico": "Hipertension arterial",
                     "posologia": "Tomar segun indicacion medica.",

@@ -103,7 +103,7 @@
                     <div class="solicitud-actions">
                         <form method="post" action="{% url 'qbi2_poc:api_medico_solicitud_aprobar' solicitud.id %}">
                             {% csrf_token %}
-                            <input type="hidden" name="next" value="/qbi2-poc/medico/solicitudes/?estado={{ estado }}">
+                            <input type="hidden" name="next" value="/recetas/medico/solicitudes/?estado={{ estado }}">
                             <div class="med-editor" data-catalog-url="{% url 'qbi2_poc:api_lab_espontanea_catalogo' 'medicamentos' %}">
                                 <span>Medicamentos de esta receta (máximo 2)</span>
                                 <div class="med-editor-selected"></div>
@@ -132,7 +132,7 @@
                         </form>
                         <form method="post" action="{% url 'qbi2_poc:api_medico_solicitud_rechazar' solicitud.id %}">
                             {% csrf_token %}
-                            <input type="hidden" name="next" value="/qbi2-poc/medico/solicitudes/?estado={{ estado }}">
+                            <input type="hidden" name="next" value="/recetas/medico/solicitudes/?estado={{ estado }}">
                             <label>
                                 <span>Motivo de rechazo opcional</span>
                                 <input type="text" name="observacion_medico" placeholder="Ej: requiere consulta">

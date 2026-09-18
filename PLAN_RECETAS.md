@@ -874,7 +874,7 @@ Secuencia:
 
 Ruta POC retirada:
 
-    /qbi2-poc/lab/receta/ (eliminada junto con su API y artefactos)
+    /recetas/lab/receta/ (eliminada junto con su API y artefactos)
 
 
 ========================================================================
