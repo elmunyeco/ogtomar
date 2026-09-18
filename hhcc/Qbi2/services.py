@@ -60,11 +60,9 @@ class VademecumService:
         max_pages = max_pages or int(
             getattr(settings, "QBI2_VADEMECUM_RELEVANCE_MAX_PAGES", 10)
         )
-        max_results = max_results or int(
-            getattr(settings, "QBI2_VADEMECUM_RELEVANCE_MAX_RESULTS", 40)
-        )
         max_pages = max(1, min(max_pages, 20))
-        max_results = max(1, min(max_results, 200))
+        if max_results is not None:
+            max_results = max(1, min(max_results, 1000))
 
         first = self.buscar(query, page=start_page, extra_params=extra_params)
         provider_pages = _provider_page_count(first.get("page_info"), default=start_page)
@@ -90,10 +88,11 @@ class VademecumService:
                 combined.append(item)
 
         ranked = sorted(combined, key=lambda item: _medication_relevance(item, query))
+        returned = ranked if max_results is None else ranked[:max_results]
         return {
             "query": first["query"],
             "page": start_page,
-            "items": ranked[:max_results],
+            "items": returned,
             "page_info": {
                 "numeroPagina": start_page,
                 "cantidadPaginas": provider_pages,
@@ -101,8 +100,8 @@ class VademecumService:
                 "tieneMasResultados": end_page < provider_pages,
                 "proximaPagina": end_page + 1 if end_page < provider_pages else None,
                 "resultadosRevisados": len(combined),
-                "resultadosDevueltos": min(len(ranked), max_results),
-                "resultadosOmitidos": max(0, len(ranked) - max_results),
+                "resultadosDevueltos": len(returned),
+                "resultadosOmitidos": len(ranked) - len(returned),
             },
         }
 
@@ -231,11 +230,11 @@ def _medication_relevance(item: dict[str, Any], query: str) -> tuple[Any, ...]:
         rank = 0
     elif product.startswith(needle):
         rank = 1
-    elif needle in product:
-        rank = 2
     elif drug == needle:
-        rank = 3
+        rank = 2
     elif drug.startswith(needle):
+        rank = 3
+    elif needle in product:
         rank = 4
     elif needle in drug:
         rank = 5

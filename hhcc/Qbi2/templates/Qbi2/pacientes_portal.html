@@ -137,8 +137,8 @@
     const searchText = (value) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().trim();
     const relevance = (item, needle) => {
         const product=searchText(item.nombreProducto), drug=searchText(item.nombreDroga);
-        if(product===needle) return 0; if(product.startsWith(needle)) return 1; if(product.includes(needle)) return 2;
-        if(drug===needle) return 3; if(drug.startsWith(needle)) return 4; if(drug.includes(needle)) return 5; return 6;
+        if(product===needle) return 0; if(product.startsWith(needle)) return 1; if(drug===needle) return 2;
+        if(drug.startsWith(needle)) return 3; if(product.includes(needle)) return 4; if(drug.includes(needle)) return 5; return 6;
     };
     const mergeFound = (items) => {
         const merged = new Map(found.map(item => [medicationKey(item) || JSON.stringify(item), item]));

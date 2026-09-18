@@ -1045,3 +1045,6 @@ Verificacion HML del punto 03:
   en la pagina 5, mientras el portal actual sólo consulta la pagina 1.
 - La correccion debe incorporar paginacion o agregacion acotada y ranking por
   relevancia; cambiar solamente el texto del campo no resuelve el problema.
+- El orden define solamente la presentacion: no puede descartar coincidencias.
+  Cada bloque paginado debe devolver todas las ocurrencias encontradas tanto
+  en `nombreProducto` como en `nombreDroga`, deduplicadas por `regNo`.

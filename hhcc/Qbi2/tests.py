@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
-from django.test import RequestFactory, TestCase, override_settings
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import resolve, Resolver404
 
 from Qbi2 import views
@@ -64,7 +64,7 @@ class VademecumLegacyViewTests(TestCase):
         service.buscar.assert_called_once_with("atorva", page=1, extra_params={})
 
 
-class VademecumRelevantSearchTests(TestCase):
+class VademecumRelevantSearchTests(SimpleTestCase):
     def test_scans_provider_pages_and_prioritizes_commercial_name_prefix(self):
         pages = {
             1: [
@@ -131,6 +131,59 @@ class VademecumRelevantSearchTests(TestCase):
         self.assertEqual(result["page_info"]["paginasConsultadas"], [1, 2])
         self.assertTrue(result["page_info"]["tieneMasResultados"])
         self.assertEqual(result["page_info"]["proximaPagina"], 3)
+
+    def test_does_not_drop_drug_matches_after_the_first_forty_results(self):
+        medications = [
+            {
+                "regNo": str(index),
+                "nombreProducto": f"Marca {index:03}",
+                "nombreDroga": "enalapril",
+            }
+            for index in range(60)
+        ]
+        medications.append(
+            {
+                "regNo": "34959",
+                "nombreProducto": "LOTRIAL",
+                "nombreDroga": "enalapril",
+            }
+        )
+
+        class Client:
+            def get(self, path, params):
+                return {
+                    "medicamentos": medications,
+                    "pageInfo": {"numeroPagina": 1, "cantidadPaginas": 1},
+                }
+
+        result = VademecumService(client=Client()).buscar_relevante("enal")
+
+        self.assertEqual(len(result["items"]), 61)
+        self.assertIn("LOTRIAL", [item["nombreProducto"] for item in result["items"]])
+        self.assertEqual(result["page_info"]["resultadosOmitidos"], 0)
+
+    def test_prioritizes_drug_prefix_before_internal_product_match(self):
+        class Client:
+            def get(self, path, params):
+                return {
+                    "medicamentos": [
+                        {
+                            "regNo": "unrelated",
+                            "nombreProducto": "PROAVENAL",
+                            "nombreDroga": "aceite de avena",
+                        },
+                        {
+                            "regNo": "34959",
+                            "nombreProducto": "LOTRIAL",
+                            "nombreDroga": "enalapril",
+                        },
+                    ],
+                    "pageInfo": {"numeroPagina": 1, "cantidadPaginas": 1},
+                }
+
+        result = VademecumService(client=Client()).buscar_relevante("enal")
+
+        self.assertEqual(result["items"][0]["nombreProducto"], "LOTRIAL")
 
 
 class Qbi2PocRoutingTests(TestCase):
