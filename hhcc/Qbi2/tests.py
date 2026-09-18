@@ -137,6 +137,8 @@ class RecetaPortalViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Solicitudes de receta", response.content)
         self.assertIn(b"No hay solicitudes", response.content)
+        self.assertIn(b'href="/qbi2-poc/medico/solicitudes/"', response.content)
+        self.assertIn(b">Recetas</a>", response.content)
 
 
 @override_settings(
