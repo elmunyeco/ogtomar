@@ -259,9 +259,10 @@ def catalogo_api(request, catalogo):
     page = _positive_int(request.GET.get("page"), default=1)
     try:
         if catalogo == "medicamentos":
-            result = VademecumService().buscar(
+            start_page = _positive_int(request.GET.get("scanPage"), default=page)
+            result = VademecumService().buscar_relevante(
                 query,
-                page=page,
+                start_page=start_page,
                 extra_params=_qbi2_prefixed_params(request),
             )
         elif catalogo == "diagnosticos":

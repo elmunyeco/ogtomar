@@ -267,7 +267,7 @@ class RecetaPortalViewTests(TestCase):
         response = views.solicitudes_receta_page(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Solicitudes de receta", response.content)
+        self.assertIn(b"Cola m\xc3\xa9dica", response.content)
         self.assertIn(b"No hay solicitudes", response.content)
         self.assertIn(b'href="/recetas/medico/solicitudes/"', response.content)
         self.assertIn(b">Recetas</a>", response.content)
@@ -867,6 +867,55 @@ class SolicitudRecetaQueueTests(TestCase):
         self.historia = HistoriaClinica.objects.create(paciente=self.paciente)
         self.user = get_user_model().objects.create_user(username="omar", password="test")
 
+    @patch("Qbi2.views.VademecumService")
+    def test_medical_catalog_uses_same_relevant_scan_as_patient_portal(self, service_class):
+        service_class.return_value.buscar_relevante.return_value = {
+            "items": [{"regNo": "34959", "nombreProducto": "LOTRIAL"}],
+            "page_info": {"tieneMasResultados": True, "proximaPagina": 8},
+        }
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            "/recetas/api/catalogos/medicamentos/",
+            {"q": "enal", "scanPage": "7"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["items"][0]["nombreProducto"], "LOTRIAL")
+        service_class.return_value.buscar_relevante.assert_called_once_with(
+            "enal",
+            start_page=7,
+            extra_params={},
+        )
+
+    def test_pending_queue_matches_medical_editor_and_links_canonical_patient_edit(self):
+        solicitud = SolicitudReceta.objects.create(
+            paciente=self.paciente,
+            historia_clinica=self.historia,
+            medicamento_reg_no="34959",
+            medicamento_nombre_producto="LOTRIAL",
+            medicamento_nombre_droga="enalapril",
+        )
+        request = RequestFactory().get("/recetas/medico/solicitudes/")
+        request.user = self.user
+        response = views.solicitudes_receta_page(request)
+
+        self.assertContains(response, "Editar datos del paciente")
+        self.assertContains(
+            response,
+            f'/pacientes/{self.paciente.id}/editar/?recipe_context=1',
+        )
+        self.assertContains(response, "Buscar por nombre comercial o droga")
+        self.assertContains(response, "Preparar correo con PDF", count=0)
+        self.assertContains(response, "product === needle")
+        self.assertContains(response, "product.startsWith(needle)")
+        self.assertContains(response, "drug === needle")
+        self.assertContains(response, "drug.startsWith(needle)")
+        self.assertContains(response, "product.includes(needle)")
+        self.assertContains(response, "drug.includes(needle)")
+        self.assertContains(response, "hhcc:patient-updated")
+        self.assertContains(response, "scanPage")
+
     def test_reject_pending_request(self):
         solicitud = SolicitudReceta.objects.create(
             paciente=self.paciente,
@@ -1020,7 +1069,7 @@ class SolicitudRecetaQueueTests(TestCase):
         request.user = self.user
         response = views.solicitudes_receta_page(request)
 
-        self.assertContains(response, "Notificar por correo")
+        self.assertContains(response, "Preparar correo con PDF")
         self.assertContains(
             response,
             f"/recetas/api/medico/solicitudes/{solicitud.id}/correo/",
