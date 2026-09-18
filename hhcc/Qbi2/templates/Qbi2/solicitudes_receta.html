@@ -105,6 +105,16 @@
                         <form method="post" action="{% url 'qbi2_poc:api_medico_solicitud_aprobar' solicitud.id %}">
                             {% csrf_token %}
                             <input type="hidden" name="next" value="/qbi2-poc/medico/solicitudes/?estado={{ estado }}">
+                            <div class="med-editor" data-catalog-url="{% url 'qbi2_poc:api_lab_espontanea_catalogo' 'medicamentos' %}">
+                                <span>Medicamentos de esta receta (máximo 2)</span>
+                                <div class="med-editor-selected"></div>
+                                <input class="med-editor-json" type="hidden" name="medicamentosJson" value="{{ solicitud.medicamentos_json }}">
+                                <div class="med-editor-search">
+                                    <input class="med-editor-query" type="search" placeholder="Buscar para agregar o reemplazar" autocomplete="off">
+                                    <button class="secondary med-editor-button" type="button">Buscar</button>
+                                </div>
+                                <div class="med-editor-results"></div>
+                            </div>
                             <label>
                                 <span>Diagnóstico obligatorio</span>
                                 <input type="text" name="diagnostico" value="{{ solicitud.diagnostico }}" placeholder="Ej: Hipertensión arterial" required>
@@ -380,6 +390,66 @@
     .solicitud-actions label {
         flex: 1 1 13rem;
     }
+    .med-editor {
+        flex: 1 0 100%;
+    }
+    .med-editor > span {
+        color: #6b7280;
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 900;
+        margin-bottom: 0.35rem;
+        text-transform: uppercase;
+    }
+    .med-editor-selected,
+    .med-editor-results {
+        display: grid;
+        gap: 0.35rem;
+        margin-bottom: 0.45rem;
+    }
+    .med-editor-pill,
+    .med-editor-result {
+        align-items: center;
+        background: #fbf7f6;
+        border: 1px solid #e0d2cf;
+        border-radius: 0.45rem;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: space-between;
+        padding: 0.5rem 0.65rem;
+    }
+    .med-editor-pill small,
+    .med-editor-result small {
+        color: #6b7280;
+        display: block;
+    }
+    .med-editor-pill button,
+    .med-editor-result {
+        cursor: pointer;
+    }
+    .med-editor-pill button {
+        background: transparent;
+        border: 0;
+        color: #7a332b;
+        font-size: 1.1rem;
+        min-height: auto;
+        padding: 0.2rem;
+    }
+    .med-editor-result {
+        color: #1f2937;
+        text-align: left;
+        width: 100%;
+    }
+    .med-editor-search {
+        display: flex;
+        gap: 0.45rem;
+    }
+    .med-editor-search input {
+        flex: 1;
+    }
+    .med-editor-search .med-editor-button {
+        align-self: stretch;
+    }
     .solicitud-actions input {
         border: 1px solid #d1d5db;
         border-radius: 0.45rem;
@@ -431,4 +501,53 @@
         }
     }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[char]);
+    document.querySelectorAll(".med-editor").forEach(editor => {
+        const input = editor.querySelector(".med-editor-json");
+        const selectedBox = editor.querySelector(".med-editor-selected");
+        const resultsBox = editor.querySelector(".med-editor-results");
+        const query = editor.querySelector(".med-editor-query");
+        let selected = [];
+        let results = [];
+        try { selected = JSON.parse(input.value || "[]"); } catch (_) { selected = []; }
+        const key = item => String(item?.regNo || "").trim();
+        const renderSelected = () => {
+            input.value = JSON.stringify(selected);
+            selectedBox.innerHTML = selected.map((item,index) => `<div class="med-editor-pill"><span><strong>${escapeHtml(item.nombreProducto || "Medicamento")}</strong><small>${escapeHtml([item.nombreDroga,item.presentacion,item.regNo ? `RegNo ${item.regNo}` : ""].filter(Boolean).join(" · "))}</small></span><button type="button" data-remove="${index}" aria-label="Quitar">×</button></div>`).join("");
+        };
+        renderSelected();
+        selectedBox.addEventListener("click", event => {
+            const button = event.target.closest("[data-remove]");
+            if (!button) return;
+            selected.splice(Number(button.dataset.remove), 1);
+            renderSelected();
+        });
+        editor.querySelector(".med-editor-button").addEventListener("click", async () => {
+            resultsBox.textContent = "Buscando…";
+            const url = new URL(editor.dataset.catalogUrl, location.origin);
+            url.searchParams.set("q", query.value);
+            try {
+                const response = await fetch(url, {headers:{Accept:"application/json"}});
+                const data = await response.json();
+                if (!response.ok || data.status !== "success") throw new Error(data.message || "No se pudo buscar.");
+                results = Array.isArray(data.items) ? data.items : [];
+                resultsBox.innerHTML = results.slice(0,10).map((item,index) => `<button class="med-editor-result" type="button" data-add="${index}"><span><strong>${escapeHtml(item.nombreProducto || item.display || "Medicamento")}</strong><small>${escapeHtml([item.nombreDroga,item.presentacion].filter(Boolean).join(" · "))}</small></span><code>${escapeHtml(item.regNo || "-")}</code></button>`).join("") || "Sin resultados.";
+            } catch (error) { resultsBox.textContent = error.message; }
+        });
+        resultsBox.addEventListener("click", event => {
+            const button = event.target.closest("[data-add]");
+            if (!button) return;
+            const item = results[Number(button.dataset.add)];
+            if (!item || selected.length >= 2 || selected.some(value => key(value) === key(item))) return;
+            selected.push(item);
+            renderSelected();
+        });
+    });
+})();
+</script>
 {% endblock %}

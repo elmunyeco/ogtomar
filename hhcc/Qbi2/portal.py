@@ -1,24 +1,33 @@
 from __future__ import annotations
 
+from django.conf import settings
+
 from main.models import HistoriaClinica, Paciente
 
 from .models import SolicitudReceta
+
+
+PATIENT_SESSION_KEY = "qbi2_patient_portal_patient_id"
 
 
 def normalize_document(value: str) -> str:
     return "".join(char for char in (value or "") if char.isdigit())
 
 
+def normalize_surname(value: str) -> str:
+    return " ".join((value or "").split()).casefold()
+
+
 def find_patient_history(apellido: str, documento: str) -> tuple[Paciente | None, HistoriaClinica | None]:
-    apellido = (apellido or "").strip()
+    apellido = normalize_surname(apellido)
     documento = normalize_document(documento)
     if not apellido or not documento:
         return None, None
 
-    paciente = (
-        Paciente.objects.filter(apellido__iexact=apellido, numDoc=documento, deBaja=False)
-        .order_by("-fechaAlta", "-id")
-        .first()
+    candidatos = Paciente.objects.filter(numDoc=documento, deBaja=False).order_by("-fechaAlta", "-id")
+    paciente = next(
+        (candidato for candidato in candidatos if normalize_surname(candidato.apellido) == apellido),
+        None,
     )
     if not paciente:
         return None, None
@@ -29,6 +38,26 @@ def find_patient_history(apellido: str, documento: str) -> tuple[Paciente | None
         .first()
     )
     return paciente, historia
+
+
+def start_patient_session(request, paciente: Paciente) -> None:
+    request.session.cycle_key()
+    request.session[PATIENT_SESSION_KEY] = paciente.pk
+    request.session.set_expiry(getattr(settings, "QBI2_PATIENT_SESSION_AGE", 30 * 60))
+
+
+def get_patient_from_session(request) -> Paciente | None:
+    paciente_id = request.session.get(PATIENT_SESSION_KEY)
+    if not paciente_id:
+        return None
+    paciente = Paciente.objects.filter(pk=paciente_id, deBaja=False).first()
+    if not paciente:
+        request.session.pop(PATIENT_SESSION_KEY, None)
+    return paciente
+
+
+def end_patient_session(request) -> None:
+    request.session.pop(PATIENT_SESSION_KEY, None)
 
 
 def create_prescription_request(
@@ -47,7 +76,7 @@ def create_prescription_request(
 ) -> SolicitudReceta:
     medicamentos = medicamentos or [medicamento]
     auditoria = {
-        "source": "PoC-pacientes-portal",
+        "source": "portal-pacientes",
         "medicamento": medicamento,
         "medicamentos": medicamentos[:2],
     }

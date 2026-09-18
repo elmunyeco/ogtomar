@@ -11,7 +11,7 @@ from django.urls import resolve, Resolver404
 from Qbi2 import views
 from Qbi2.client import Qbi2HTTPError
 from Qbi2.models import SolicitudReceta
-from Qbi2.portal import normalize_document
+from Qbi2.portal import find_patient_history, normalize_document
 from Qbi2.recipes import RecetaPocResult
 from Qbi2.spontaneous import (
     SpontaneousPocResult,
@@ -68,12 +68,15 @@ class Qbi2PocRoutingTests(TestCase):
         expected = {
             "/qbi2-poc/": "qbi2_poc:home",
             "/qbi2-poc/medicamentos/directo/": "qbi2_poc:medicamentos_directo",
+            "/qbi2-poc/paciente/ingresar/": "qbi2_poc:paciente_login",
+            "/qbi2-poc/paciente/salir/": "qbi2_poc:paciente_logout",
             "/qbi2-poc/paciente/recetas/nueva/": "qbi2_poc:paciente_receta_nueva",
             "/qbi2-poc/medico/solicitudes/": "qbi2_poc:medico_solicitudes",
             "/qbi2-poc/lab/receta/": "qbi2_poc:lab_receta",
             "/qbi2-poc/lab/rcta-espontanea/": "qbi2_poc:lab_espontanea",
             "/qbi2-poc/lab/rcta-espontanea-2/": "qbi2_poc:lab_espontanea_2",
             "/qbi2-poc/api/medicamentos/directo/": "qbi2_poc:api_medicamentos_directo",
+            "/qbi2-poc/api/paciente/perfil/actualizar/": "qbi2_poc:api_paciente_perfil_actualizar",
             "/qbi2-poc/api/lab/espontanea/preview/": "qbi2_poc:api_lab_espontanea_preview",
             "/qbi2-poc/api/lab/espontanea-2/preview/": "qbi2_poc:api_lab_espontanea_2_preview",
             "/qbi2-poc/api/lab/espontanea-2/pacientes/": "qbi2_poc:api_lab_espontanea_2_pacientes",
@@ -116,13 +119,14 @@ class RecetaPortalViewTests(TestCase):
         self.assertIn(b"Emitir receta HML", response.content)
         self.assertIn(b"34959", response.content)
 
-    def test_pacientes_portal_page_renders(self):
-        response = views.pacientes_portal_page(RequestFactory().get("/qbi2-poc/paciente/recetas/nueva/"))
+    def test_pacientes_portal_requires_patient_session(self):
+        response = self.client.get("/qbi2-poc/paciente/recetas/nueva/")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"QBI2 PoC", response.content)
-        self.assertIn(b"/qbi2-poc/api/paciente/medicamentos/directo/", response.content)
-        self.assertIn(b"/qbi2-poc/api/paciente/validar-y-solicitar/", response.content)
+        self.assertRedirects(
+            response,
+            "/qbi2-poc/paciente/ingresar/",
+            fetch_redirect_response=False,
+        )
 
     def test_solicitudes_page_renders_empty_queue(self):
         request = RequestFactory().get("/qbi2-poc/medico/solicitudes/")
@@ -623,75 +627,132 @@ class EspontaneaPocTests(TestCase):
 
 
 class PacientesPortalTests(TestCase):
+    def setUp(self):
+        tipo_doc = TipoDocumento.objects.create(nombre="DNI", descripcion="Documento")
+        self.paciente = Paciente.objects.create(
+            idTipoDoc=tipo_doc,
+            numDoc="12345678",
+            nombre="Ana",
+            apellido="De la Fuente",
+            sexo="M",
+            obraSocial="OSDE",
+            afiliado="ORIGINAL-1",
+        )
+
+    def login_patient(self, apellido="De la Fuente"):
+        return self.client.post(
+            "/qbi2-poc/paciente/ingresar/",
+            {"documento": "12.345.678", "apellido": apellido},
+        )
+
     def test_normalizes_document(self):
         self.assertEqual(normalize_document("12.345.678"), "12345678")
 
-    def test_rejects_when_patient_has_no_history(self):
-        request = RequestFactory().post(
+    def test_login_requires_complete_compound_surname(self):
+        paciente, _ = find_patient_history(apellido="Fuente", documento="12.345.678")
+        self.assertIsNone(paciente)
+
+        response = self.login_patient(apellido="  DE   LA fuente ")
+        self.assertRedirects(
+            response,
+            "/qbi2-poc/paciente/recetas/nueva/",
+            fetch_redirect_response=False,
+        )
+
+    def test_authenticated_page_only_exposes_non_clinical_patient_fields(self):
+        self.login_patient()
+        request = RequestFactory().get("/qbi2-poc/paciente/recetas/nueva/")
+        request.session = self.client.session
+        response = views.pacientes_portal_page(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Portal de pacientes")
+        self.assertContains(response, "name=\"sexo\"")
+        self.assertContains(response, "name=\"direccion\"")
+        self.assertContains(response, "name=\"telefono\"")
+        self.assertContains(response, "name=\"celular\"")
+        self.assertContains(response, "name=\"mail\"")
+        self.assertNotContains(response, "name=\"diagnostico\"")
+        self.assertNotContains(response, "QBI2 PoC")
+
+    def test_profile_update_ignores_identity_and_coverage_fields(self):
+        self.login_patient()
+        response = self.client.post(
+            "/qbi2-poc/api/paciente/perfil/actualizar/",
+            {
+                "sexo": "H",
+                "direccion": "Calle Nueva 123",
+                "telefono": "1111-2222",
+                "celular": "15-3333-4444",
+                "mail": "ana@example.com",
+                "nombre": "Nombre alterado",
+                "apellido": "Apellido alterado",
+                "numDoc": "99999999",
+                "obraSocial": "Cobertura alterada",
+                "afiliado": "ALTERADO",
+            },
+        )
+        self.paciente.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.paciente.sexo, "H")
+        self.assertEqual(self.paciente.direccion, "Calle Nueva 123")
+        self.assertEqual(self.paciente.telefono, "1111-2222")
+        self.assertEqual(self.paciente.celular, "15-3333-4444")
+        self.assertEqual(self.paciente.mail, "ana@example.com")
+        self.assertEqual(self.paciente.nombre, "Ana")
+        self.assertEqual(self.paciente.apellido, "De la Fuente")
+        self.assertEqual(self.paciente.numDoc, "12345678")
+        self.assertEqual(self.paciente.obraSocial, "OSDE")
+        self.assertEqual(self.paciente.afiliado, "ORIGINAL-1")
+
+    def test_patient_apis_require_patient_session(self):
+        response = self.client.post(
             "/qbi2-poc/api/paciente/validar-y-solicitar/",
-            data=json.dumps({"apellido": "Perez", "documento": "12345678"}),
+            data=json.dumps({}),
             content_type="application/json",
         )
-        request._dont_enforce_csrf_checks = True
+        self.assertEqual(response.status_code, 401)
 
-        with patch("Qbi2.views.find_patient_history", return_value=(None, None)):
-            response = views.validar_paciente_portal(request)
+    def test_rejects_when_patient_has_no_history(self):
+        self.paciente.historias_clinicas.all().delete()
+        self.login_patient()
+        response = self.client.post(
+            "/qbi2-poc/api/paciente/validar-y-solicitar/",
+            data=json.dumps({"medicamentosJson": "[]"}),
+            content_type="application/json",
+        )
 
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(json.loads(response.content)["message"], "No tenes Historia Clinica")
+        self.assertEqual(response.status_code, 404, response.content)
+        self.assertEqual(response.json()["message"], "No tenes Historia Clinica")
 
     def test_accepts_when_patient_has_history_and_splits_medications(self):
-        class Patient:
-            id = 10
-            nombre = "Ana"
-            apellido = "Perez"
-            numDoc = "12345678"
-
-        class History:
-            id = 20
-
-        class Request:
-            id = 30
-            estado = "pendiente"
-            auditoria = {"medicamentos": []}
-
+        HistoriaClinica.objects.create(paciente=self.paciente)
+        self.login_patient()
         selected_medications = [
             {"regNo": "34959", "nombreProducto": "LOTRIAL"},
             {"regNo": "24818", "nombreProducto": "AMPLIAR"},
             {"regNo": "7799", "nombreProducto": "LOTRIAL"},
         ]
-        request = RequestFactory().post(
+        response = self.client.post(
             "/qbi2-poc/api/paciente/validar-y-solicitar/",
             data=json.dumps(
                 {
-                    "apellido": "Perez",
-                    "documento": "12345678",
                     "medicamentosJson": json.dumps(selected_medications),
-                    "diagnostico": "Hipertension arterial",
                 }
             ),
             content_type="application/json",
         )
-        request._dont_enforce_csrf_checks = True
-        captured = []
 
-        def fake_create(*args, **kwargs):
-            captured.append({"args": args, "kwargs": kwargs})
-            return Request()
-
-        with (
-            patch("Qbi2.views.find_patient_history", return_value=(Patient(), History())),
-            patch("Qbi2.views.create_prescription_request", side_effect=fake_create),
-        ):
-            response = views.validar_paciente_portal(request)
-
-        data = json.loads(response.content)
+        data = response.json()
+        solicitudes = list(SolicitudReceta.objects.order_by("id"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data["status"], "success")
         self.assertEqual(len(data["solicitudes"]), 2)
-        self.assertEqual(len(captured[0]["kwargs"]["medicamentos"]), 2)
-        self.assertEqual(captured[0]["kwargs"]["receta_orden"], 1)
-        self.assertEqual(captured[1]["args"][2]["regNo"], "7799")
+        self.assertEqual(len(solicitudes[0].auditoria["medicamentos"]), 2)
+        self.assertEqual(solicitudes[0].auditoria["receta_orden"], 1)
+        self.assertEqual(solicitudes[1].medicamento_reg_no, "7799")
+        self.assertEqual(solicitudes[0].diagnostico, "")
 
 
 class SolicitudRecetaQueueTests(TestCase):
@@ -754,6 +815,16 @@ class SolicitudRecetaQueueTests(TestCase):
                     "diagnostico": "Hipertension arterial",
                     "posologia": "Tomar segun indicacion medica.",
                     "observacion_medico": "Autorizada",
+                    "medicamentosJson": json.dumps(
+                        [
+                            {
+                                "regNo": "24818",
+                                "nombreProducto": "AMPLIAR",
+                                "nombreDroga": "droga editada",
+                                "presentacion": "20 comprimidos",
+                            }
+                        ]
+                    ),
                 },
             )
         solicitud.refresh_from_db()
@@ -762,3 +833,6 @@ class SolicitudRecetaQueueTests(TestCase):
         self.assertEqual(solicitud.estado, SolicitudReceta.Estado.EMITIDA)
         self.assertEqual(solicitud.qbi2_pdf_url, "https://example.invalid/receta.pdf")
         self.assertEqual(solicitud.diagnostico, "Hipertension arterial")
+        self.assertEqual(solicitud.medicamento_reg_no, "24818")
+        self.assertEqual(solicitud.auditoria["medicamentos"][0]["nombreProducto"], "AMPLIAR")
+        self.assertTrue(solicitud.auditoria["medicamentos_editados_por_medico"])

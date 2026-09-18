@@ -14,7 +14,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
@@ -24,7 +24,14 @@ from django.views.decorators.http import require_POST
 
 from .client import Qbi2ConfigurationError, Qbi2HTTPError
 from .models import SolicitudReceta
-from .portal import create_prescription_request, find_patient_history, get_client_ip
+from .portal import (
+    create_prescription_request,
+    end_patient_session,
+    find_patient_history,
+    get_client_ip,
+    get_patient_from_session,
+    start_patient_session,
+)
 from .professional_profile import load_professional_profile, resolve_profile_asset
 from .recipes import (
     build_hml_receta_poc_payload,
@@ -38,6 +45,7 @@ from .spontaneous import (
     build_spontaneous_payload,
     emit_spontaneous_payload,
 )
+from main.forms import PacientePortalForm
 from main.models import Paciente
 
 
@@ -88,8 +96,46 @@ def espontanea_poc_2_page(request):
 
 
 @ensure_csrf_cookie
+def paciente_login_page(request):
+    paciente = get_patient_from_session(request)
+    if paciente:
+        return redirect("qbi2_poc:paciente_receta_nueva")
+
+    error = ""
+    documento = ""
+    apellido = ""
+    if request.method == "POST":
+        documento = request.POST.get("documento", "")
+        apellido = request.POST.get("apellido", "")
+        paciente, _ = find_patient_history(apellido=apellido, documento=documento)
+        if paciente:
+            start_patient_session(request, paciente)
+            return redirect("qbi2_poc:paciente_receta_nueva")
+        error = "Los datos ingresados no coinciden con un paciente activo."
+
+    return render(
+        request,
+        "Qbi2/pacientes_login.html",
+        {"error": error, "documento": documento, "apellido": apellido},
+    )
+
+
+@require_POST
+def paciente_logout(request):
+    end_patient_session(request)
+    return redirect("qbi2_poc:paciente_login")
+
+
+@ensure_csrf_cookie
 def pacientes_portal_page(request):
-    return render(request, "Qbi2/pacientes_portal.html")
+    paciente = get_patient_from_session(request)
+    if not paciente:
+        return redirect("qbi2_poc:paciente_login")
+    return render(
+        request,
+        "Qbi2/pacientes_portal.html",
+        {"paciente": paciente, "perfil_form": PacientePortalForm(instance=paciente)},
+    )
 
 
 def solicitudes_receta_page(request):
@@ -110,11 +156,23 @@ def solicitudes_receta_page(request):
         "error_emision": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.ERROR_EMISION).count(),
         "todas": SolicitudReceta.objects.count(),
     }
+    solicitudes = list(queryset[:100])
+    for solicitud in solicitudes:
+        medicamentos = solicitud.auditoria.get("medicamentos") or [
+            {
+                "regNo": solicitud.medicamento_reg_no,
+                "nombreProducto": solicitud.medicamento_nombre_producto,
+                "nombreDroga": solicitud.medicamento_nombre_droga,
+                "presentacion": solicitud.medicamento_presentacion,
+            }
+        ]
+        solicitud.medicamentos_json = json.dumps(medicamentos[:2], ensure_ascii=False)
+
     return render(
         request,
         "Qbi2/solicitudes_receta.html",
         {
-            "solicitudes": queryset[:100],
+            "solicitudes": solicitudes,
             "estado": estado,
             "counts": counts,
             "estados": SolicitudReceta.Estado,
@@ -181,6 +239,8 @@ def buscar_vademecum_legacy(request):
 
 @require_GET
 def buscar_vademecum_portal(request):
+    if not get_patient_from_session(request):
+        return _patient_api_auth_error()
     return buscar_vademecum_legacy(request)
 
 
@@ -504,16 +564,17 @@ def emitir_receta_poc(request):
 @csrf_protect
 @require_POST
 def validar_paciente_portal(request):
+    paciente = get_patient_from_session(request)
+    if not paciente:
+        return _patient_api_auth_error()
+
     try:
         data = json.loads(request.body.decode("utf-8") or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"status": "error", "message": "Datos invalidos."}, status=400)
 
-    paciente, historia = find_patient_history(
-        apellido=data.get("apellido", ""),
-        documento=data.get("documento", ""),
-    )
-    if not paciente or not historia:
+    historia = paciente.historias_clinicas.order_by("-fechaAlta", "-id").first()
+    if not historia:
         return JsonResponse({"status": "rejected", "message": "No tenes Historia Clinica"}, status=404)
 
     medicamentos = _selected_medications_from_portal_data(data)
@@ -521,10 +582,6 @@ def validar_paciente_portal(request):
         return JsonResponse({"status": "error", "message": "Elegí al menos un medicamento del vademécum."}, status=400)
     if len(medicamentos) > 10:
         return JsonResponse({"status": "error", "message": "Podés seleccionar hasta 10 medicamentos."}, status=400)
-    diagnostico = (data.get("diagnostico") or "").strip()
-    if not diagnostico:
-        return JsonResponse({"status": "error", "message": "Ingresá el diagnóstico."}, status=400)
-
     grupos_medicamentos = list(_chunks(medicamentos, 2))
     solicitudes = []
     with transaction.atomic():
@@ -538,7 +595,7 @@ def validar_paciente_portal(request):
                     receta_orden=index,
                     total_recetas=len(grupos_medicamentos),
                     total_medicamentos_paciente=len(medicamentos),
-                    diagnostico=diagnostico,
+                    diagnostico="",
                     request_ip=get_client_ip(request),
                     request_user_agent=request.META.get("HTTP_USER_AGENT", ""),
                 )
@@ -562,15 +619,29 @@ def validar_paciente_portal(request):
                 }
                 for solicitud in solicitudes
             ],
-            "paciente": {
-                "id": paciente.id,
-                "nombre": paciente.nombre,
-                "apellido": paciente.apellido,
-                "documento": paciente.numDoc,
-            },
-            "historia": {"id": historia.id},
         }
     )
+
+
+@csrf_protect
+@require_POST
+def actualizar_perfil_paciente(request):
+    paciente = get_patient_from_session(request)
+    if not paciente:
+        return _patient_api_auth_error()
+
+    form = PacientePortalForm(request.POST, instance=paciente)
+    if not form.is_valid():
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": "Revisá los datos ingresados.",
+                "errors": {field: list(errors) for field, errors in form.errors.items()},
+            },
+            status=400,
+        )
+    form.save()
+    return JsonResponse({"status": "success", "message": "Tus datos se actualizaron correctamente."})
 
 
 @csrf_protect
@@ -997,13 +1068,29 @@ def _chunks(items, size):
         yield items[index:index + size]
 
 
+def _patient_api_auth_error():
+    return JsonResponse(
+        {"status": "error", "message": "Tu sesión venció. Volvé a ingresar."},
+        status=401,
+    )
+
+
 def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
     observacion = request.POST.get("observacion_medico", "")
     next_url = request.POST.get("next") or "/qbi2-poc/medico/solicitudes/"
     diagnostico = (request.POST.get("diagnostico") or "").strip()
     posologia = (request.POST.get("posologia") or "Tomar segun indicacion medica.").strip()
-    cantidad = int(request.POST.get("cantidad") or 1)
-    tratamiento = int(request.POST.get("tratamiento") or 0)
+    cantidad = _positive_int(request.POST.get("cantidad"), default=1)
+    try:
+        tratamiento = max(0, int(request.POST.get("tratamiento") or 0))
+    except (TypeError, ValueError):
+        tratamiento = 0
+    medicamentos = None
+    if aprobar and "medicamentosJson" in request.POST:
+        medicamentos = _selected_medications_from_portal_data(request.POST)
+        if not medicamentos or len(medicamentos) > 2:
+            messages.error(request, "La receta debe tener uno o dos medicamentos del vademécum.")
+            return HttpResponseRedirect(next_url)
 
     if aprobar and not diagnostico:
         messages.error(request, "El diagnostico es obligatorio para emitir la receta.")
@@ -1014,6 +1101,27 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
         if solicitud.estado != SolicitudReceta.Estado.PENDIENTE:
             return HttpResponseRedirect(next_url)
         if aprobar:
+            if medicamentos is not None:
+                medicamento = medicamentos[0]
+                auditoria = dict(solicitud.auditoria or {})
+                auditoria["medicamento"] = medicamento
+                auditoria["medicamentos"] = medicamentos
+                auditoria["medicamentos_editados_por_medico"] = True
+                solicitud.medicamento_reg_no = (medicamento.get("regNo") or "").strip()
+                solicitud.medicamento_nombre_producto = (medicamento.get("nombreProducto") or "").strip()
+                solicitud.medicamento_nombre_droga = (medicamento.get("nombreDroga") or "").strip()
+                solicitud.medicamento_presentacion = (medicamento.get("presentacion") or "").strip()
+                solicitud.auditoria = auditoria
+                solicitud.save(
+                    update_fields=[
+                        "medicamento_reg_no",
+                        "medicamento_nombre_producto",
+                        "medicamento_nombre_droga",
+                        "medicamento_presentacion",
+                        "auditoria",
+                        "updated_at",
+                    ]
+                )
             _emitir_solicitud_receta(
                 solicitud,
                 request.user,
