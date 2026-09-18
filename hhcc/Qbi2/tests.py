@@ -21,38 +21,37 @@ from Qbi2.notifications import (
     download_prescription_pdf,
 )
 from Qbi2.portal import find_patient_history, normalize_document
-from Qbi2.recipes import RecetaResult
 from Qbi2.services import VademecumService
-from Qbi2.spontaneous import (
-    SpontaneousPocResult,
-    build_spontaneous_payload,
-    summarize_document_response,
+from Qbi2.rcta import (
+    RctaResult,
+    build_rcta_payload,
+    summarize_receta_response,
 )
 from main.models import HistoriaClinica, Paciente, TipoDocumento
 from main import views as main_views
 
 
-class VademecumLegacyViewTests(TestCase):
+class MedicamentosViewTests(TestCase):
     def setUp(self):
         user_model = get_user_model()
-        self.user = user_model.objects.create_user(username="legacy", password="test")
+        self.user = user_model.objects.create_user(username="medicamentos", password="test")
 
-    def test_legacy_page_requires_login(self):
-        response = self.client.get("/recetas/medicamentos/directo/")
+    def test_page_requires_login(self):
+        response = self.client.get("/recetas/medicamentos/")
 
         self.assertEqual(response.status_code, 302)
 
-    def test_legacy_page_renders_after_login(self):
-        request = RequestFactory().get("/recetas/medicamentos/directo/")
+    def test_page_renders_after_login(self):
+        request = RequestFactory().get("/recetas/medicamentos/")
         request.user = self.user
 
-        response = views.vademecum_legacy(request)
+        response = views.medicamentos_page(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"qbi2 poc", response.content)
+        self.assertIn(b"RCTA", response.content)
 
     @patch("Qbi2.views.VademecumService")
-    def test_legacy_api_uses_direct_service_shape(self, service_class):
+    def test_api_uses_direct_service_shape(self, service_class):
         service = service_class.return_value
         service.buscar.return_value = {
             "query": "atorva",
@@ -63,7 +62,7 @@ class VademecumLegacyViewTests(TestCase):
         }
         self.client.force_login(self.user)
 
-        response = self.client.get("/recetas/api/medicamentos/directo/", {"q": "atorva", "page": "1"})
+        response = self.client.get("/recetas/api/medicamentos/", {"q": "atorva", "page": "1"})
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -195,26 +194,23 @@ class VademecumRelevantSearchTests(SimpleTestCase):
         self.assertEqual(result["items"][0]["nombreProducto"], "LOTRIAL")
 
 
-class Qbi2PocRoutingTests(TestCase):
+class RecetasRoutingTests(TestCase):
     def test_canonical_routes_resolve_under_single_prefix(self):
         expected = {
-            "/recetas/": "qbi2_poc:home",
-            "/recetas/medicamentos/directo/": "qbi2_poc:medicamentos_directo",
-            "/recetas/paciente/ingresar/": "qbi2_poc:paciente_login",
-            "/recetas/paciente/salir/": "qbi2_poc:paciente_logout",
-            "/recetas/paciente/recetas/nueva/": "qbi2_poc:paciente_receta_nueva",
-            "/recetas/medico/solicitudes/": "qbi2_poc:medico_solicitudes",
-            "/recetas/lab/rcta-espontanea/": "qbi2_poc:lab_espontanea",
-            "/recetas/lab/rcta-espontanea-2/": "qbi2_poc:lab_espontanea_2",
-            "/recetas/api/medicamentos/directo/": "qbi2_poc:api_medicamentos_directo",
-            "/recetas/api/paciente/perfil/actualizar/": "qbi2_poc:api_paciente_perfil_actualizar",
-            "/recetas/api/lab/espontanea/preview/": "qbi2_poc:api_lab_espontanea_preview",
-            "/recetas/api/lab/espontanea-2/preview/": "qbi2_poc:api_lab_espontanea_2_preview",
-            "/recetas/api/lab/espontanea-2/pacientes/": "qbi2_poc:api_lab_espontanea_2_pacientes",
-            "/recetas/api/lab/espontanea-2/emitir/": "qbi2_poc:api_lab_espontanea_2_emitir",
-            "/recetas/api/medico/solicitudes/1/correo/": "qbi2_poc:api_medico_solicitud_correo",
-            "/recetas/api/lab/espontanea/emitir/": "qbi2_poc:api_lab_espontanea_emitir",
-            "/recetas/api/lab/espontanea/anular/": "qbi2_poc:api_lab_espontanea_anular",
+            "/recetas/": "recetas:home",
+            "/recetas/medicamentos/": "recetas:medicamentos",
+            "/recetas/paciente/ingresar/": "recetas:paciente_login",
+            "/recetas/paciente/salir/": "recetas:paciente_logout",
+            "/recetas/paciente/recetas/nueva/": "recetas:paciente_receta_nueva",
+            "/recetas/medico/solicitudes/": "recetas:medico_solicitudes",
+            "/recetas/medico/recetas/nueva/": "recetas:medico_receta_nueva",
+            "/recetas/api/medicamentos/": "recetas:api_medicamentos",
+            "/recetas/api/paciente/perfil/actualizar/": "recetas:api_paciente_perfil_actualizar",
+            "/recetas/api/catalogos/medicamentos/": "recetas:api_catalogo",
+            "/recetas/api/medico/recetas/preview/": "recetas:api_receta_preview",
+            "/recetas/api/medico/recetas/pacientes/": "recetas:api_receta_pacientes",
+            "/recetas/api/medico/recetas/emitir/": "recetas:api_receta_emitir",
+            "/recetas/api/medico/solicitudes/1/correo/": "recetas:api_medico_solicitud_correo",
         }
 
         for path, view_name in expected.items():
@@ -230,6 +226,10 @@ class Qbi2PocRoutingTests(TestCase):
             "/PoC-pacientes-portal/",
             "/recetas/lab/receta/",
             "/recetas/api/lab/receta/emitir/",
+            "/recetas/lab/rcta-espontanea/",
+            "/recetas/lab/rcta-espontanea-2/",
+            "/recetas/api/lab/espontanea/emitir/",
+            "/recetas/api/lab/espontanea/anular/",
         ]
 
         for path in old_paths:
@@ -246,7 +246,7 @@ class RecetaPortalViewTests(TestCase):
         request = RequestFactory().get("/recetas/")
         request.user = self.user
 
-        response = views.qbi2_poc_home(request)
+        response = views.recetas_home(request)
 
         self.assertEqual(response.status_code, 200)
         self.assertNotIn(b"/recetas/lab/receta/", response.content)
@@ -279,9 +279,9 @@ class RecetaPortalViewTests(TestCase):
         Path(__file__).resolve().parents[1] / "private" / "qbi2" / "profile.example.yaml"
     )
 )
-class EspontaneaPocTests(TestCase):
+class RecetaMedicoTests(TestCase):
     def setUp(self):
-        self.user = get_user_model().objects.create_user(username="espontanea", password="test")
+        self.user = get_user_model().objects.create_user(username="recetas", password="test")
         self.client.force_login(self.user)
         document_type = TipoDocumento.objects.create(nombre="DNI", descripcion="Documento nacional")
         self.patient = Paciente.objects.create(
@@ -300,61 +300,50 @@ class EspontaneaPocTests(TestCase):
             celular="1558467544",
         )
 
-    def test_page_renders_direct_medical_request_form(self):
-        request = RequestFactory().get("/recetas/lab/rcta-espontanea/")
+    def test_page_starts_without_patient_and_keeps_two_step_flow(self):
+        request = RequestFactory().get("/recetas/medico/recetas/nueva/")
         request.user = self.user
 
-        response = views.espontanea_poc_page(request)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Prueba piloto Pedido espont", response.content)
-        self.assertIn(b"Receta", response.content)
-        self.assertIn("Práctica".encode(), response.content)
-
-    def test_simplified_page_starts_without_patient_and_keeps_two_step_flow(self):
-        request = RequestFactory().get("/recetas/lab/rcta-espontanea-2/")
-        request.user = self.user
-
-        response = views.espontanea_poc_2_page(request)
+        response = views.receta_medico_page(request)
 
         self.assertEqual(response.status_code, 200)
         self.assertNotIn(b"Bergonzi", response.content)
         self.assertNotIn(b"23101065", response.content)
         self.assertIn("Seleccioná un paciente".encode(), response.content)
         self.assertNotIn(b"Cambiar paciente", response.content)
-        self.assertIn(b'id="patient-search-panel" class="recipe-v2-patient-search"', response.content)
+        self.assertIn(b'id="patient-search-panel" class="recipe-patient-search"', response.content)
         self.assertIn(b'class="global-search-input-wrap"', response.content)
         self.assertIn(b'id="patient-search-form"', response.content)
         self.assertIn(b"autofocus", response.content)
-        self.assertIn(b'id="recipe-v2-coverage-hhcc"', response.content)
-        self.assertIn(b'id="recipe-v2-coverage-none"', response.content)
+        self.assertIn(b'id="recipe-coverage-hhcc"', response.content)
+        self.assertIn(b'id="recipe-coverage-none"', response.content)
         self.assertIn(b"Sin cobertura", response.content)
         self.assertIn(b"usarCobertura: state.useCoverage", response.content)
         self.assertIn(b"Editar datos del paciente", response.content)
         self.assertIn(b"QBI2 homologaci", response.content)
         self.assertNotIn(b"Perfil de receta", response.content)
-        self.assertNotIn(b"recipe-v2-heading", response.content)
-        self.assertNotIn(b"recipe-v2-safe-badge", response.content)
+        self.assertNotIn(b"recipe-heading", response.content)
+        self.assertNotIn(b"recipe-safe-badge", response.content)
         self.assertNotIn(b"<h1>Crear receta</h1>", response.content)
         self.assertIn("💊".encode(), response.content)
         self.assertIn(b"exclusivo Ezequiel", response.content)
         self.assertNotIn(b"sin mapeo QBI2", response.content)
         self.assertIn(
-            b'<button id="emit-recipe" class="recipe-v2-emit-button" type="button">Emitir en HML</button>',
+            b'<button id="emit-recipe" class="recipe-emit-button" type="button">Emitir en HML</button>',
             response.content,
         )
         self.assertNotIn(b"Revis\xc3\xa1 nuevamente el payload antes de emitir", response.content)
         self.assertNotIn(b"emitButton.disabled", response.content)
         self.assertIn(b"Escribir un diagn", response.content)
         self.assertIn(b"Usar texto", response.content)
-        self.assertIn(b"/recetas/api/lab/espontanea-2/pacientes/", response.content)
-        self.assertIn(b"/recetas/api/lab/espontanea-2/preview/", response.content)
-        self.assertIn(b"/recetas/api/lab/espontanea-2/emitir/", response.content)
+        self.assertIn(b"/recetas/api/medico/recetas/pacientes/", response.content)
+        self.assertIn(b"/recetas/api/medico/recetas/preview/", response.content)
+        self.assertIn(b"/recetas/api/medico/recetas/emitir/", response.content)
         self.assertLess(response.content.index(b"Medicamentos"), response.content.index(b"Indicaciones"))
         self.assertLess(response.content.index(b"Indicaciones"), response.content.index(b"Otras configuraciones"))
 
     def test_simplified_profile_payload_comes_from_external_yaml(self):
-        defaults = views._espontanea_2_defaults(self.patient)
+        defaults = views._receta_defaults(self.patient)
 
         self.assertEqual(defaults["payload"]["medicoNombre"], "Omar")
         self.assertEqual(defaults["payload"]["medicoApellido"], "Prieto")
@@ -363,7 +352,7 @@ class EspontaneaPocTests(TestCase):
 
     def test_simplified_patient_search_returns_hhcc_data(self):
         response = self.client.get(
-            "/recetas/api/lab/espontanea-2/pacientes/",
+            "/recetas/api/medico/recetas/pacientes/",
             {"q": "bergonzi"},
         )
 
@@ -381,7 +370,7 @@ class EspontaneaPocTests(TestCase):
 
     def test_simplified_patient_refresh_by_id_returns_current_hhcc_data(self):
         response = self.client.get(
-            "/recetas/api/lab/espontanea-2/pacientes/",
+            "/recetas/api/medico/recetas/pacientes/",
             {"id": self.patient.id},
         )
 
@@ -429,7 +418,7 @@ class EspontaneaPocTests(TestCase):
 
     def test_simplified_preview_rejects_unknown_patient(self):
         response = self.client.post(
-            "/recetas/api/lab/espontanea-2/preview/",
+            "/recetas/api/medico/recetas/preview/",
             data=json.dumps(
                 {
                     "pacienteId": 999999,
@@ -443,10 +432,10 @@ class EspontaneaPocTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("no existe", response.json()["message"])
 
-    @patch("Qbi2.views.emit_spontaneous_payload")
+    @patch("Qbi2.views.emit_rcta_payload")
     def test_simplified_preview_never_emits_and_server_owns_patient_identity(self, emit):
         response = self.client.post(
-            "/recetas/api/lab/espontanea-2/preview/",
+            "/recetas/api/medico/recetas/preview/",
             data=json.dumps(
                 {
                     "operation": "receta",
@@ -505,10 +494,10 @@ class EspontaneaPocTests(TestCase):
         self.assertNotIn("idTributario", data["payload"]["medico"])
         emit.assert_not_called()
 
-    @patch("Qbi2.views.emit_spontaneous_payload")
+    @patch("Qbi2.views.emit_rcta_payload")
     def test_simplified_preview_can_omit_patient_coverage(self, emit):
         response = self.client.post(
-            "/recetas/api/lab/espontanea-2/preview/",
+            "/recetas/api/medico/recetas/preview/",
             data=json.dumps(
                 {
                     "pacienteId": self.patient.id,
@@ -526,9 +515,9 @@ class EspontaneaPocTests(TestCase):
         self.assertNotIn("cobertura", data["payload"]["paciente"])
         emit.assert_not_called()
 
-    @patch("Qbi2.views.emit_spontaneous_payload")
+    @patch("Qbi2.views.emit_rcta_payload")
     def test_simplified_emit_uses_server_owned_patient_identity(self, emit):
-        emit.return_value = SpontaneousPocResult(
+        emit.return_value = RctaResult(
             operation="receta",
             endpoint="/apirecipe/Receta",
             payload={"paciente": {"nombre": "Ezequiel", "apellido": "Bergonzi", "nroDoc": "23101065"}},
@@ -541,7 +530,7 @@ class EspontaneaPocTests(TestCase):
         )
 
         response = self.client.post(
-            "/recetas/api/lab/espontanea-2/emitir/",
+            "/recetas/api/medico/recetas/emitir/",
             data=json.dumps(
                 {
                     "pacienteId": self.patient.id,
@@ -558,20 +547,19 @@ class EspontaneaPocTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["summary"]["idReceta"], "100-v2")
-        safe_data, operation = emit.call_args.args
-        self.assertEqual(operation, "receta")
+        (safe_data,) = emit.call_args.args
         self.assertEqual(safe_data["pacienteNombre"], "Ezequiel")
         self.assertEqual(safe_data["pacienteApellido"], "Bergonzi")
         self.assertEqual(safe_data["pacienteNroDoc"], "23101065")
 
     def test_simplified_preview_requires_diagnosis_and_medicine(self):
         no_diagnosis = self.client.post(
-            "/recetas/api/lab/espontanea-2/preview/",
+            "/recetas/api/medico/recetas/preview/",
             data=json.dumps({"pacienteId": self.patient.id, "medicamentos": []}),
             content_type="application/json",
         )
         no_medicine = self.client.post(
-            "/recetas/api/lab/espontanea-2/preview/",
+            "/recetas/api/medico/recetas/preview/",
             data=json.dumps({"pacienteId": self.patient.id, "diagnostico": "Control cardiologico", "medicamentos": []}),
             content_type="application/json",
         )
@@ -581,10 +569,10 @@ class EspontaneaPocTests(TestCase):
         self.assertIn("diagnóstico es obligatorio", no_diagnosis.json()["message"])
         self.assertIn("al menos un medicamento", no_medicine.json()["message"])
 
-    @patch("Qbi2.views.emit_spontaneous_payload")
+    @patch("Qbi2.views.emit_rcta_payload")
     def test_simplified_preview_accepts_free_text_diagnosis_without_catalog_code(self, emit):
         response = self.client.post(
-            "/recetas/api/lab/espontanea-2/preview/",
+            "/recetas/api/medico/recetas/preview/",
             data=json.dumps(
                 {
                     "pacienteId": self.patient.id,
@@ -605,7 +593,7 @@ class EspontaneaPocTests(TestCase):
 
     def test_simplified_preview_rejects_overlong_free_text_diagnosis(self):
         response = self.client.post(
-            "/recetas/api/lab/espontanea-2/preview/",
+            "/recetas/api/medico/recetas/preview/",
             data=json.dumps(
                 {
                     "pacienteId": self.patient.id,
@@ -619,7 +607,7 @@ class EspontaneaPocTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("255 caracteres", response.json()["message"])
 
-    @patch("Qbi2.views.emit_spontaneous_payload")
+    @patch("Qbi2.views.emit_rcta_payload")
     def test_simplified_emit_preserves_direct_provider_error(self, emit):
         emit.side_effect = Qbi2HTTPError(
             "QBI2 devolvio un error HTTP.",
@@ -628,7 +616,7 @@ class EspontaneaPocTests(TestCase):
         )
 
         response = self.client.post(
-            "/recetas/api/lab/espontanea-2/emitir/",
+            "/recetas/api/medico/recetas/emitir/",
             data=json.dumps(
                 {
                     "pacienteId": self.patient.id,
@@ -644,121 +632,38 @@ class EspontaneaPocTests(TestCase):
         self.assertIn("AFILIADO", response.json()["provider_payload"]["mensaje"])
 
     def test_receta_payload_uses_catalog_identifiers(self):
-        endpoint, payload = build_spontaneous_payload(
+        endpoint, payload = build_rcta_payload(
             {
-                "regNo": "34959",
-                "nombreProducto": "LOTRIAL",
-                "nombreDroga": "enalapril",
-                "presentacion": "10 mg comp.x 30",
-                "cantidad": "2",
+                "medicamentos": [
+                    {
+                        "regNo": "34959",
+                        "nombreProducto": "LOTRIAL",
+                        "nombreDroga": "enalapril",
+                        "presentacion": "10 mg comp.x 30",
+                        "cantidad": "2",
+                    }
+                ],
                 "diagnostico": "Hipertension arterial",
                 "codigoDiagnostico": "I10",
-            },
-            "receta",
+            }
         )
 
         self.assertEqual(endpoint, "/apirecipe/Receta")
         self.assertEqual(payload["medicamentos"][0]["regNo"], "34959")
         self.assertEqual(payload["medicamentos"][0]["codigoDiagnostico"], "I10")
 
-    def test_practica_payload_keeps_qbi2_id_and_snomed_separate(self):
-        endpoint, payload = build_spontaneous_payload(
+    def test_summary_extracts_recipe_identifiers(self):
+        summary = summarize_receta_response(
             {
-                "practicaId": "42",
-                "practicaNombre": "Ecocardiograma Doppler",
-                "practicaCodSnomed": "40701008",
-                "practicaCodigoPropio": "ECO-01",
-                "practicaCantidad": "1",
-                "diagnostico": "Control cardiologico",
-            },
-            "practica",
-        )
-
-        item = payload["prescripcion"][0]
-        self.assertEqual(endpoint, "/apirecipe/prescribirPractica")
-        self.assertEqual(item["id"], 42)
-        self.assertEqual(item["codSnomed"], "40701008")
-        self.assertEqual(item["codigo"], "ECO-01")
-
-    @patch("Qbi2.views.emit_spontaneous_payload")
-    def test_emit_api_returns_document_summary_and_provider_response(self, emit):
-        emit.return_value = SpontaneousPocResult(
-            operation="receta",
-            endpoint="/apirecipe/Receta",
-            payload={"medicamentos": [{"regNo": "34959"}]},
-            response={
-                "recetas": [{"id": "hash-1", "idReceta": "100", "s3Link": "https://example.invalid/receta.pdf"}],
-                "errores": [],
-            },
-            summary={"id": "hash-1", "idReceta": "100", "s3Link": "https://example.invalid/receta.pdf"},
-        )
-
-        response = self.client.post(
-            "/recetas/api/lab/espontanea/emitir/",
-            data=json.dumps({"operation": "receta", "regNo": "34959"}),
-            content_type="application/json",
-        )
-
-        data = response.json()
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(data["summary"]["id"], "hash-1")
-        self.assertEqual(data["response"]["recetas"][0]["idReceta"], "100")
-
-    @patch("Qbi2.views.emit_spontaneous_payload")
-    def test_emit_api_preserves_exact_qbi2_error_payload(self, emit):
-        emit.side_effect = Qbi2HTTPError(
-            "QBI2 devolvio un error HTTP.",
-            status_code=400,
-            payload={"errores": [{"error": "QBI136", "mensaje": "Dato invalido"}]},
-        )
-
-        response = self.client.post(
-            "/recetas/api/lab/espontanea/emitir/",
-            data=json.dumps({"operation": "receta", "regNo": "34959"}),
-            content_type="application/json",
-        )
-
-        data = response.json()
-        self.assertEqual(response.status_code, 502)
-        self.assertEqual(data["provider_status"], 400)
-        self.assertEqual(data["provider_payload"]["errores"][0]["error"], "QBI136")
-
-    @patch("Qbi2.views.anular_documento_hash")
-    def test_anular_api_uses_hash_and_operation(self, anular):
-        anular.return_value = {"ok": True}
-
-        response = self.client.post(
-            "/recetas/api/lab/espontanea/anular/",
-            data=json.dumps({"operation": "practica", "hash": "hash-practica"}),
-            content_type="application/json",
-        )
-
-        self.assertEqual(response.status_code, 200)
-        anular.assert_called_once_with("hash-practica", "practica")
-
-    def test_anular_rejects_missing_hash(self):
-        response = self.client.post(
-            "/recetas/api/lab/espontanea/anular/",
-            data=json.dumps({"operation": "receta"}),
-            content_type="application/json",
-        )
-
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("hash QBI2 es obligatorio", response.json()["message"])
-
-    def test_summary_distinguishes_document_hash_from_prescription_number(self):
-        summary = summarize_document_response(
-            {
-                "prescripciones": [
-                    {"id": "hash-practica", "numeroPrescripcion": "P-100", "verificador": "https://example.invalid/verificar"}
+                "recetas": [
+                    {"id": "hash-receta", "idReceta": "R-100", "verificador": "https://example.invalid/verificar"}
                 ],
                 "response": [{"status": "OK"}],
-            },
-            operation="practica",
+            }
         )
 
-        self.assertEqual(summary["id"], "hash-practica")
-        self.assertEqual(summary["numeroPrescripcion"], "P-100")
+        self.assertEqual(summary["id"], "hash-receta")
+        self.assertEqual(summary["idReceta"], "R-100")
 
 
 class PacientesPortalTests(TestCase):
@@ -936,6 +841,11 @@ class PacientesPortalTests(TestCase):
         self.assertEqual(solicitudes[0].diagnostico, "")
 
 
+@override_settings(
+    QBI2_PROFILE_YAML_PATH=str(
+        Path(__file__).resolve().parents[1] / "private" / "qbi2" / "profile.example.yaml"
+    )
+)
 class SolicitudRecetaQueueTests(TestCase):
     def setUp(self):
         tipo_doc = TipoDocumento.objects.create(nombre="DNI", descripcion="Documento")
@@ -945,7 +855,14 @@ class SolicitudRecetaQueueTests(TestCase):
             nombre="Ana",
             apellido="Perez",
             sexo="M",
+            fechaNac=date(1980, 1, 2),
             mail="ana@example.com",
+            celular="1155554444",
+            direccion="Calle Nueva 123",
+            localidad="Monte Grande",
+            obraSocial="OSDE",
+            plan="310",
+            afiliado="23200126801",
         )
         self.historia = HistoriaClinica.objects.create(paciente=self.paciente)
         self.user = get_user_model().objects.create_user(username="omar", password="test")
@@ -980,17 +897,24 @@ class SolicitudRecetaQueueTests(TestCase):
         )
         self.client.force_login(self.user)
 
-        with patch(
-            "Qbi2.views.emitir_receta_payload",
-            return_value=RecetaResult(
-                payload={"paciente": {"nroDoc": "12345678"}, "medicamentos": [{"regNo": "34959"}]},
-                response={
-                    "recetas": [{"idReceta": "9600000255038", "s3Link": "https://example.invalid/receta.pdf"}],
-                    "errores": [],
-                    "response": [{"status": "OK"}],
-                },
-            ),
-        ):
+        def fake_emit(recipe_data):
+            endpoint, payload = build_rcta_payload(recipe_data)
+            provider_response = {
+                "recetas": [
+                    {"idReceta": "9600000255038", "s3Link": "https://example.invalid/receta.pdf"}
+                ],
+                "errores": [],
+                "response": [{"status": "OK"}],
+            }
+            return RctaResult(
+                operation="receta",
+                endpoint=endpoint,
+                payload=payload,
+                response=provider_response,
+                summary=summarize_receta_response(provider_response),
+            )
+
+        with patch("Qbi2.views.emit_rcta_payload", side_effect=fake_emit):
             response = self.client.post(
                 f"/recetas/api/medico/solicitudes/{solicitud.id}/aprobar/",
                 {
@@ -1019,6 +943,18 @@ class SolicitudRecetaQueueTests(TestCase):
         self.assertEqual(solicitud.medicamento_reg_no, "24818")
         self.assertEqual(solicitud.auditoria["medicamentos"][0]["nombreProducto"], "AMPLIAR")
         self.assertTrue(solicitud.auditoria["medicamentos_editados_por_medico"])
+        self.assertEqual(solicitud.payload_qbi2["paciente"]["cobertura"]["numero"], "23200126801")
+        self.assertEqual(solicitud.payload_qbi2["paciente"]["cobertura"]["plan"], "310")
+        self.assertNotIn("idFinanciador", solicitud.payload_qbi2["paciente"]["cobertura"])
+        self.assertEqual(solicitud.payload_qbi2["medico"]["matricula"]["tipo"], "MN")
+        self.assertEqual(solicitud.payload_qbi2["medico"]["matricula"]["numero"], "109347")
+        self.assertIn("MP 332792", solicitud.payload_qbi2["medico"]["sello"]["linea3"])
+        self.assertTrue(solicitud.payload_qbi2["medico"]["firmabase64"])
+        self.assertTrue(solicitud.payload_qbi2["medico"]["logoInstitucion"])
+        self.assertEqual(
+            solicitud.payload_qbi2["lugarAtencion"]["nombreConsultorio"],
+            "Cardiología Integral",
+        )
 
     @patch("Qbi2.views.download_prescription_pdf", return_value=b"%PDF-1.7\nmock")
     def test_emitted_request_downloads_unsent_email_with_pdf_attached(self, download_pdf):

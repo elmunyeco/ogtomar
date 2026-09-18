@@ -27,5 +27,5 @@ urlpatterns = [
     path('mmii/', include('mmii.urls')),
 ]
 
-if settings.ENABLE_QBI2_POC:
-    urlpatterns.insert(1, path('recetas/', include(('Qbi2.urls', 'qbi2_poc'), namespace='qbi2_poc')))
+if settings.ENABLE_RECETAS:
+    urlpatterns.insert(1, path('recetas/', include(('Qbi2.urls', 'recetas'), namespace='recetas')))

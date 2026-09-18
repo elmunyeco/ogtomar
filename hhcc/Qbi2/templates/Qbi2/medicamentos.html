@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}QBI2 PoC - Medicamentos directo{% endblock %}
+{% block title %}Medicamentos RCTA{% endblock %}
 
 {% block content %}
-<section class="global-search-page vademecum-page" data-endpoint="{% url 'qbi2_poc:api_medicamentos_directo' %}">
+<section class="global-search-page vademecum-page" data-endpoint="{% url 'recetas:api_medicamentos' %}">
     <div class="global-search-watermark" aria-hidden="true"></div>
     <div class="global-search-shell">
         <form class="global-search-form" id="vademecum-form" autocomplete="off">
@@ -35,7 +35,7 @@
         </div>
 
         <div class="global-search-footer">
-            <span>qbi2 poc · medicamentos directo</span>
+            <span>RCTA · medicamentos</span>
         </div>
     </div>
 </section>

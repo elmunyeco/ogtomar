@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Recetas - Dr. Omar Prieto{% endblock %}
+
+{% block content %}
+<section class="global-search-page has-results">
+    <div class="global-search-watermark" aria-hidden="true"></div>
+    <div class="global-search-shell">
+        <div class="global-search-header">
+            <div>
+                <h1>Recetas</h1>
+                <p>Portal de pacientes, cola médica y emisión RCTA integrados con historias clínicas.</p>
+            </div>
+        </div>
+
+        <div class="global-search-results">
+            <a class="global-search-card" href="{% url 'recetas:medicamentos' %}">
+                <span>Medicamentos</span>
+                <strong>Buscador directo</strong>
+                <p>Consulta QBI2 en vivo.</p>
+            </a>
+            <a class="global-search-card" href="{% url 'recetas:paciente_receta_nueva' %}">
+                <span>Paciente</span>
+                <strong>Pedir receta</strong>
+                <p>Portal público de solicitud.</p>
+            </a>
+            <a class="global-search-card" href="{% url 'recetas:medico_solicitudes' %}">
+                <span>Médico</span>
+                <strong>Solicitudes</strong>
+                <p>Bandeja para aprobar o rechazar.</p>
+            </a>
+            <a class="global-search-card" href="{% url 'recetas:medico_receta_nueva' %}">
+                <span>Médico</span>
+                <strong>Crear receta</strong>
+                <p>Confección directa con revisión previa y emisión confirmada.</p>
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

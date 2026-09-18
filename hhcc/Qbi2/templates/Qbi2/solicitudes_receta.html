@@ -94,7 +94,7 @@
                     <div class="solicitud-links">
                         <a href="{{ solicitud.qbi2_pdf_url }}" target="_blank" rel="noopener">Abrir PDF</a>
                         {% if solicitud.estado == estados.EMITIDA %}
-                            <a class="notify-patient" href="{% url 'qbi2_poc:api_medico_solicitud_correo' solicitud.id %}">Notificar por correo</a>
+                            <a class="notify-patient" href="{% url 'recetas:api_medico_solicitud_correo' solicitud.id %}">Notificar por correo</a>
                             <small>Descarga un borrador con el PDF adjunto. Abrilo con tu cliente de correo para revisar y enviar.</small>
                         {% endif %}
                         {% if solicitud.qbi2_id_receta %}
@@ -105,10 +105,10 @@
 
                 {% if solicitud.estado == estados.PENDIENTE %}
                     <div class="solicitud-actions">
-                        <form method="post" action="{% url 'qbi2_poc:api_medico_solicitud_aprobar' solicitud.id %}">
+                        <form method="post" action="{% url 'recetas:api_medico_solicitud_aprobar' solicitud.id %}">
                             {% csrf_token %}
                             <input type="hidden" name="next" value="/recetas/medico/solicitudes/?estado={{ estado }}">
-                            <div class="med-editor" data-catalog-url="{% url 'qbi2_poc:api_lab_espontanea_catalogo' 'medicamentos' %}">
+                            <div class="med-editor" data-catalog-url="{% url 'recetas:api_catalogo' 'medicamentos' %}">
                                 <span>Medicamentos de esta receta (máximo 2)</span>
                                 <div class="med-editor-selected"></div>
                                 <input class="med-editor-json" type="hidden" name="medicamentosJson" value="{{ solicitud.medicamentos_json }}">
@@ -134,7 +134,7 @@
                             </label>
                             <button type="submit">Aprobar y emitir</button>
                         </form>
-                        <form method="post" action="{% url 'qbi2_poc:api_medico_solicitud_rechazar' solicitud.id %}">
+                        <form method="post" action="{% url 'recetas:api_medico_solicitud_rechazar' solicitud.id %}">
                             {% csrf_token %}
                             <input type="hidden" name="next" value="/recetas/medico/solicitudes/?estado={{ estado }}">
                             <label>

@@ -10,8 +10,6 @@ from .client import Qbi2Client
 
 COMMON_LIST_KEYS = ("medicamentos", "items", "data", "result", "results", "medicines")
 DIAGNOSTICO_LIST_KEYS = ("diagnosticos", "items", "data", "result", "results")
-FINANCIADOR_LIST_KEYS = ("financiadores", "items", "data", "result", "results")
-PRACTICA_LIST_KEYS = ("practicas", "items", "data", "result", "results")
 
 
 class VademecumService:
@@ -149,61 +147,6 @@ class DiagnosticoService:
         }
 
 
-class FinanciadorService:
-    def __init__(self, client: Qbi2Client | None = None):
-        self.client = client or Qbi2Client()
-
-    def buscar(self, extra_params: dict[str, Any] | None = None) -> dict[str, Any]:
-        raw_response = self.client.get("/apirecipe/GetFinanciadores", params=extra_params or {})
-        items = normalize_list_response(raw_response, FINANCIADOR_LIST_KEYS)
-        return {
-            "items": [normalize_financiador(item) for item in items],
-            "raw": raw_response,
-        }
-
-
-class PracticaService:
-    def __init__(self, client: Qbi2Client | None = None):
-        self.client = client or Qbi2Client()
-
-    def buscar(
-        self,
-        query: str = "",
-        page: int = 1,
-        *,
-        tipo: str = "",
-        categoria: str = "",
-        extra_params: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        query = (query or "").strip()
-        if query and len(query) < 2:
-            raise ValidationError("La busqueda de practica debe tener al menos 2 caracteres.")
-        if page < 1:
-            raise ValidationError("La pagina debe ser mayor o igual a 1.")
-
-        params: dict[str, Any] = {
-            "clienteAppId": getattr(settings, "QBI2_CLIENT_APP_ID", ""),
-            "numeroPagina": page,
-        }
-        if query:
-            params["search"] = query
-        if tipo:
-            params["tipo"] = tipo
-        if categoria:
-            params["categoria"] = categoria
-        params.update(extra_params or {})
-
-        raw_response = self.client.get("/apirecipe/GetPracticas", params=params)
-        items = normalize_list_response(raw_response, PRACTICA_LIST_KEYS)
-        return {
-            "query": query,
-            "page": page,
-            "items": [normalize_practica(item) for item in items],
-            "page_info": extract_page_info(raw_response),
-            "raw": raw_response,
-        }
-
-
 def normalize_vademecum_response(raw_response: Any) -> list[Any]:
     return normalize_list_response(raw_response, COMMON_LIST_KEYS)
 
@@ -314,69 +257,4 @@ def normalize_diagnostico(item: Any) -> Any:
         "iddiagnostico": item.get("iddiagnostico") or item.get("id"),
         "coddiagnostico": codigo,
         "descdiagnostico": descripcion,
-    }
-
-
-def normalize_financiador(item: Any) -> Any:
-    if not isinstance(item, dict):
-        return item
-
-    planes = item.get("planes") if isinstance(item.get("planes"), list) else []
-    nombre = item.get("nombreComercial") or item.get("nombre") or item.get("descripcion")
-    return {
-        "display": " - ".join(
-            part
-            for part in (
-                str(item.get("idfinanciador") or item.get("idFinanciador") or item.get("id") or ""),
-                str(item.get("nrofinanciador") or item.get("nroFinanciador") or ""),
-                nombre or "",
-            )
-            if part
-        ),
-        "idfinanciador": item.get("idfinanciador") or item.get("idFinanciador") or item.get("id"),
-        "nrofinanciador": item.get("nrofinanciador") or item.get("nroFinanciador"),
-        "nombreComercial": nombre,
-        "planes": [
-            {
-                "id": plan.get("id"),
-                "nombre": plan.get("nombre") or plan.get("descripcion"),
-            }
-            for plan in planes
-            if isinstance(plan, dict)
-        ],
-    }
-
-
-def normalize_practica(item: Any) -> Any:
-    if not isinstance(item, dict):
-        return item
-
-    nombre = item.get("practica") or item.get("nombre") or item.get("descripcion")
-    nomenclador = item.get("nomenclador") if isinstance(item.get("nomenclador"), dict) else {}
-    snomed = nomenclador.get("snomed")
-    nbu = nomenclador.get("nbu")
-    return {
-        "display": " - ".join(
-            part
-            for part in (
-                str(item.get("id") or ""),
-                nombre or "",
-                item.get("categoria") or "",
-                item.get("tipo") or "",
-                f"SNOMED {snomed}" if snomed else "",
-                f"NBU {nbu}" if nbu else "",
-            )
-            if part
-        ),
-        "id": item.get("id"),
-        "practica": nombre,
-        "codigo": item.get("codigo") or item.get("codigoPractica"),
-        "codSnomed": snomed,
-        "nbu": nbu,
-        "nomenclador": {
-            "snomed": snomed,
-            "nbu": nbu,
-        },
-        "categoria": item.get("categoria"),
-        "tipo": item.get("tipo"),
     }

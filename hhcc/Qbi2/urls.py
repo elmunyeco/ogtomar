@@ -4,22 +4,21 @@ from django.urls import path
 from . import views
 
 
-app_name = "qbi2_poc"
+app_name = "recetas"
 
 urlpatterns = [
-    path("", login_required(views.qbi2_poc_home), name="home"),
-    path("medicamentos/directo/", login_required(views.vademecum_legacy), name="medicamentos_directo"),
+    path("", login_required(views.recetas_home), name="home"),
+    path("medicamentos/", login_required(views.medicamentos_page), name="medicamentos"),
     path("paciente/ingresar/", views.paciente_login_page, name="paciente_login"),
     path("paciente/salir/", views.paciente_logout, name="paciente_logout"),
     path("paciente/recetas/nueva/", views.pacientes_portal_page, name="paciente_receta_nueva"),
     path("medico/solicitudes/", login_required(views.solicitudes_receta_page), name="medico_solicitudes"),
-    path("lab/rcta-espontanea/", login_required(views.espontanea_poc_page), name="lab_espontanea"),
-    path("lab/rcta-espontanea-2/", login_required(views.espontanea_poc_2_page), name="lab_espontanea_2"),
+    path("medico/recetas/nueva/", login_required(views.receta_medico_page), name="medico_receta_nueva"),
     path("api/health/", login_required(views.health), name="api_health"),
     path(
-        "api/medicamentos/directo/",
-        login_required(views.buscar_vademecum_legacy),
-        name="api_medicamentos_directo",
+        "api/medicamentos/",
+        login_required(views.buscar_medicamentos_api),
+        name="api_medicamentos",
     ),
     path(
         "api/paciente/medicamentos/directo/",
@@ -27,39 +26,24 @@ urlpatterns = [
         name="api_paciente_medicamentos_directo",
     ),
     path(
-        "api/lab/espontanea/catalogos/<str:catalogo>/",
-        login_required(views.espontanea_catalogo_api),
-        name="api_lab_espontanea_catalogo",
+        "api/catalogos/<str:catalogo>/",
+        login_required(views.catalogo_api),
+        name="api_catalogo",
     ),
     path(
-        "api/lab/espontanea/preview/",
-        login_required(views.espontanea_preview_api),
-        name="api_lab_espontanea_preview",
+        "api/medico/recetas/pacientes/",
+        login_required(views.receta_pacientes_api),
+        name="api_receta_pacientes",
     ),
     path(
-        "api/lab/espontanea-2/preview/",
-        login_required(views.espontanea_2_preview_api),
-        name="api_lab_espontanea_2_preview",
+        "api/medico/recetas/preview/",
+        login_required(views.receta_preview_api),
+        name="api_receta_preview",
     ),
     path(
-        "api/lab/espontanea-2/pacientes/",
-        login_required(views.espontanea_2_pacientes_api),
-        name="api_lab_espontanea_2_pacientes",
-    ),
-    path(
-        "api/lab/espontanea-2/emitir/",
-        login_required(views.espontanea_2_emit_api),
-        name="api_lab_espontanea_2_emitir",
-    ),
-    path(
-        "api/lab/espontanea/emitir/",
-        login_required(views.espontanea_emitir_api),
-        name="api_lab_espontanea_emitir",
-    ),
-    path(
-        "api/lab/espontanea/anular/",
-        login_required(views.espontanea_anular_api),
-        name="api_lab_espontanea_anular",
+        "api/medico/recetas/emitir/",
+        login_required(views.receta_emit_api),
+        name="api_receta_emitir",
     ),
     path("api/paciente/validar-y-solicitar/", views.validar_paciente_portal, name="api_paciente_validar_solicitar"),
     path(

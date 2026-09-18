@@ -39,49 +39,28 @@ from .portal import (
     start_patient_session,
 )
 from .professional_profile import load_professional_profile, resolve_profile_asset
-from .recipes import (
-    build_receta_payload_from_solicitud,
-    emitir_receta_payload,
-    summarize_receta_response,
-)
-from .services import DiagnosticoService, FinanciadorService, PracticaService, VademecumService
-from .spontaneous import (
-    anular_documento_hash,
-    build_spontaneous_payload,
-    emit_spontaneous_payload,
-)
+from .rcta import build_rcta_payload, emit_rcta_payload
+from .services import DiagnosticoService, VademecumService
 from main.forms import PacientePortalForm
 from main.models import Paciente
 
 
 @require_GET
-def qbi2_poc_home(request):
-    return render(request, "Qbi2/poc_home.html")
+def recetas_home(request):
+    return render(request, "Qbi2/home.html")
 
 
 @require_GET
-def vademecum_legacy(request):
-    return render(request, "Qbi2/vademecum_legacy.html")
+def medicamentos_page(request):
+    return render(request, "Qbi2/medicamentos.html")
 
 
 @ensure_csrf_cookie
-def espontanea_poc_page(request):
+def receta_medico_page(request):
+    defaults = _receta_defaults()
     return render(
         request,
-        "Qbi2/espontanea_poc.html",
-        {
-            "client_app_id": getattr(settings, "QBI2_CLIENT_APP_ID", ""),
-            "base_url": getattr(settings, "QBI2_BASE_URL", ""),
-        },
-    )
-
-
-@ensure_csrf_cookie
-def espontanea_poc_2_page(request):
-    defaults = _espontanea_2_defaults()
-    return render(
-        request,
-        "Qbi2/espontanea_poc_2.html",
+        "Qbi2/receta_medico.html",
         {
             "patient": defaults["patient"],
             "doctor": defaults["doctor"],
@@ -99,7 +78,7 @@ def espontanea_poc_2_page(request):
 def paciente_login_page(request):
     paciente = get_patient_from_session(request)
     if paciente:
-        return redirect("qbi2_poc:paciente_receta_nueva")
+        return redirect("recetas:paciente_receta_nueva")
 
     error = ""
     documento = ""
@@ -110,7 +89,7 @@ def paciente_login_page(request):
         paciente, _ = find_patient_history(apellido=apellido, documento=documento)
         if paciente:
             start_patient_session(request, paciente)
-            return redirect("qbi2_poc:paciente_receta_nueva")
+            return redirect("recetas:paciente_receta_nueva")
         error = "Los datos ingresados no coinciden con un paciente activo."
 
     return render(
@@ -123,14 +102,14 @@ def paciente_login_page(request):
 @require_POST
 def paciente_logout(request):
     end_patient_session(request)
-    return redirect("qbi2_poc:paciente_login")
+    return redirect("recetas:paciente_login")
 
 
 @ensure_csrf_cookie
 def pacientes_portal_page(request):
     paciente = get_patient_from_session(request)
     if not paciente:
-        return redirect("qbi2_poc:paciente_login")
+        return redirect("recetas:paciente_login")
     return render(
         request,
         "Qbi2/pacientes_portal.html",
@@ -195,7 +174,7 @@ def health(request):
 
 
 @require_GET
-def buscar_vademecum_legacy(request):
+def buscar_medicamentos_api(request):
     query = request.GET.get("q") or request.GET.get("query") or ""
     raw = request.GET.get("raw") == "1"
     extra_params = {
@@ -275,7 +254,7 @@ def buscar_vademecum_portal(request):
 
 
 @require_GET
-def espontanea_catalogo_api(request, catalogo):
+def catalogo_api(request, catalogo):
     query = request.GET.get("q", "")
     page = _positive_int(request.GET.get("page"), default=1)
     try:
@@ -288,16 +267,6 @@ def espontanea_catalogo_api(request, catalogo):
         elif catalogo == "diagnosticos":
             result = DiagnosticoService().buscar(
                 query,
-                extra_params=_qbi2_prefixed_params(request),
-            )
-        elif catalogo == "financiadores":
-            result = FinanciadorService().buscar(extra_params=_qbi2_prefixed_params(request))
-        elif catalogo == "practicas":
-            result = PracticaService().buscar(
-                query,
-                page=page,
-                tipo=request.GET.get("tipo", ""),
-                categoria=request.GET.get("categoria", ""),
                 extra_params=_qbi2_prefixed_params(request),
             )
         else:
@@ -330,7 +299,7 @@ def espontanea_catalogo_api(request, catalogo):
 
 
 @require_GET
-def espontanea_2_pacientes_api(request):
+def receta_pacientes_api(request):
     """Search active HHCC patients and expose only fields needed by the recipe selector."""
     raw_patient_id = str(request.GET.get("id") or "").strip()
     query = str(request.GET.get("q") or "").strip()
@@ -341,14 +310,14 @@ def espontanea_2_pacientes_api(request):
             return JsonResponse({"status": "error", "message": "El ID de paciente no es válido."}, status=400)
         patients = Paciente.objects.select_related("idTipoDoc").filter(pk=patient_id, deBaja=False)
     else:
-        patients_or_response = _espontanea_2_search_patients(query)
+        patients_or_response = _search_recipe_patients(query)
         if isinstance(patients_or_response, JsonResponse):
             return patients_or_response
         patients = patients_or_response
 
     items = []
     for patient_record in patients:
-        patient_data = _espontanea_2_patient_data(patient_record)
+        patient_data = _recipe_patient_data(patient_record)
         items.append(
             {
                 "patient": patient_data["patient"],
@@ -358,7 +327,7 @@ def espontanea_2_pacientes_api(request):
     return JsonResponse({"status": "success", "count": len(items), "items": items})
 
 
-def _espontanea_2_search_patients(query: str):
+def _search_recipe_patients(query: str):
     compact_query = re.sub(r"[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+", "", query)
     if len(compact_query) < 3:
         return JsonResponse(
@@ -385,29 +354,15 @@ def _espontanea_2_search_patients(query: str):
 
 @csrf_protect
 @require_POST
-def espontanea_preview_api(request):
-    data_or_response = _json_body(request)
-    if isinstance(data_or_response, JsonResponse):
-        return data_or_response
-    operation = data_or_response.get("operation") or "receta"
-    try:
-        endpoint, payload = build_spontaneous_payload(data_or_response, operation)
-    except (TypeError, ValueError) as exc:
-        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
-    return JsonResponse({"status": "success", "operation": operation, "endpoint": endpoint, "payload": payload})
-
-
-@csrf_protect
-@require_POST
-def espontanea_2_preview_api(request):
+def receta_preview_api(request):
     """Build the simplified recipe payload without making a QBI2 write request."""
     data_or_response = _json_body(request)
     if isinstance(data_or_response, JsonResponse):
         return data_or_response
 
     try:
-        safe_data = _espontanea_2_safe_data(data_or_response)
-        endpoint, payload = build_spontaneous_payload(safe_data, "receta")
+        safe_data = _safe_recipe_data(data_or_response)
+        endpoint, payload = build_rcta_payload(safe_data)
     except (TypeError, ValueError) as exc:
         return JsonResponse({"status": "error", "message": str(exc)}, status=400)
     except Qbi2ConfigurationError as exc:
@@ -427,21 +382,21 @@ def espontanea_2_preview_api(request):
 
 @csrf_protect
 @require_POST
-def espontanea_2_emit_api(request):
+def receta_emit_api(request):
     """Emit from the simplified client, with patient and professional data owned by the server."""
     data_or_response = _json_body(request)
     if isinstance(data_or_response, JsonResponse):
         return data_or_response
 
     try:
-        safe_data = _espontanea_2_safe_data(data_or_response)
-        result = emit_spontaneous_payload(safe_data, "receta")
+        safe_data = _safe_recipe_data(data_or_response)
+        result = emit_rcta_payload(safe_data)
     except (TypeError, ValueError) as exc:
         return JsonResponse({"status": "error", "message": str(exc)}, status=400)
     except Qbi2ConfigurationError as exc:
         return JsonResponse({"status": "error", "message": str(exc)}, status=503)
     except Qbi2HTTPError as exc:
-        endpoint, payload = build_spontaneous_payload(safe_data, "receta")
+        endpoint, payload = build_rcta_payload(safe_data)
         return JsonResponse(
             {
                 "status": "error",
@@ -465,75 +420,6 @@ def espontanea_2_emit_api(request):
             "response": result.response,
         }
     )
-
-
-@csrf_protect
-@require_POST
-def espontanea_emitir_api(request):
-    data_or_response = _json_body(request)
-    if isinstance(data_or_response, JsonResponse):
-        return data_or_response
-    operation = data_or_response.get("operation") or "receta"
-    try:
-        result = emit_spontaneous_payload(data_or_response, operation)
-    except (TypeError, ValueError) as exc:
-        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
-    except Qbi2ConfigurationError as exc:
-        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
-    except Qbi2HTTPError as exc:
-        endpoint, payload = build_spontaneous_payload(data_or_response, operation)
-        return JsonResponse(
-            {
-                "status": "error",
-                "message": str(exc),
-                "operation": operation,
-                "endpoint": endpoint,
-                "payload": payload,
-                "provider_status": exc.status_code,
-                "provider_payload": exc.payload,
-            },
-            status=502,
-        )
-
-    return JsonResponse(
-        {
-            "status": "success",
-            "operation": result.operation,
-            "endpoint": result.endpoint,
-            "payload": result.payload,
-            "summary": result.summary,
-            "response": result.response,
-        }
-    )
-
-
-@csrf_protect
-@require_POST
-def espontanea_anular_api(request):
-    data_or_response = _json_body(request)
-    if isinstance(data_or_response, JsonResponse):
-        return data_or_response
-    hash_id = data_or_response.get("hash") or data_or_response.get("id") or ""
-    operation = data_or_response.get("operation") or "receta"
-    try:
-        response = anular_documento_hash(hash_id, operation)
-    except ValueError as exc:
-        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
-    except Qbi2ConfigurationError as exc:
-        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
-    except Qbi2HTTPError as exc:
-        return JsonResponse(
-            {
-                "status": "error",
-                "message": str(exc),
-                "provider_status": exc.status_code,
-                "provider_payload": exc.payload,
-            },
-            status=502,
-        )
-    return JsonResponse({"status": "success", "response": response})
-
-
 @csrf_protect
 @require_POST
 def validar_paciente_portal(request):
@@ -652,9 +538,9 @@ def preparar_correo_receta(request, solicitud_id):
     return response
 
 
-def _espontanea_2_defaults(patient_record: Paciente | None = None) -> dict[str, Any]:
+def _receta_defaults(patient_record: Paciente | None = None) -> dict[str, Any]:
     """Professional defaults plus a patient profile read from the HHCC database."""
-    patient_data = _espontanea_2_patient_data(patient_record)
+    patient_data = _recipe_patient_data(patient_record)
     patient = patient_data["patient"]
     coverage = patient_data["coverage"]
     profile = load_professional_profile()
@@ -752,7 +638,7 @@ def _espontanea_2_defaults(patient_record: Paciente | None = None) -> dict[str, 
     return {"patient": patient, "doctor": doctor, "coverage": coverage, "payload": payload}
 
 
-def _espontanea_2_patient_data(patient_record: Paciente | None) -> dict[str, Any]:
+def _recipe_patient_data(patient_record: Paciente | None) -> dict[str, Any]:
     if patient_record is None:
         patient = {
             "id": None,
@@ -841,7 +727,7 @@ def _espontanea_2_patient_data(patient_record: Paciente | None) -> dict[str, Any
     return {"patient": patient, "coverage": coverage, "payload": payload}
 
 
-def _espontanea_2_safe_data(data: dict[str, Any]) -> dict[str, Any]:
+def _safe_recipe_data(data: dict[str, Any]) -> dict[str, Any]:
     diagnostico = str(data.get("diagnostico") or "").strip()
     if not diagnostico:
         raise ValueError("El diagnóstico es obligatorio.")
@@ -861,7 +747,7 @@ def _espontanea_2_safe_data(data: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("El paciente seleccionado no existe o está dado de baja.")
 
     safe_data = {
-        "medicamentos": _espontanea_2_safe_medications(data.get("medicamentos", [])),
+        "medicamentos": _safe_recipe_medications(data.get("medicamentos", [])),
         # QBI2 resolves a general CIE-10 code to its printable description.
         "diagnostico": codigo_diagnostico or diagnostico,
         "codigoDiagnostico": codigo_diagnostico,
@@ -871,8 +757,8 @@ def _espontanea_2_safe_data(data: dict[str, Any]) -> dict[str, Any]:
         "fechaEmision": _normalize_fecha_emision(data.get("fechaEmision", "")),
         "ocultarPaciente": data.get("ocultarPaciente", False),
     }
-    patient_payload = _espontanea_2_defaults(patient_record)["payload"]
-    if not _espontanea_2_uses_coverage(data.get("usarCobertura", True)):
+    patient_payload = _receta_defaults(patient_record)["payload"]
+    if not _uses_recipe_coverage(data.get("usarCobertura", True)):
         for field in (
             "idFinanciador",
             "nroFinanciador",
@@ -886,7 +772,7 @@ def _espontanea_2_safe_data(data: dict[str, Any]) -> dict[str, Any]:
     return safe_data
 
 
-def _espontanea_2_uses_coverage(value: Any) -> bool:
+def _uses_recipe_coverage(value: Any) -> bool:
     if isinstance(value, bool):
         return value
     if value in (None, ""):
@@ -894,7 +780,7 @@ def _espontanea_2_uses_coverage(value: Any) -> bool:
     return str(value).strip().lower() in {"1", "true", "t", "yes", "s", "si", "on"}
 
 
-def _espontanea_2_safe_medications(raw_items: Any) -> list[dict[str, Any]]:
+def _safe_recipe_medications(raw_items: Any) -> list[dict[str, Any]]:
     """Whitelist clinical item fields and keep diagnosis only at recipe level."""
     if not isinstance(raw_items, list):
         raise ValueError("Los medicamentos deben enviarse como una lista.")
@@ -919,6 +805,50 @@ def _espontanea_2_safe_medications(raw_items: Any) -> list[dict[str, Any]]:
             }
         )
     return safe_items
+
+
+def _recipe_data_from_solicitud(
+    solicitud: SolicitudReceta,
+    *,
+    diagnostico: str,
+    posologia: str,
+    cantidad: int,
+    tratamiento: int,
+) -> dict[str, Any]:
+    """Adapt a patient request to the same server-owned input used by the medical form."""
+    auditoria = solicitud.auditoria if isinstance(solicitud.auditoria, dict) else {}
+    raw_medications = auditoria.get("medicamentos")
+    if not isinstance(raw_medications, list) or not raw_medications:
+        raw_medications = [
+            {
+                "regNo": solicitud.medicamento_reg_no,
+                "nombreProducto": solicitud.medicamento_nombre_producto,
+                "nombreDroga": solicitud.medicamento_nombre_droga,
+                "presentacion": solicitud.medicamento_presentacion,
+            }
+        ]
+
+    medications = [
+        {
+            "regNo": item.get("regNo", ""),
+            "nombreProducto": item.get("nombreProducto", ""),
+            "nombreDroga": item.get("nombreDroga", ""),
+            "presentacion": item.get("presentacion", ""),
+            "cantidad": cantidad,
+            "posologia": posologia,
+            "tratamiento": tratamiento,
+        }
+        for item in raw_medications[:2]
+        if isinstance(item, dict)
+    ]
+    return _safe_recipe_data(
+        {
+            "pacienteId": solicitud.paciente_id,
+            "usarCobertura": True,
+            "diagnostico": diagnostico,
+            "medicamentos": medications,
+        }
+    )
 
 
 def _redact_profile_images(payload: dict[str, Any]) -> dict[str, Any]:
@@ -1132,7 +1062,7 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
                     request,
                     "Receta emitida. Ya podés preparar el correo con el PDF adjunto.",
                 )
-                next_url = f'{reverse("qbi2_poc:medico_solicitudes")}?estado=emitida'
+                next_url = f'{reverse("recetas:medico_solicitudes")}?estado=emitida'
         else:
             solicitud.rechazar(request.user, observacion=observacion)
     return HttpResponseRedirect(next_url)
@@ -1148,16 +1078,18 @@ def _emitir_solicitud_receta(
     tratamiento,
     observacion="",
 ):
-    payload = build_receta_payload_from_solicitud(
-        solicitud,
-        diagnostico=diagnostico,
-        posologia=posologia,
-        cantidad=cantidad,
-        tratamiento=tratamiento,
-    )
+    payload: dict[str, Any] = {}
     try:
-        result = emitir_receta_payload(payload)
-    except Qbi2ConfigurationError as exc:
+        recipe_data = _recipe_data_from_solicitud(
+            solicitud,
+            diagnostico=diagnostico,
+            posologia=posologia,
+            cantidad=cantidad,
+            tratamiento=tratamiento,
+        )
+        _, payload = build_rcta_payload(recipe_data)
+        result = emit_rcta_payload(recipe_data)
+    except (Qbi2ConfigurationError, ValueError) as exc:
         solicitud.marcar_error_emision(
             user,
             diagnostico=diagnostico,
@@ -1179,7 +1111,7 @@ def _emitir_solicitud_receta(
         )
         return False
 
-    summary = summarize_receta_response(result.response)
+    summary = result.summary
     pdf_url = summary.get("s3Link")
     if pdf_url:
         solicitud.marcar_emitida(

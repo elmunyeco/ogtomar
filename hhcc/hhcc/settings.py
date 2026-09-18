@@ -31,7 +31,7 @@ ALLOWED_HOSTS = ["*"]
 
 SHELL_PLUS = "ipython"
 
-ENABLE_QBI2_POC = os.getenv("ENABLE_QBI2_POC", "1") == "1"
+ENABLE_RECETAS = os.getenv("ENABLE_RECETAS", "1") == "1"
 
 # Application definition
 
@@ -51,7 +51,7 @@ INSTALLED_APPS = [
     'mmii',
 ]
 
-if ENABLE_QBI2_POC:
+if ENABLE_RECETAS:
     INSTALLED_APPS.append('Qbi2.apps.Qbi2Config')
 
 MIDDLEWARE = [
