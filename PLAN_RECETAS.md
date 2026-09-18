@@ -1016,3 +1016,26 @@ La implementacion debe separar intencion, documento y evento.
 
 La pagina del paciente crea pedidos. El medico emite. La historia clinica
 conserva la trazabilidad completa.
+
+
+========================================================================
+20. PENDIENTES DE UX DEL PORTAL DEL PACIENTE
+========================================================================
+
+Registrados el 18/09/2026 para la siguiente iteracion:
+
+01. Eliminar la leyenda "Tu identidad y cobertura son datos de sólo lectura."
+    por resultar innecesariamente paternalista.
+02. Permitir que el paciente modifique cobertura y numero de afiliado, ademas
+    de los datos personales ya habilitados. La escritura debe seguir limitada
+    mediante una lista explicita de campos en el servidor.
+03. Mantener una unica busqueda de medicamentos que contemple tanto nombre
+    comercial como droga o principio activo.
+
+Verificacion HML del punto 03:
+
+- Buscar "LOTRIAL" devuelve presentaciones cuyo `nombreProducto` es LOTRIAL.
+- Buscar "enalapril" devuelve productos de distintas marcas cuyo
+  `nombreDroga` contiene enalapril.
+- El endpoint `GetMedicamento/{search}` ya resuelve ambos criterios con el
+  mismo parametro libre; no hace falta agregar un selector de modalidad.
