@@ -236,6 +236,14 @@ class RecetasRoutingTests(TestCase):
             with self.assertRaises(Resolver404):
                 resolve(path)
 
+    def test_active_pagination_style_does_not_turn_recipe_submenu_blue(self):
+        stylesheet = (
+            Path(__file__).resolve().parents[1] / "main" / "static" / "main" / "css" / "style.css"
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn("\n.active a {", stylesheet)
+        self.assertEqual(stylesheet.count(".pagination .active a {"), 2)
+
 
 class RecetaPortalViewTests(TestCase):
     def setUp(self):
@@ -976,6 +984,7 @@ class SolicitudRecetaQueueTests(TestCase):
                     "diagnostico": "Hipertension arterial",
                     "posologia": "Tomar segun indicacion medica.",
                     "observacion_medico": "Autorizada",
+                    "next": "/recetas/medico/solicitudes/?estado=pendiente",
                     "medicamentosJson": json.dumps(
                         [
                             {
@@ -991,7 +1000,10 @@ class SolicitudRecetaQueueTests(TestCase):
         solicitud.refresh_from_db()
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, "/recetas/medico/solicitudes/?estado=emitida")
+        self.assertEqual(
+            response.url,
+            f"/recetas/medico/solicitudes/?estado=pendiente&resultado={solicitud.id}#resultado-emision",
+        )
         self.assertEqual(solicitud.estado, SolicitudReceta.Estado.EMITIDA)
         self.assertEqual(solicitud.qbi2_pdf_url, "https://example.invalid/receta.pdf")
         self.assertEqual(solicitud.emisiones.count(), 1)
@@ -1015,6 +1027,17 @@ class SolicitudRecetaQueueTests(TestCase):
             solicitud.payload_qbi2["lugarAtencion"]["nombreConsultorio"],
             "Cardiología Integral",
         )
+
+        feedback = self.client.get(response.url.split("#", 1)[0])
+        self.assertContains(feedback, "emission-feedback success")
+        self.assertContains(
+            feedback,
+            f"La solicitud #{solicitud.id} fue emitida correctamente",
+        )
+        self.assertContains(feedback, "Ver PDF 1 de 1")
+        self.assertContains(feedback, "Preparar correo con todos los PDF")
+        self.assertContains(feedback, 'href="?estado=pendiente"')
+        self.assertNotContains(feedback, 'class="request-card"')
 
     def test_approval_sends_complete_patient_order_in_one_rcta_payload(self):
         medicamentos = [
@@ -1061,6 +1084,7 @@ class SolicitudRecetaQueueTests(TestCase):
                 f"/recetas/api/medico/solicitudes/{solicitud.id}/aprobar/",
                 {
                     "diagnostico": "Hipertensión arterial",
+                    "next": "/recetas/medico/solicitudes/?estado=pendiente",
                     "medicamentosJson": json.dumps(medicamentos),
                 },
             )
@@ -1120,6 +1144,14 @@ class SolicitudRecetaQueueTests(TestCase):
             [item["regNo"] for item in medicamentos],
         )
         self.assertEqual(solicitud.error_qbi2, "QBI2 rechazó la receta.")
+        self.assertEqual(
+            response.url,
+            f"/recetas/medico/solicitudes/?estado=pendiente&resultado={solicitud.id}#resultado-emision",
+        )
+        feedback = self.client.get(response.url.split("#", 1)[0])
+        self.assertContains(feedback, "emission-feedback error")
+        self.assertContains(feedback, f"No se pudo emitir la solicitud #{solicitud.id}")
+        self.assertContains(feedback, "QBI2 rechazó la receta.")
 
     @patch("Qbi2.views.download_prescription_pdf", return_value=b"%PDF-1.7\nmock")
     def test_emitted_request_downloads_unsent_email_with_pdf_attached(self, download_pdf):

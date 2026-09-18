@@ -6,6 +6,7 @@ from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from django.contrib import messages
 from django.conf import settings
@@ -120,9 +121,10 @@ def pacientes_portal_page(request):
 def solicitudes_receta_page(request):
     estado = request.GET.get("estado") or SolicitudReceta.Estado.PENDIENTE
     estados_validos = {choice[0] for choice in SolicitudReceta.Estado.choices}
-    queryset = SolicitudReceta.objects.select_related(
+    base_queryset = SolicitudReceta.objects.select_related(
         "paciente", "historia_clinica", "aprobado_por"
     ).prefetch_related("emisiones")
+    queryset = base_queryset.all()
     if estado != "todas" and estado in estados_validos:
         queryset = queryset.filter(estado=estado)
     elif estado != "todas":
@@ -149,6 +151,14 @@ def solicitudes_receta_page(request):
         ]
         solicitud.medicamentos_json = json.dumps(medicamentos[:10], ensure_ascii=False)
 
+    resultado_solicitud = None
+    try:
+        resultado_id = int(request.GET.get("resultado") or 0)
+    except (TypeError, ValueError):
+        resultado_id = 0
+    if resultado_id > 0:
+        resultado_solicitud = base_queryset.filter(pk=resultado_id).first()
+
     return render(
         request,
         "Qbi2/solicitudes_receta.html",
@@ -157,6 +167,7 @@ def solicitudes_receta_page(request):
             "estado": estado,
             "counts": counts,
             "estados": SolicitudReceta.Estado,
+            "resultado_solicitud": resultado_solicitud,
         },
     )
 
@@ -1008,6 +1019,20 @@ def _patient_api_auth_error():
     )
 
 
+def _solicitudes_result_url(next_url, solicitud_id):
+    """Return to the selected tray while keeping the attempted request visible."""
+    valid_states = {choice[0] for choice in SolicitudReceta.Estado.choices} | {"todas"}
+    query = dict(parse_qsl(urlsplit(next_url).query))
+    estado = query.get("estado")
+    if estado not in valid_states:
+        estado = SolicitudReceta.Estado.PENDIENTE
+    return (
+        f'{reverse("recetas:medico_solicitudes")}?'
+        f'{urlencode({"estado": estado, "resultado": solicitud_id})}'
+        "#resultado-emision"
+    )
+
+
 def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
     observacion = request.POST.get("observacion_medico", "")
     next_url = request.POST.get("next") or "/recetas/medico/solicitudes/"
@@ -1023,16 +1048,20 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
         medicamentos = _selected_medications_from_portal_data(request.POST)
         if not medicamentos or len(medicamentos) > 10:
             messages.error(request, "El pedido debe tener entre 1 y 10 medicamentos del vademécum.")
-            return HttpResponseRedirect(next_url)
+            return HttpResponseRedirect(_solicitudes_result_url(next_url, solicitud_id))
 
     if aprobar and not diagnostico:
         messages.error(request, "El diagnostico es obligatorio para emitir la receta.")
-        return HttpResponseRedirect(next_url)
+        return HttpResponseRedirect(_solicitudes_result_url(next_url, solicitud_id))
 
     with transaction.atomic():
         solicitud = SolicitudReceta.objects.select_for_update().get(pk=solicitud_id)
         if solicitud.estado != SolicitudReceta.Estado.PENDIENTE:
-            return HttpResponseRedirect(next_url)
+            messages.error(
+                request,
+                f"La solicitud #{solicitud.id} ya no está pendiente y no fue procesada nuevamente.",
+            )
+            return HttpResponseRedirect(_solicitudes_result_url(next_url, solicitud.id))
         if aprobar:
             if medicamentos is not None:
                 medicamento = medicamentos[0]
@@ -1067,9 +1096,14 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
             if emitted:
                 messages.success(
                     request,
-                    "Pedido emitido. Ya podés preparar el correo con los PDF adjuntos.",
+                    f"La solicitud #{solicitud.id} fue emitida correctamente.",
                 )
-                next_url = f'{reverse("recetas:medico_solicitudes")}?estado=emitida'
+            else:
+                messages.error(
+                    request,
+                    f"La solicitud #{solicitud.id} no pudo emitirse. Revisá el detalle informado por RCTA.",
+                )
+            next_url = _solicitudes_result_url(next_url, solicitud.id)
         else:
             solicitud.rechazar(request.user, observacion=observacion)
     return HttpResponseRedirect(next_url)

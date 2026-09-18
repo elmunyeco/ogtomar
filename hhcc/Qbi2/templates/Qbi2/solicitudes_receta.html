@@ -13,7 +13,40 @@
         <a href="{% url 'recetas:medico_receta_nueva' %}">Crear una receta</a>
     </header>
 
-    <nav class="queue-tabs" aria-label="Estados de las solicitudes">
+    {% if messages %}
+        <div class="queue-messages">
+            {% for message in messages %}<div class="queue-message {{ message.tags }}">{{ message }}</div>{% endfor %}
+        </div>
+    {% endif %}
+
+    {% if resultado_solicitud.estado == estados.EMITIDA %}
+        <section id="resultado-emision" class="emission-feedback success" role="status">
+            <div class="feedback-icon" aria-hidden="true">✓</div>
+            <div class="feedback-content">
+                <span>Emisión completada</span>
+                <h2>La solicitud #{{ resultado_solicitud.id }} fue emitida correctamente</h2>
+                <p>{{ resultado_solicitud.paciente.apellido }}, {{ resultado_solicitud.paciente.nombre }} · RCTA generó {{ resultado_solicitud.emisiones.count }} documento{{ resultado_solicitud.emisiones.count|pluralize }}.</p>
+                <div class="feedback-documents">
+                    {% for emision in resultado_solicitud.emisiones.all %}
+                        <a href="{{ emision.qbi2_pdf_url }}" target="_blank" rel="noopener">Ver PDF {{ emision.orden }} de {{ emision.total }}</a>
+                    {% endfor %}
+                    <a class="feedback-mail" href="{% url 'recetas:api_medico_solicitud_correo' resultado_solicitud.id %}">Preparar correo con todos los PDF</a>
+                </div>
+            </div>
+        </section>
+    {% elif resultado_solicitud.estado == estados.ERROR_EMISION %}
+        <section id="resultado-emision" class="emission-feedback error" role="alert">
+            <div class="feedback-icon" aria-hidden="true">!</div>
+            <div class="feedback-content">
+                <span>Emisión fallida</span>
+                <h2>No se pudo emitir la solicitud #{{ resultado_solicitud.id }}</h2>
+                <p>{{ resultado_solicitud.paciente.apellido }}, {{ resultado_solicitud.paciente.nombre }}</p>
+                <div class="feedback-error">{{ resultado_solicitud.error_qbi2|default:"RCTA no informó el motivo del rechazo." }}</div>
+            </div>
+        </section>
+    {% endif %}
+
+    <nav class="queue-tabs" aria-label="Elegir una bandeja de solicitudes">
         <a class="{% if estado == 'pendiente' %}active{% endif %}" href="?estado=pendiente">Pendientes <span>{{ counts.pendiente }}</span></a>
         <a class="{% if estado == 'emitida' %}active{% endif %}" href="?estado=emitida">Emitidas <span>{{ counts.emitida }}</span></a>
         <a class="{% if estado == 'error_emision' %}active{% endif %}" href="?estado=error_emision">Errores <span>{{ counts.error_emision }}</span></a>
@@ -21,12 +54,6 @@
         <a class="{% if estado == 'rechazada' %}active{% endif %}" href="?estado=rechazada">Rechazadas <span>{{ counts.rechazada }}</span></a>
         <a class="{% if estado == 'todas' %}active{% endif %}" href="?estado=todas">Todas <span>{{ counts.todas }}</span></a>
     </nav>
-
-    {% if messages %}
-        <div class="queue-messages">
-            {% for message in messages %}<div class="queue-message {{ message.tags }}">{{ message }}</div>{% endfor %}
-        </div>
-    {% endif %}
 
     <div class="queue-list">
         {% for solicitud in solicitudes %}
@@ -194,6 +221,19 @@
     .queue-tabs a.active { background:var(--red); border-color:var(--red); color:white; }
     .queue-tabs span { opacity:.72; }
     .queue-list,.queue-messages { display:grid; gap:1rem; }
+    .queue-messages { margin-bottom:1rem; }
+    .emission-feedback { align-items:flex-start; border:1px solid; border-radius:1rem; display:flex; gap:1rem; margin-bottom:1rem; padding:1rem 1.15rem; scroll-margin-top:1rem; }
+    .emission-feedback.success { background:#edf9f2; border-color:#a9dcc0; color:#155c3d; }
+    .emission-feedback.error { background:#fff1ef; border-color:#efb8af; color:#812f25; }
+    .feedback-icon { align-items:center; border:2px solid currentColor; border-radius:50%; display:flex; flex:0 0 auto; font-size:1.15rem; font-weight:950; height:2.35rem; justify-content:center; width:2.35rem; }
+    .feedback-content { min-width:0; width:100%; }
+    .feedback-content > span { display:block; font-size:.7rem; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
+    .feedback-content h2 { font-size:1.12rem; font-weight:900; margin:.12rem 0; }
+    .feedback-content p { margin:0; }
+    .feedback-documents { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.75rem; }
+    .feedback-documents a { background:white; border:1px solid currentColor; border-radius:999px; color:inherit; font-size:.8rem; font-weight:850; padding:.45rem .7rem; text-decoration:none; }
+    .feedback-documents a.feedback-mail { background:#176044; border-color:#176044; color:white; }
+    .feedback-error { background:rgba(255,255,255,.72); border-radius:.55rem; font-weight:750; margin-top:.65rem; padding:.65rem .75rem; white-space:pre-wrap; }
     .request-card { background:#faf7f6; border:1px solid var(--line); border-radius:1.15rem; box-shadow:0 .22rem .8rem rgba(28,39,49,.08); overflow:hidden; padding:1rem; }
     .request-meta { align-items:center; color:var(--muted); display:flex; font-size:.78rem; font-weight:750; gap:.7rem; justify-content:space-between; margin:0 .15rem .75rem; }
     .request-state { border-radius:999px; font-size:.7rem; font-weight:900; padding:.25rem .6rem; text-transform:uppercase; }
@@ -262,6 +302,7 @@
     .issued-actions a.mail-button { background:var(--red); color:white; }
     .issued-result > small { grid-column:1/-1; }
     .queue-message,.queue-empty { background:white; border:1px solid var(--line); border-radius:.8rem; padding:.8rem 1rem; }
+    .queue-message.success { background:#edf9f2; border-color:#a9dcc0; color:#155c3d; }
     .queue-message.error { background:#fff1ef; border-color:#efc1ba; color:#812f25; }
     .queue-empty { color:var(--muted); font-weight:750; text-align:center; }
     @media(max-width:850px) { .patient-card { grid-template-columns:auto 1fr; } .patient-coverage { border-left:0; border-top:1px solid var(--line); grid-column:1/-1; min-width:0; padding: .8rem 0 0; } .review-columns,.readonly-columns { grid-template-columns:1fr; } }

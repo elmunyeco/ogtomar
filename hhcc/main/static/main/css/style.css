@@ -897,7 +897,7 @@ h3 {
         }
 
 /* ===== Estilos extraídos de hhcc/main/templates/listar_buscar_historias.html ===== */
-.active a {
+.pagination .active a {
             font-weight: bold;
             color: blue;
         }
@@ -960,7 +960,7 @@ h3 {
         }
 
 /* ===== Estilos extraídos de hhcc/main/templates/listar_buscar_pacientes.html ===== */
-.active a {
+.pagination .active a {
             font-weight: bold;
             color: blue;
         }
