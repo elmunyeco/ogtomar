@@ -130,3 +130,44 @@ class SolicitudReceta(models.Model):
                 "updated_at",
             ]
         )
+
+
+class EmisionSolicitudReceta(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "pendiente", "Pendiente"
+        EMITIDA = "emitida", "Emitida"
+        ERROR = "error", "Error"
+
+    solicitud = models.ForeignKey(
+        SolicitudReceta,
+        on_delete=models.CASCADE,
+        related_name="emisiones",
+    )
+    orden = models.PositiveSmallIntegerField()
+    total = models.PositiveSmallIntegerField()
+    medicamentos = models.JSONField(default=list)
+    estado = models.CharField(
+        max_length=12,
+        choices=Estado.choices,
+        default=Estado.PENDIENTE,
+    )
+    payload_qbi2 = models.JSONField(default=dict, blank=True)
+    respuesta_qbi2 = models.JSONField(default=dict, blank=True)
+    error_qbi2 = models.TextField(blank=True)
+    qbi2_id_receta = models.CharField(max_length=100, blank=True)
+    qbi2_pdf_url = models.URLField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "qbi2_emisiones_solicitud_receta"
+        ordering = ["orden", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["solicitud", "orden"],
+                name="qbi2_emision_solicitud_orden_uniq",
+            )
+        ]
+
+    def __str__(self):
+        return f"Emisión {self.orden}/{self.total} de solicitud {self.solicitud_id}"

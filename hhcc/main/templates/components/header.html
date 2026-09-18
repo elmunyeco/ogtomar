@@ -40,8 +40,12 @@ templates/components/header.html
                 </div>
             </li>
 
-            <li class="menu-item {% if request.resolver_match.view_name == 'recetas:medico_solicitudes' %}active{% endif %}">
-                <a href="{% url 'recetas:medico_solicitudes' %}" class="menu-link">Recetas</a>
+            <li class="menu-item {% if request.resolver_match.view_name == 'recetas:medico_solicitudes' or request.resolver_match.view_name == 'recetas:medico_receta_nueva' %}active{% endif %}" data-menu="recetas">
+                <a href="#" class="menu-link menu-toggle">Recetas</a>
+                <div class="submenu-items hidden">
+                    <a href="{% url 'recetas:medico_solicitudes' %}" class="submenu-link">Gestión</a>
+                    <a href="{% url 'recetas:medico_receta_nueva' %}" class="submenu-link">Emisión</a>
+                </div>
             </li>
         </ul>
         

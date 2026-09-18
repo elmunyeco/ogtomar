@@ -62,7 +62,7 @@ def download_prescription_pdf(url: str) -> bytes:
     return pdf
 
 
-def build_prescription_email_draft(solicitud, pdf: bytes) -> bytes:
+def build_prescription_email_draft(solicitud, pdfs) -> bytes:
     recipient = (solicitud.paciente.mail or "").strip()
     if "\n" in recipient or "\r" in recipient:
         recipient = ""
@@ -72,12 +72,22 @@ def build_prescription_email_draft(solicitud, pdf: bytes) -> bytes:
     message["Subject"] = PRESCRIPTION_EMAIL_SUBJECT
     message["X-Unsent"] = "1"
     message.set_content(PRESCRIPTION_EMAIL_BODY)
-    message.add_attachment(
-        pdf,
-        maintype="application",
-        subtype="pdf",
-        filename=_prescription_pdf_filename(solicitud),
+    attachments = (
+        [(solicitud.qbi2_id_receta or solicitud.pk, pdfs)]
+        if isinstance(pdfs, bytes)
+        else list(pdfs)
     )
+    for index, (identifier, pdf) in enumerate(attachments, start=1):
+        message.add_attachment(
+            pdf,
+            maintype="application",
+            subtype="pdf",
+            filename=_prescription_pdf_filename(
+                solicitud,
+                identifier=identifier,
+                order=index if len(attachments) > 1 else None,
+            ),
+        )
     return message.as_bytes()
 
 
@@ -87,7 +97,8 @@ def prescription_draft_filename(solicitud) -> str:
     return f"receta-{safe_identifier or solicitud.pk}.eml"
 
 
-def _prescription_pdf_filename(solicitud) -> str:
-    identifier = solicitud.qbi2_id_receta or solicitud.pk
+def _prescription_pdf_filename(solicitud, *, identifier=None, order=None) -> str:
+    identifier = identifier or solicitud.qbi2_id_receta or solicitud.pk
     safe_identifier = re.sub(r"[^A-Za-z0-9_.-]+", "-", str(identifier)).strip("-._")
-    return f"receta-{safe_identifier or solicitud.pk}.pdf"
+    prefix = f"receta-{order}-" if order is not None else "receta-"
+    return f"{prefix}{safe_identifier or solicitud.pk}.pdf"

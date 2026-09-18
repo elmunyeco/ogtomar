@@ -65,7 +65,7 @@
                                 <section class="review-panel medications-panel">
                                     <header class="panel-heading">
                                         <span class="panel-icon" aria-hidden="true">💊</span>
-                                        <div><h3>Medicamentos</h3><small>Máximo 2 por receta</small></div>
+                                        <div><h3>Medicamentos</h3><small>Hasta 10 por pedido</small></div>
                                     </header>
                                     <div class="panel-body med-editor" data-catalog-url="{% url 'recetas:api_catalogo' 'medicamentos' %}">
                                         <input class="med-editor-json" type="hidden" name="medicamentosJson" value="{{ solicitud.medicamentos_json }}">
@@ -152,14 +152,25 @@
                     <section class="provider-error"><strong>RCTA no pudo emitir la receta</strong><p>{{ solicitud.error_qbi2 }}</p></section>
                 {% endif %}
 
-                {% if solicitud.qbi2_pdf_url %}
+                {% if solicitud.emisiones.all or solicitud.qbi2_pdf_url %}
                     <section class="issued-result">
-                        <div><span>Receta emitida</span><h3>RCTA confirmó la operación</h3>{% if solicitud.qbi2_id_receta %}<p>ID receta {{ solicitud.qbi2_id_receta }}</p>{% endif %}</div>
-                        <div class="issued-actions">
-                            <a href="{{ solicitud.qbi2_pdf_url }}" target="_blank" rel="noopener">Ver PDF</a>
-                            {% if solicitud.estado == estados.EMITIDA %}<a class="mail-button" href="{% url 'recetas:api_medico_solicitud_correo' solicitud.id %}">Preparar correo con PDF</a>{% endif %}
+                        <div>
+                            <span>Resultado de emisión</span>
+                            <h3>Documentos generados por RCTA</h3>
+                            <div class="issued-documents">
+                                {% for emision in solicitud.emisiones.all %}
+                                    <div>
+                                        <strong>Receta {{ emision.orden }} de {{ emision.total }}</strong>
+                                        {% if emision.qbi2_id_receta %}<small>ID {{ emision.qbi2_id_receta }}</small>{% endif %}
+                                        {% if emision.qbi2_pdf_url %}<a href="{{ emision.qbi2_pdf_url }}" target="_blank" rel="noopener">Ver PDF {{ emision.orden }}</a>{% elif emision.error_qbi2 %}<small class="document-error">{{ emision.error_qbi2 }}</small>{% else %}<small>Pendiente de emisión</small>{% endif %}
+                                    </div>
+                                {% empty %}
+                                    <div><strong>Receta emitida</strong>{% if solicitud.qbi2_id_receta %}<small>ID {{ solicitud.qbi2_id_receta }}</small>{% endif %}<a href="{{ solicitud.qbi2_pdf_url }}" target="_blank" rel="noopener">Ver PDF</a></div>
+                                {% endfor %}
+                            </div>
                         </div>
-                        {% if solicitud.estado == estados.EMITIDA %}<small>Se descarga un borrador listo para abrir, revisar y enviar con el cliente de correo.</small>{% endif %}
+                        {% if solicitud.estado == estados.EMITIDA %}<div class="issued-actions"><a class="mail-button" href="{% url 'recetas:api_medico_solicitud_correo' solicitud.id %}">Preparar correo con todos los PDF</a></div>{% endif %}
+                        {% if solicitud.estado == estados.EMITIDA %}<small>Se descarga un único borrador con todos los documentos adjuntos, listo para revisar y enviar.</small>{% endif %}
                     </section>
                 {% endif %}
             </article>
@@ -241,6 +252,11 @@
     .provider-error p { margin:.2rem 0 0; white-space:pre-wrap; }
     .issued-result { align-items:center; display:grid; gap:1rem; grid-template-columns:1fr auto; margin-top:1rem; padding:1rem 1.2rem; }
     .issued-result h3,.issued-result p { margin:.1rem 0 0; } .issued-result p,.issued-result > small { color:var(--muted); }
+    .issued-documents { display:grid; gap:.45rem; margin-top:.7rem; }
+    .issued-documents > div { align-items:center; background:#faf7f6; border-radius:.65rem; display:flex; flex-wrap:wrap; gap:.5rem; padding:.55rem .7rem; }
+    .issued-documents small { color:var(--muted); }
+    .issued-documents a { color:var(--red); font-size:.8rem; font-weight:850; margin-left:auto; text-decoration:none; }
+    .issued-documents .document-error { color:#8b3030; flex:1 1 100%; }
     .issued-actions { display:flex; flex-wrap:wrap; gap:.55rem; justify-content:flex-end; }
     .issued-actions a { background:white; border:1px solid var(--red); border-radius:999px; color:var(--red); font-weight:850; padding:.55rem .85rem; text-decoration:none; }
     .issued-actions a.mail-button { background:var(--red); color:white; }
@@ -323,7 +339,7 @@
             if (event.target.closest(".load-more")) { searchMedications(true); return; }
             const button = event.target.closest("[data-add]"); if (!button) return;
             const item = found[Number(button.dataset.add)]; if (!item) return;
-            if (selected.length >= 2) { setStatus("Esta receta admite hasta 2 medicamentos.", true); return; }
+            if (selected.length >= 10) { setStatus("El pedido admite hasta 10 medicamentos.", true); return; }
             if (selected.some(value => medicationKey(value) === medicationKey(item))) { setStatus("Ese medicamento ya está seleccionado.", true); return; }
             selected.push(item); renderSelected(); setStatus("");
         });

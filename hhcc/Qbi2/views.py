@@ -23,7 +23,7 @@ from django.views.decorators.http import require_GET
 from django.views.decorators.http import require_POST
 
 from .client import Qbi2ConfigurationError, Qbi2HTTPError
-from .models import SolicitudReceta
+from .models import EmisionSolicitudReceta, SolicitudReceta
 from .notifications import (
     PrescriptionNotificationError,
     build_prescription_email_draft,
@@ -120,7 +120,9 @@ def pacientes_portal_page(request):
 def solicitudes_receta_page(request):
     estado = request.GET.get("estado") or SolicitudReceta.Estado.PENDIENTE
     estados_validos = {choice[0] for choice in SolicitudReceta.Estado.choices}
-    queryset = SolicitudReceta.objects.select_related("paciente", "historia_clinica", "aprobado_por")
+    queryset = SolicitudReceta.objects.select_related(
+        "paciente", "historia_clinica", "aprobado_por"
+    ).prefetch_related("emisiones")
     if estado != "todas" and estado in estados_validos:
         queryset = queryset.filter(estado=estado)
     elif estado != "todas":
@@ -145,7 +147,7 @@ def solicitudes_receta_page(request):
                 "presentacion": solicitud.medicamento_presentacion,
             }
         ]
-        solicitud.medicamentos_json = json.dumps(medicamentos[:2], ensure_ascii=False)
+        solicitud.medicamentos_json = json.dumps(medicamentos[:10], ensure_ascii=False)
 
     return render(
         request,
@@ -442,34 +444,25 @@ def validar_paciente_portal(request):
         return JsonResponse({"status": "error", "message": "Elegí al menos un medicamento del vademécum."}, status=400)
     if len(medicamentos) > 10:
         return JsonResponse({"status": "error", "message": "Podés seleccionar hasta 10 medicamentos."}, status=400)
-    grupos_medicamentos = list(_chunks(medicamentos, 2))
-    solicitudes = []
     with transaction.atomic():
-        for index, grupo in enumerate(grupos_medicamentos, start=1):
-            solicitudes.append(
-                create_prescription_request(
-                    paciente,
-                    historia,
-                    grupo[0],
-                    medicamentos=grupo,
-                    receta_orden=index,
-                    total_recetas=len(grupos_medicamentos),
-                    total_medicamentos_paciente=len(medicamentos),
-                    diagnostico="",
-                    request_ip=get_client_ip(request),
-                    request_user_agent=request.META.get("HTTP_USER_AGENT", ""),
-                )
-            )
-
-    receta_label = "receta" if len(solicitudes) == 1 else "recetas"
+        solicitud = create_prescription_request(
+            paciente,
+            historia,
+            medicamentos[0],
+            medicamentos=medicamentos,
+            total_medicamentos_paciente=len(medicamentos),
+            diagnostico="",
+            request_ip=get_client_ip(request),
+            request_user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        )
 
     return JsonResponse(
         {
             "status": "success",
-            "message": f"Solicitud recibida. Se generaron {len(solicitudes)} {receta_label} pendientes de aprobacion medica.",
+            "message": "Solicitud recibida. El médico revisará el pedido completo antes de emitir.",
             "solicitud": {
-                "id": solicitudes[0].id,
-                "estado": solicitudes[0].estado,
+                "id": solicitud.id,
+                "estado": solicitud.estado,
             },
             "solicitudes": [
                 {
@@ -477,7 +470,6 @@ def validar_paciente_portal(request):
                     "estado": solicitud.estado,
                     "medicamentos": solicitud.auditoria.get("medicamentos", []),
                 }
-                for solicitud in solicitudes
             ],
         }
     )
@@ -519,19 +511,37 @@ def rechazar_solicitud_receta(request, solicitud_id):
 @require_GET
 def preparar_correo_receta(request, solicitud_id):
     solicitud = get_object_or_404(
-        SolicitudReceta.objects.select_related("paciente"),
+        SolicitudReceta.objects.select_related("paciente").prefetch_related("emisiones"),
         pk=solicitud_id,
         estado=SolicitudReceta.Estado.EMITIDA,
     )
-    if not solicitud.qbi2_pdf_url:
+    emisiones = [
+        emision
+        for emision in solicitud.emisiones.all()
+        if emision.estado == EmisionSolicitudReceta.Estado.EMITIDA
+        and emision.qbi2_pdf_url
+    ]
+    pdf_sources = [
+        (
+            emision.qbi2_id_receta or f"{solicitud.pk}-{emision.orden}",
+            emision.qbi2_pdf_url,
+        )
+        for emision in emisiones
+    ]
+    if not pdf_sources and solicitud.qbi2_pdf_url:
+        pdf_sources = [(solicitud.qbi2_id_receta or solicitud.pk, solicitud.qbi2_pdf_url)]
+    if not pdf_sources:
         return HttpResponse("La receta emitida no tiene un PDF disponible.", status=409)
 
     try:
-        pdf = download_prescription_pdf(solicitud.qbi2_pdf_url)
+        pdfs = [
+            (identifier, download_prescription_pdf(pdf_url))
+            for identifier, pdf_url in pdf_sources
+        ]
     except PrescriptionNotificationError as exc:
         return HttpResponse(str(exc), status=502)
 
-    draft = build_prescription_email_draft(solicitud, pdf)
+    draft = build_prescription_email_draft(solicitud, pdfs)
     response = HttpResponse(draft, content_type="message/rfc822")
     response["Content-Disposition"] = (
         f'attachment; filename="{prescription_draft_filename(solicitud)}"'
@@ -815,10 +825,11 @@ def _recipe_data_from_solicitud(
     posologia: str,
     cantidad: int,
     tratamiento: int,
+    medicamentos: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Adapt a patient request to the same server-owned input used by the medical form."""
     auditoria = solicitud.auditoria if isinstance(solicitud.auditoria, dict) else {}
-    raw_medications = auditoria.get("medicamentos")
+    raw_medications = medicamentos or auditoria.get("medicamentos")
     if not isinstance(raw_medications, list) or not raw_medications:
         raw_medications = [
             {
@@ -839,7 +850,7 @@ def _recipe_data_from_solicitud(
             "posologia": posologia,
             "tratamiento": tratamiento,
         }
-        for item in raw_medications[:2]
+        for item in raw_medications[:10]
         if isinstance(item, dict)
     ]
     return _safe_recipe_data(
@@ -1015,8 +1026,8 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
     medicamentos = None
     if aprobar and "medicamentosJson" in request.POST:
         medicamentos = _selected_medications_from_portal_data(request.POST)
-        if not medicamentos or len(medicamentos) > 2:
-            messages.error(request, "La receta debe tener uno o dos medicamentos del vademécum.")
+        if not medicamentos or len(medicamentos) > 10:
+            messages.error(request, "El pedido debe tener entre 1 y 10 medicamentos del vademécum.")
             return HttpResponseRedirect(next_url)
 
     if aprobar and not diagnostico:
@@ -1061,7 +1072,7 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
             if emitted:
                 messages.success(
                     request,
-                    "Receta emitida. Ya podés preparar el correo con el PDF adjunto.",
+                    "Pedido emitido. Ya podés preparar el correo con los PDF adjuntos.",
                 )
                 next_url = f'{reverse("recetas:medico_solicitudes")}?estado=emitida'
         else:
@@ -1079,61 +1090,104 @@ def _emitir_solicitud_receta(
     tratamiento,
     observacion="",
 ):
-    payload: dict[str, Any] = {}
-    try:
-        recipe_data = _recipe_data_from_solicitud(
-            solicitud,
-            diagnostico=diagnostico,
-            posologia=posologia,
-            cantidad=cantidad,
-            tratamiento=tratamiento,
+    auditoria = solicitud.auditoria if isinstance(solicitud.auditoria, dict) else {}
+    medicamentos = auditoria.get("medicamentos")
+    if not isinstance(medicamentos, list) or not medicamentos:
+        medicamentos = [
+            {
+                "regNo": solicitud.medicamento_reg_no,
+                "nombreProducto": solicitud.medicamento_nombre_producto,
+                "nombreDroga": solicitud.medicamento_nombre_droga,
+                "presentacion": solicitud.medicamento_presentacion,
+            }
+        ]
+    medicamentos = [item for item in medicamentos[:10] if isinstance(item, dict)]
+    max_por_receta = max(
+        1, int(getattr(settings, "QBI2_MAX_MEDICATIONS_PER_RECIPE", 2))
+    )
+    grupos = list(_chunks(medicamentos, max_por_receta))
+    solicitud.emisiones.all().delete()
+    emisiones = [
+        EmisionSolicitudReceta.objects.create(
+            solicitud=solicitud,
+            orden=orden,
+            total=len(grupos),
+            medicamentos=grupo,
         )
-        _, payload = build_rcta_payload(recipe_data)
-        result = emit_rcta_payload(recipe_data)
-    except (Qbi2ConfigurationError, ValueError) as exc:
-        solicitud.marcar_error_emision(
-            user,
-            diagnostico=diagnostico,
-            posologia=posologia,
-            observacion=observacion,
-            payload=payload,
-            error=str(exc),
-        )
-        return False
-    except Qbi2HTTPError as exc:
-        solicitud.marcar_error_emision(
-            user,
-            diagnostico=diagnostico,
-            posologia=posologia,
-            observacion=observacion,
-            payload=payload,
-            response=exc.payload,
-            error=str(exc),
-        )
-        return False
+        for orden, grupo in enumerate(grupos, start=1)
+    ]
 
-    summary = result.summary
-    pdf_url = summary.get("s3Link")
-    if pdf_url:
-        solicitud.marcar_emitida(
-            user,
-            diagnostico=diagnostico,
-            posologia=posologia,
-            observacion=observacion,
-            payload=result.payload,
-            response=result.response,
-            summary=summary,
-        )
-        return True
+    primera_emitida = None
+    for emision, grupo in zip(emisiones, grupos):
+        payload: dict[str, Any] = {}
+        try:
+            recipe_data = _recipe_data_from_solicitud(
+                solicitud,
+                diagnostico=diagnostico,
+                posologia=posologia,
+                cantidad=cantidad,
+                tratamiento=tratamiento,
+                medicamentos=grupo,
+            )
+            _, payload = build_rcta_payload(recipe_data)
+            result = emit_rcta_payload(recipe_data)
+            summary = result.summary
+            pdf_url = summary.get("s3Link")
+            if not pdf_url:
+                provider_errors = (
+                    summary.get("errores") or "QBI2 no devolvió PDF de receta."
+                )
+                raise ValueError(str(provider_errors))
+        except (Qbi2ConfigurationError, ValueError, Qbi2HTTPError) as exc:
+            emision.estado = EmisionSolicitudReceta.Estado.ERROR
+            emision.payload_qbi2 = payload
+            emision.respuesta_qbi2 = getattr(exc, "payload", {}) or {}
+            emision.error_qbi2 = str(exc)
+            emision.save(
+                update_fields=[
+                    "estado",
+                    "payload_qbi2",
+                    "respuesta_qbi2",
+                    "error_qbi2",
+                    "updated_at",
+                ]
+            )
+            solicitud.marcar_error_emision(
+                user,
+                diagnostico=diagnostico,
+                posologia=posologia,
+                observacion=observacion,
+                payload=payload,
+                response=getattr(exc, "payload", {}) or {},
+                error=f"Receta {emision.orden}/{emision.total}: {exc}",
+            )
+            return False
 
-    provider_errors = summary.get("errores") or "Qbi2 no devolvio PDF de receta."
-    solicitud.marcar_error_emision(
+        emision.estado = EmisionSolicitudReceta.Estado.EMITIDA
+        emision.payload_qbi2 = result.payload
+        emision.respuesta_qbi2 = result.response
+        emision.qbi2_id_receta = summary.get("idReceta") or ""
+        emision.qbi2_pdf_url = pdf_url
+        emision.save(
+            update_fields=[
+                "estado",
+                "payload_qbi2",
+                "respuesta_qbi2",
+                "qbi2_id_receta",
+                "qbi2_pdf_url",
+                "updated_at",
+            ]
+        )
+        primera_emitida = primera_emitida or (result, summary)
+
+    result, summary = primera_emitida
+    solicitud.marcar_emitida(
         user,
         diagnostico=diagnostico,
         posologia=posologia,
         observacion=observacion,
         payload=result.payload,
         response=result.response,
-        error=str(provider_errors),
+        summary=summary,
     )
-    return False
+    return True

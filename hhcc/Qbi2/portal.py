@@ -78,7 +78,7 @@ def create_prescription_request(
     auditoria = {
         "source": "portal-pacientes",
         "medicamento": medicamento,
-        "medicamentos": medicamentos[:2],
+        "medicamentos": medicamentos[:10],
     }
     if receta_orden is not None and total_recetas is not None:
         auditoria["receta_orden"] = receta_orden
