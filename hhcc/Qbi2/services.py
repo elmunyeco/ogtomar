@@ -1,3 +1,4 @@
+import unicodedata
 from typing import Any
 from urllib.parse import quote
 
@@ -41,6 +42,68 @@ class VademecumService:
             "items": [normalize_medicamento(item) for item in items],
             "page_info": extract_page_info(raw_response),
             "raw": raw_response,
+        }
+
+    def buscar_relevante(
+        self,
+        query: str,
+        *,
+        start_page: int = 1,
+        extra_params: dict[str, Any] | None = None,
+        max_pages: int | None = None,
+        max_results: int | None = None,
+    ) -> dict[str, Any]:
+        """Busca varias páginas y ordena producto antes que droga."""
+
+        if start_page < 1:
+            raise ValidationError("La pagina inicial debe ser mayor o igual a 1.")
+        max_pages = max_pages or int(
+            getattr(settings, "QBI2_VADEMECUM_RELEVANCE_MAX_PAGES", 10)
+        )
+        max_results = max_results or int(
+            getattr(settings, "QBI2_VADEMECUM_RELEVANCE_MAX_RESULTS", 40)
+        )
+        max_pages = max(1, min(max_pages, 20))
+        max_results = max(1, min(max_results, 200))
+
+        first = self.buscar(query, page=start_page, extra_params=extra_params)
+        provider_pages = _provider_page_count(first.get("page_info"), default=start_page)
+        end_page = min(provider_pages, start_page + max_pages - 1)
+        page_results = [first]
+        for page in range(start_page + 1, end_page + 1):
+            page_results.append(self.buscar(query, page=page, extra_params=extra_params))
+
+        combined = []
+        seen = set()
+        for page_result in page_results:
+            for item in page_result.get("items", []):
+                if not isinstance(item, dict):
+                    continue
+                key = (item.get("regNo") or "").strip() or (
+                    item.get("nombreProducto"),
+                    item.get("nombreDroga"),
+                    item.get("presentacion"),
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                combined.append(item)
+
+        ranked = sorted(combined, key=lambda item: _medication_relevance(item, query))
+        return {
+            "query": first["query"],
+            "page": start_page,
+            "items": ranked[:max_results],
+            "page_info": {
+                "numeroPagina": start_page,
+                "cantidadPaginas": provider_pages,
+                "paginasConsultadas": list(range(start_page, end_page + 1)),
+                "tieneMasResultados": end_page < provider_pages,
+                "proximaPagina": end_page + 1 if end_page < provider_pages else None,
+                "resultadosRevisados": len(combined),
+                "resultadosDevueltos": min(len(ranked), max_results),
+                "resultadosOmitidos": max(0, len(ranked) - max_results),
+            },
         }
 
     def _build_search_path(self, query: str) -> str:
@@ -144,6 +207,47 @@ class PracticaService:
 
 def normalize_vademecum_response(raw_response: Any) -> list[Any]:
     return normalize_list_response(raw_response, COMMON_LIST_KEYS)
+
+
+def _provider_page_count(page_info: Any, *, default: int) -> int:
+    if not isinstance(page_info, dict):
+        return default
+    try:
+        return max(default, int(page_info.get("cantidadPaginas") or default))
+    except (TypeError, ValueError):
+        return default
+
+
+def _search_text(value: Any) -> str:
+    normalized = unicodedata.normalize("NFKD", str(value or "").casefold())
+    return "".join(char for char in normalized if not unicodedata.combining(char)).strip()
+
+
+def _medication_relevance(item: dict[str, Any], query: str) -> tuple[Any, ...]:
+    needle = _search_text(query)
+    product = _search_text(item.get("nombreProducto"))
+    drug = _search_text(item.get("nombreDroga"))
+    if product == needle:
+        rank = 0
+    elif product.startswith(needle):
+        rank = 1
+    elif needle in product:
+        rank = 2
+    elif drug == needle:
+        rank = 3
+    elif drug.startswith(needle):
+        rank = 4
+    elif needle in drug:
+        rank = 5
+    else:
+        rank = 6
+    return (
+        rank,
+        product,
+        drug,
+        _search_text(item.get("presentacion")),
+        str(item.get("regNo") or ""),
+    )
 
 
 def normalize_list_response(raw_response: Any, list_keys: tuple[str, ...]) -> list[Any]:

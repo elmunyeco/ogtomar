@@ -42,6 +42,7 @@
         .result { align-items:flex-start; background:white; border:0; border-bottom:1px solid var(--line); cursor:pointer; display:flex; gap:.8rem; justify-content:space-between; padding:.7rem .2rem; text-align:left; }
         .result strong,.result small { display:block; }
         .result small { color:var(--muted); margin-top:.15rem; }
+        .load-more { background:var(--blue-soft); border:1px solid var(--line); border-radius:9px; color:var(--blue-dark); cursor:pointer; font-weight:800; margin-top:.55rem; min-height:2.5rem; width:100%; }
         code { background:var(--blue-soft); border-radius:999px; color:var(--blue-dark); font-size:.75rem; font-weight:750; padding:.22rem .5rem; white-space:nowrap; }
         .selected { display:grid; gap:.5rem; margin-top:.7rem; }
         .selected-item { align-items:center; background:var(--blue-soft); border:1px solid var(--line); border-radius:9px; display:flex; gap:.7rem; justify-content:space-between; padding:.65rem .75rem; }
@@ -51,7 +52,6 @@
         .status { border-radius:9px; display:none; font-size:.9rem; font-weight:750; margin-top:.75rem; padding:.7rem .8rem; }
         .status.ok { background:#eaf7f1; color:#176044; display:block; }
         .status.error { background:#fff2f2; color:#8b3030; display:block; }
-        .privacy { color:var(--muted); font-size:.78rem; margin:.9rem 0 0; }
         @media(max-width:760px) { .layout { grid-template-columns:1fr; } .fields,.identity { grid-template-columns:1fr; } .topbar { align-items:flex-start; } .brand div { display:none; } .search-row { flex-direction:column; } }
     </style>
 </head>
@@ -71,18 +71,15 @@
 
         <section class="welcome">
             <h1>Hola, {{ paciente.nombre }}</h1>
-            <p>Actualizá tus datos de contacto o elegí los medicamentos que necesitás solicitar.</p>
+            <p>Solicitar medicación. Mantener actualizados los datos, o las recetas no podrán emitirse</p>
         </section>
 
         <div class="layout">
             <section class="card">
                 <h2>Mis datos</h2>
-                <p class="lead">Tu identidad y cobertura son datos de sólo lectura.</p>
                 <div class="identity">
                     <div><span>Nombre y apellido</span><strong>{{ paciente.nombre }} {{ paciente.apellido }}</strong></div>
                     <div><span>Documento</span><strong>{{ paciente.numDoc }}</strong></div>
-                    <div><span>Cobertura</span><strong>{{ paciente.obraSocial|default:"Sin cobertura informada" }}</strong></div>
-                    <div><span>N.º de afiliado</span><strong>{{ paciente.afiliado|default:"—" }}</strong></div>
                 </div>
                 <form id="profile-form">
                     {% csrf_token %}
@@ -92,16 +89,17 @@
                         <div class="field wide"><label for="{{ perfil_form.direccion.id_for_label }}">Dirección</label>{{ perfil_form.direccion }}</div>
                         <div class="field"><label for="{{ perfil_form.telefono.id_for_label }}">Teléfono</label>{{ perfil_form.telefono }}</div>
                         <div class="field"><label for="{{ perfil_form.celular.id_for_label }}">Celular</label>{{ perfil_form.celular }}</div>
+                        <div class="field"><label for="{{ perfil_form.obraSocial.id_for_label }}">Cobertura</label>{{ perfil_form.obraSocial }}</div>
+                        <div class="field"><label for="{{ perfil_form.afiliado.id_for_label }}">Número de afiliado</label>{{ perfil_form.afiliado }}</div>
                     </div>
                     <div class="form-footer"><button class="button" type="submit">Guardar mis datos</button></div>
                     <div class="status" id="profile-status" role="status"></div>
                 </form>
-                <p class="privacy">Desde este portal sólo se pueden modificar sexo, dirección, teléfonos y correo.</p>
             </section>
 
             <section class="card">
                 <h2>Pedir una receta</h2>
-                <p class="lead">Buscá y seleccioná hasta 10 medicamentos. El médico revisará el pedido antes de decidir.</p>
+                <p class="lead">Buscá y seleccioná hasta 10 medicamentos. El Dr. Omar Prieto revisará el pedido antes de decidir.</p>
                 <form id="request-form">
                     {% csrf_token %}
                     <div class="field">
@@ -130,33 +128,57 @@
     const requestButton = document.getElementById("request-button");
     let found = [];
     let selected = [];
+    let nextSearchPage = null;
+    let activeSearch = "";
     const esc = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[c]);
     const csrf = (form) => form.querySelector("[name=csrfmiddlewaretoken]").value;
     const status = (id, message, kind) => { const node=document.getElementById(id); node.textContent=message || ""; node.className=`status ${kind || ""}`; };
     const medicationKey = (item) => String(item.regNo || "").trim();
+    const searchText = (value) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().trim();
+    const relevance = (item, needle) => {
+        const product=searchText(item.nombreProducto), drug=searchText(item.nombreDroga);
+        if(product===needle) return 0; if(product.startsWith(needle)) return 1; if(product.includes(needle)) return 2;
+        if(drug===needle) return 3; if(drug.startsWith(needle)) return 4; if(drug.includes(needle)) return 5; return 6;
+    };
+    const mergeFound = (items) => {
+        const merged = new Map(found.map(item => [medicationKey(item) || JSON.stringify(item), item]));
+        items.forEach(item => merged.set(medicationKey(item) || JSON.stringify(item), item));
+        const needle=searchText(activeSearch);
+        found=Array.from(merged.values()).sort((a,b) => relevance(a,needle)-relevance(b,needle) || searchText(a.nombreProducto).localeCompare(searchText(b.nombreProducto)));
+    };
+    const renderResults = () => {
+        const rows=found.length ? found.map((item,index) => `<button class="result" type="button" data-index="${index}"><span><strong>${esc(item.nombreProducto || item.display || "Medicamento")}</strong><small>${esc([item.nombreDroga,item.presentacion].filter(Boolean).join(" · "))}</small></span><code>RegNo ${esc(item.regNo || "-")}</code></button>`).join("") : "No se encontraron medicamentos.";
+        results.innerHTML=rows+(nextSearchPage ? `<button class="load-more" type="button">Buscar más resultados</button>` : "");
+    };
     const renderSelected = () => {
         selectedInput.value = JSON.stringify(selected);
         selectedBox.innerHTML = selected.map((item,index) => `<div class="selected-item"><span><strong>${esc(item.nombreProducto || "Medicamento")}</strong><small>${esc([item.nombreDroga,item.presentacion].filter(Boolean).join(" · "))}</small></span><button class="remove" type="button" data-index="${index}" aria-label="Quitar">×</button></div>`).join("");
     };
     const parseResponse = async (response) => { try { return await response.json(); } catch (_) { return {message:"El servidor respondió en un formato inesperado."}; } };
 
-    document.getElementById("search-button").addEventListener("click", async () => {
+    const searchMedications = async (append=false) => {
         status("request-status", "", "");
+        const requestedQuery=query.value.trim();
+        if(!append){ activeSearch=requestedQuery; found=[]; nextSearchPage=null; }
+        if(requestedQuery!==activeSearch){ activeSearch=requestedQuery; found=[]; nextSearchPage=null; append=false; }
         results.textContent = "Buscando…";
         const url = new URL(page.dataset.searchUrl, location.origin);
-        url.searchParams.set("q", query.value);
-        url.searchParams.set("page", "1");
+        url.searchParams.set("q", activeSearch);
+        url.searchParams.set("scanPage", append && nextSearchPage ? String(nextSearchPage) : "1");
         try {
             const response = await fetch(url, {credentials:"same-origin",headers:{Accept:"application/json"}});
             const data = await parseResponse(response);
             if (response.status === 401) { location.href="{% url 'qbi2_poc:paciente_login' %}"; return; }
             if (!response.ok) throw new Error(data.message || "No se pudo buscar el medicamento.");
-            found = Array.isArray(data.items) ? data.items : [];
-            results.innerHTML = found.length ? found.map((item,index) => `<button class="result" type="button" data-index="${index}"><span><strong>${esc(item.nombreProducto || item.display || "Medicamento")}</strong><small>${esc([item.nombreDroga,item.presentacion].filter(Boolean).join(" · "))}</small></span><code>RegNo ${esc(item.regNo || "-")}</code></button>`).join("") : "No se encontraron medicamentos.";
+            mergeFound(Array.isArray(data.items) ? data.items : []);
+            nextSearchPage=data.pageInfo?.tieneMasResultados ? data.pageInfo.proximaPagina : null;
+            renderResults();
         } catch (error) { results.textContent=""; status("request-status",error.message,"error"); }
-    });
+    };
+    document.getElementById("search-button").addEventListener("click", () => searchMedications(false));
     query.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); document.getElementById("search-button").click(); } });
     results.addEventListener("click", event => {
+        if(event.target.closest(".load-more")){ searchMedications(true); return; }
         const button=event.target.closest(".result"); if(!button) return;
         const item=found[Number(button.dataset.index)]; if(!item) return;
         if(selected.length >= 10) { status("request-status","Podés seleccionar hasta 10 medicamentos.","error"); return; }

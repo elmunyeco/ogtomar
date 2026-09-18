@@ -235,7 +235,37 @@ def buscar_vademecum_legacy(request):
 def buscar_vademecum_portal(request):
     if not get_patient_from_session(request):
         return _patient_api_auth_error()
-    return buscar_vademecum_legacy(request)
+    query = request.GET.get("q") or request.GET.get("query") or ""
+    start_page = _positive_int(request.GET.get("scanPage"), default=1)
+    try:
+        result = VademecumService().buscar_relevante(
+            query,
+            start_page=start_page,
+            extra_params=_qbi2_prefixed_params(request),
+        )
+    except ValidationError as exc:
+        return JsonResponse({"status": "error", "message": "; ".join(exc.messages)}, status=400)
+    except Qbi2ConfigurationError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
+    except Qbi2HTTPError as exc:
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": str(exc),
+                "provider_status": exc.status_code,
+                "provider_payload": exc.payload,
+            },
+            status=502,
+        )
+    return JsonResponse(
+        {
+            "status": "success",
+            "query": result["query"],
+            "count": len(result["items"]),
+            "pageInfo": result["page_info"],
+            "items": result["items"],
+        }
+    )
 
 
 @require_GET

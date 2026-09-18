@@ -13,6 +13,7 @@ from Qbi2.client import Qbi2HTTPError
 from Qbi2.models import SolicitudReceta
 from Qbi2.portal import find_patient_history, normalize_document
 from Qbi2.recipes import RecetaResult
+from Qbi2.services import VademecumService
 from Qbi2.spontaneous import (
     SpontaneousPocResult,
     build_spontaneous_payload,
@@ -61,6 +62,75 @@ class VademecumLegacyViewTests(TestCase):
         self.assertEqual(payload["count"], 1)
         self.assertEqual(payload["items"][0]["nombreProducto"], "Atorva")
         service.buscar.assert_called_once_with("atorva", page=1, extra_params={})
+
+
+class VademecumRelevantSearchTests(TestCase):
+    def test_scans_provider_pages_and_prioritizes_commercial_name_prefix(self):
+        pages = {
+            1: [
+                {
+                    "regNo": "1",
+                    "nombreProducto": "AMLOTENS",
+                    "nombreDroga": "AMLODIPINA",
+                    "presentacion": "10 mg",
+                }
+            ],
+            2: [],
+            3: [],
+            4: [],
+            5: [
+                {
+                    "regNo": "34959",
+                    "nombreProducto": "LOTRIAL",
+                    "nombreDroga": "ENALAPRIL",
+                    "presentacion": "10 mg",
+                }
+            ],
+        }
+
+        class Client:
+            def __init__(self):
+                self.requested_pages = []
+
+            def get(self, path, params):
+                page = params["numeroPagina"]
+                self.requested_pages.append(page)
+                return {
+                    "medicamentos": pages[page],
+                    "pageInfo": {"numeroPagina": page, "cantidadPaginas": 5},
+                }
+
+        client = Client()
+        result = VademecumService(client=client).buscar_relevante("Lot")
+
+        self.assertEqual(client.requested_pages, [1, 2, 3, 4, 5])
+        self.assertEqual(result["items"][0]["nombreProducto"], "LOTRIAL")
+        self.assertEqual(result["page_info"]["paginasConsultadas"], [1, 2, 3, 4, 5])
+        self.assertFalse(result["page_info"]["tieneMasResultados"])
+
+    def test_limits_each_scan_and_exposes_the_next_provider_page(self):
+        class Client:
+            def get(self, path, params):
+                page = params["numeroPagina"]
+                return {
+                    "medicamentos": [
+                        {
+                            "regNo": str(page),
+                            "nombreProducto": f"Producto {page}",
+                            "nombreDroga": "droga",
+                        }
+                    ],
+                    "pageInfo": {"numeroPagina": page, "cantidadPaginas": 12},
+                }
+
+        result = VademecumService(client=Client()).buscar_relevante(
+            "Lot",
+            max_pages=2,
+        )
+
+        self.assertEqual(result["page_info"]["paginasConsultadas"], [1, 2])
+        self.assertTrue(result["page_info"]["tieneMasResultados"])
+        self.assertEqual(result["page_info"]["proximaPagina"], 3)
 
 
 class Qbi2PocRoutingTests(TestCase):
@@ -674,10 +744,25 @@ class PacientesPortalTests(TestCase):
         self.assertContains(response, "name=\"telefono\"")
         self.assertContains(response, "name=\"celular\"")
         self.assertContains(response, "name=\"mail\"")
+        self.assertContains(response, "name=\"obraSocial\"")
+        self.assertContains(response, "name=\"afiliado\"")
+        self.assertContains(
+            response,
+            "Solicitar medicación. Mantener actualizados los datos, o las recetas no podrán emitirse",
+        )
+        self.assertContains(
+            response,
+            "El Dr. Omar Prieto revisará el pedido antes de decidir.",
+        )
+        self.assertNotContains(response, "Tu identidad y cobertura son datos de sólo lectura.")
+        self.assertNotContains(
+            response,
+            "Desde este portal sólo se pueden modificar sexo, dirección, teléfonos y correo.",
+        )
         self.assertNotContains(response, "name=\"diagnostico\"")
         self.assertNotContains(response, "QBI2 PoC")
 
-    def test_profile_update_ignores_identity_and_coverage_fields(self):
+    def test_profile_update_changes_coverage_but_ignores_identity_and_plan(self):
         self.login_patient()
         response = self.client.post(
             "/recetas/api/paciente/perfil/actualizar/",
@@ -692,6 +777,7 @@ class PacientesPortalTests(TestCase):
                 "numDoc": "99999999",
                 "obraSocial": "Cobertura alterada",
                 "afiliado": "ALTERADO",
+                "plan": "Plan alterado",
             },
         )
         self.paciente.refresh_from_db()
@@ -705,8 +791,38 @@ class PacientesPortalTests(TestCase):
         self.assertEqual(self.paciente.nombre, "Ana")
         self.assertEqual(self.paciente.apellido, "De la Fuente")
         self.assertEqual(self.paciente.numDoc, "12345678")
-        self.assertEqual(self.paciente.obraSocial, "OSDE")
-        self.assertEqual(self.paciente.afiliado, "ORIGINAL-1")
+        self.assertEqual(self.paciente.obraSocial, "Cobertura alterada")
+        self.assertEqual(self.paciente.afiliado, "ALTERADO")
+        self.assertIsNone(self.paciente.plan)
+
+    @patch("Qbi2.views.VademecumService")
+    def test_patient_medication_search_uses_relevant_multi_page_scan(self, service_class):
+        service_class.return_value.buscar_relevante.return_value = {
+            "query": "Lot",
+            "page": 1,
+            "items": [{"regNo": "34959", "nombreProducto": "LOTRIAL"}],
+            "page_info": {
+                "numeroPagina": 1,
+                "cantidadPaginas": 9,
+                "paginasConsultadas": list(range(1, 10)),
+                "tieneMasResultados": False,
+                "proximaPagina": None,
+            },
+        }
+        self.login_patient()
+
+        response = self.client.get(
+            "/recetas/api/paciente/medicamentos/directo/",
+            {"q": "Lot", "scanPage": "1"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["items"][0]["nombreProducto"], "LOTRIAL")
+        service_class.return_value.buscar_relevante.assert_called_once_with(
+            "Lot",
+            start_page=1,
+            extra_params={},
+        )
 
     def test_patient_apis_require_patient_session(self):
         response = self.client.post(

@@ -37,13 +37,15 @@ class PacientePortalForm(forms.ModelForm):
 
     class Meta:
         model = Paciente
-        fields = ["sexo", "direccion", "telefono", "celular", "mail"]
+        fields = ["sexo", "direccion", "telefono", "celular", "mail", "obraSocial", "afiliado"]
         labels = {
             "sexo": "Sexo",
             "direccion": "Dirección",
             "telefono": "Teléfono",
             "celular": "Celular",
             "mail": "Correo electrónico",
+            "obraSocial": "Cobertura",
+            "afiliado": "Número de afiliado",
         }
         widgets = {
             "mail": forms.EmailInput(attrs={"autocomplete": "email"}),

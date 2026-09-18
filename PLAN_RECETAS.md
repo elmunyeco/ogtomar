@@ -1019,10 +1019,10 @@ conserva la trazabilidad completa.
 
 
 ========================================================================
-20. PENDIENTES DE UX DEL PORTAL DEL PACIENTE
+20. AJUSTES DE UX DEL PORTAL DEL PACIENTE
 ========================================================================
 
-Registrados el 18/09/2026 para la siguiente iteracion:
+Registrados e implementados el 18/09/2026:
 
 01. Eliminar la leyenda "Tu identidad y cobertura son datos de sólo lectura."
     por resultar innecesariamente paternalista.
