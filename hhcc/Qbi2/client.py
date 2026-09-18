@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import socket
 from dataclasses import dataclass
 from typing import Any
@@ -26,6 +27,85 @@ class Qbi2HTTPError(Qbi2Error):
         super().__init__(message)
         self.status_code = status_code
         self.payload = payload
+
+
+def qbi2_error_details(payload: Any, fallback: str = "", status_code: int | None = None) -> dict[str, Any]:
+    """Extract a concise, doctor-readable error without discarding provider trace data."""
+    message = ""
+    code = ""
+    request_id = ""
+
+    if isinstance(payload, dict):
+        for key in ("mensaje", "message", "detail", "descripcion", "error_description"):
+            value = payload.get(key)
+            if isinstance(value, (str, int, float)) and str(value).strip():
+                message = str(value).strip()
+                break
+
+        raw_error = payload.get("error")
+        for key in ("codigo", "code", "errorCode", "error_code"):
+            value = payload.get(key)
+            if isinstance(value, (str, int)) and str(value).strip():
+                code = str(value).strip()
+                break
+        if isinstance(raw_error, (str, int)) and str(raw_error).strip():
+            raw_error = str(raw_error).strip()
+            if re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*", raw_error):
+                code = code or raw_error
+            elif not message:
+                message = raw_error
+
+        if not message:
+            for key in ("errores", "errors"):
+                values = payload.get(key)
+                if not isinstance(values, list):
+                    values = [values] if values else []
+                for value in values:
+                    nested = qbi2_error_details(value)
+                    if nested["message"]:
+                        message = nested["message"]
+                        code = code or nested["code"]
+                        request_id = request_id or nested["request_id"]
+                        break
+                if message:
+                    break
+
+        for key in ("requestId", "request_id", "traceId", "trace_id"):
+            value = payload.get(key)
+            if isinstance(value, (str, int)) and str(value).strip():
+                request_id = str(value).strip()
+                break
+    elif isinstance(payload, list):
+        for value in payload:
+            nested = qbi2_error_details(value)
+            if nested["message"]:
+                message = nested["message"]
+                code = nested["code"]
+                request_id = nested["request_id"]
+                break
+    elif isinstance(payload, (str, int, float)):
+        message = str(payload).strip()
+
+    if not message:
+        message = fallback.strip() or "RCTA no informó el motivo del rechazo."
+    return {
+        "message": message,
+        "code": code,
+        "request_id": request_id,
+        "status_code": status_code,
+    }
+
+
+def qbi2_error_text(payload: Any, fallback: str = "", status_code: int | None = None) -> str:
+    details = qbi2_error_details(payload, fallback=fallback, status_code=status_code)
+    suffixes = []
+    if details["code"]:
+        suffixes.append(f'Código RCTA: {details["code"]}')
+    if details["request_id"]:
+        suffixes.append(f'Referencia técnica: {details["request_id"]}')
+    if not suffixes:
+        return details["message"]
+    return f'{details["message"]} — {" · ".join(suffixes)}'
 
 
 @dataclass(frozen=True)
@@ -99,7 +179,11 @@ class Qbi2Client:
             response_payload = self._decode_response(exc.read())
             logger.warning("QBI2 devolvio HTTP %s en %s %s", exc.code, method, self._safe_url(url))
             raise Qbi2HTTPError(
-                "QBI2 devolvio un error HTTP.",
+                qbi2_error_text(
+                    response_payload,
+                    fallback="RCTA devolvió un error HTTP sin más detalle.",
+                    status_code=exc.code,
+                ),
                 status_code=exc.code,
                 payload=response_payload,
             ) from exc

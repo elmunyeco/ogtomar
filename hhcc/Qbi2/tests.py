@@ -12,7 +12,7 @@ from django.test import RequestFactory, SimpleTestCase, TestCase, override_setti
 from django.urls import resolve, Resolver404
 
 from Qbi2 import views
-from Qbi2.client import Qbi2HTTPError
+from Qbi2.client import Qbi2HTTPError, qbi2_error_details, qbi2_error_text
 from Qbi2.models import EmisionSolicitudReceta, SolicitudReceta
 from Qbi2.notifications import (
     PRESCRIPTION_EMAIL_BODY,
@@ -243,6 +243,31 @@ class RecetasRoutingTests(TestCase):
 
         self.assertNotIn("\n.active a {", stylesheet)
         self.assertEqual(stylesheet.count(".pagination .active a {"), 2)
+
+
+class Qbi2ErrorDetailTests(SimpleTestCase):
+    def test_extracts_provider_message_code_and_trace_reference(self):
+        payload = {
+            "error": "QBI206",
+            "mensaje": "DEBE INGRESAR EL SEXO",
+            "requestId": "trace-123",
+        }
+
+        details = qbi2_error_details(payload, fallback="QBI2 devolvio un error HTTP.")
+
+        self.assertEqual(details["message"], "DEBE INGRESAR EL SEXO")
+        self.assertEqual(details["code"], "QBI206")
+        self.assertEqual(details["request_id"], "trace-123")
+        self.assertEqual(
+            qbi2_error_text(payload, fallback="QBI2 devolvio un error HTTP."),
+            "DEBE INGRESAR EL SEXO — Código RCTA: QBI206 · Referencia técnica: trace-123",
+        )
+
+    def test_uses_fallback_when_provider_has_no_readable_detail(self):
+        details = qbi2_error_details({}, fallback="No se pudo conectar con RCTA.")
+
+        self.assertEqual(details["message"], "No se pudo conectar con RCTA.")
+        self.assertEqual(details["code"], "")
 
 
 class RecetaPortalViewTests(TestCase):
@@ -639,6 +664,8 @@ class RecetaMedicoTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 502)
+        self.assertIn("AFILIADO", response.json()["message"])
+        self.assertIn("QBI184", response.json()["message"])
         self.assertEqual(response.json()["provider_payload"]["error"], "QBI184")
         self.assertIn("AFILIADO", response.json()["provider_payload"]["mensaje"])
 
@@ -1143,7 +1170,7 @@ class SolicitudRecetaQueueTests(TestCase):
             [item["regNo"] for item in emisiones[0].medicamentos],
             [item["regNo"] for item in medicamentos],
         )
-        self.assertEqual(solicitud.error_qbi2, "QBI2 rechazó la receta.")
+        self.assertEqual(solicitud.error_qbi2, "Medicamento inválido")
         self.assertEqual(
             response.url,
             f"/recetas/medico/solicitudes/?estado=pendiente&resultado={solicitud.id}#resultado-emision",
@@ -1151,7 +1178,32 @@ class SolicitudRecetaQueueTests(TestCase):
         feedback = self.client.get(response.url.split("#", 1)[0])
         self.assertContains(feedback, "emission-feedback error")
         self.assertContains(feedback, f"No se pudo emitir la solicitud #{solicitud.id}")
-        self.assertContains(feedback, "QBI2 rechazó la receta.")
+        self.assertContains(feedback, "Medicamento inválido")
+
+    def test_existing_generic_error_renders_saved_provider_detail(self):
+        solicitud = SolicitudReceta.objects.create(
+            paciente=self.paciente,
+            historia_clinica=self.historia,
+            medicamento_reg_no="34959",
+            estado=SolicitudReceta.Estado.ERROR_EMISION,
+            error_qbi2="QBI2 devolvio un error HTTP.",
+            respuesta_qbi2={
+                "error": "QBI206",
+                "mensaje": "DEBE INGRESAR EL SEXO",
+                "requestId": "trace-manfil",
+            },
+        )
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            "/recetas/medico/solicitudes/",
+            {"estado": "pendiente", "resultado": solicitud.id},
+        )
+
+        self.assertContains(response, "DEBE INGRESAR EL SEXO")
+        self.assertContains(response, "Código RCTA: QBI206")
+        self.assertContains(response, "Referencia técnica: trace-manfil")
+        self.assertNotContains(response, "QBI2 devolvio un error HTTP.")
 
     @patch("Qbi2.views.download_prescription_pdf", return_value=b"%PDF-1.7\nmock")
     def test_emitted_request_downloads_unsent_email_with_pdf_attached(self, download_pdf):

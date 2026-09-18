@@ -41,7 +41,12 @@
                 <span>Emisión fallida</span>
                 <h2>No se pudo emitir la solicitud #{{ resultado_solicitud.id }}</h2>
                 <p>{{ resultado_solicitud.paciente.apellido }}, {{ resultado_solicitud.paciente.nombre }}</p>
-                <div class="feedback-error">{{ resultado_solicitud.error_qbi2|default:"RCTA no informó el motivo del rechazo." }}</div>
+                <div class="feedback-error">
+                    <strong>{{ resultado_solicitud.error_detalle.message }}</strong>
+                    {% if resultado_solicitud.error_detalle.code or resultado_solicitud.error_detalle.request_id %}
+                        <small>{% if resultado_solicitud.error_detalle.code %}Código RCTA: {{ resultado_solicitud.error_detalle.code }}{% endif %}{% if resultado_solicitud.error_detalle.code and resultado_solicitud.error_detalle.request_id %} · {% endif %}{% if resultado_solicitud.error_detalle.request_id %}Referencia técnica: {{ resultado_solicitud.error_detalle.request_id }}{% endif %}</small>
+                    {% endif %}
+                </div>
             </div>
         </section>
     {% endif %}
@@ -176,7 +181,11 @@
                 {% endif %}
 
                 {% if solicitud.error_qbi2 %}
-                    <section class="provider-error"><strong>RCTA no pudo emitir la receta</strong><p>{{ solicitud.error_qbi2 }}</p></section>
+                    <section class="provider-error">
+                        <strong>RCTA no pudo emitir la receta</strong>
+                        <p>{{ solicitud.error_detalle.message }}</p>
+                        {% if solicitud.error_detalle.code or solicitud.error_detalle.request_id %}<small>{% if solicitud.error_detalle.code %}Código RCTA: {{ solicitud.error_detalle.code }}{% endif %}{% if solicitud.error_detalle.code and solicitud.error_detalle.request_id %} · {% endif %}{% if solicitud.error_detalle.request_id %}Referencia técnica: {{ solicitud.error_detalle.request_id }}{% endif %}</small>{% endif %}
+                    </section>
                 {% endif %}
 
                 {% if solicitud.emisiones.all or solicitud.qbi2_pdf_url %}
@@ -233,7 +242,10 @@
     .feedback-documents { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.75rem; }
     .feedback-documents a { background:white; border:1px solid currentColor; border-radius:999px; color:inherit; font-size:.8rem; font-weight:850; padding:.45rem .7rem; text-decoration:none; }
     .feedback-documents a.feedback-mail { background:#176044; border-color:#176044; color:white; }
-    .feedback-error { background:rgba(255,255,255,.72); border-radius:.55rem; font-weight:750; margin-top:.65rem; padding:.65rem .75rem; white-space:pre-wrap; }
+    .feedback-error { background:rgba(255,255,255,.72); border-radius:.55rem; margin-top:.65rem; padding:.65rem .75rem; white-space:pre-wrap; }
+    .feedback-error strong,.feedback-error small { display:block; }
+    .feedback-error strong { font-weight:850; }
+    .feedback-error small,.provider-error small { margin-top:.3rem; opacity:.82; }
     .request-card { background:#faf7f6; border:1px solid var(--line); border-radius:1.15rem; box-shadow:0 .22rem .8rem rgba(28,39,49,.08); overflow:hidden; padding:1rem; }
     .request-meta { align-items:center; color:var(--muted); display:flex; font-size:.78rem; font-weight:750; gap:.7rem; justify-content:space-between; margin:0 .15rem .75rem; }
     .request-state { border-radius:999px; font-size:.7rem; font-weight:900; padding:.25rem .6rem; text-transform:uppercase; }

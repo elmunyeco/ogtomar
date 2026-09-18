@@ -23,7 +23,12 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
 from django.views.decorators.http import require_POST
 
-from .client import Qbi2ConfigurationError, Qbi2HTTPError
+from .client import (
+    Qbi2ConfigurationError,
+    Qbi2HTTPError,
+    qbi2_error_details,
+    qbi2_error_text,
+)
 from .models import EmisionSolicitudReceta, SolicitudReceta
 from .notifications import (
     PrescriptionNotificationError,
@@ -150,6 +155,10 @@ def solicitudes_receta_page(request):
             }
         ]
         solicitud.medicamentos_json = json.dumps(medicamentos[:10], ensure_ascii=False)
+        solicitud.error_detalle = qbi2_error_details(
+            solicitud.respuesta_qbi2,
+            fallback=solicitud.error_qbi2,
+        )
 
     resultado_solicitud = None
     try:
@@ -158,6 +167,11 @@ def solicitudes_receta_page(request):
         resultado_id = 0
     if resultado_id > 0:
         resultado_solicitud = base_queryset.filter(pk=resultado_id).first()
+        if resultado_solicitud:
+            resultado_solicitud.error_detalle = qbi2_error_details(
+                resultado_solicitud.respuesta_qbi2,
+                fallback=resultado_solicitud.error_qbi2,
+            )
 
     return render(
         request,
@@ -209,7 +223,11 @@ def buscar_medicamentos_api(request):
         return JsonResponse(
             {
                 "status": "error",
-                "message": str(exc),
+                "message": qbi2_error_text(
+                    exc.payload,
+                    fallback=str(exc),
+                    status_code=exc.status_code,
+                ),
                 "provider_status": exc.status_code,
                 "provider_payload": exc.payload,
             },
@@ -249,7 +267,11 @@ def buscar_vademecum_portal(request):
         return JsonResponse(
             {
                 "status": "error",
-                "message": str(exc),
+                "message": qbi2_error_text(
+                    exc.payload,
+                    fallback=str(exc),
+                    status_code=exc.status_code,
+                ),
                 "provider_status": exc.status_code,
                 "provider_payload": exc.payload,
             },
@@ -293,7 +315,11 @@ def catalogo_api(request, catalogo):
         return JsonResponse(
             {
                 "status": "error",
-                "message": str(exc),
+                "message": qbi2_error_text(
+                    exc.payload,
+                    fallback=str(exc),
+                    status_code=exc.status_code,
+                ),
                 "provider_status": exc.status_code,
                 "provider_payload": exc.payload,
             },
@@ -414,7 +440,11 @@ def receta_emit_api(request):
         return JsonResponse(
             {
                 "status": "error",
-                "message": str(exc),
+                "message": qbi2_error_text(
+                    exc.payload,
+                    fallback=str(exc),
+                    status_code=exc.status_code,
+                ),
                 "operation": "receta",
                 "endpoint": endpoint,
                 "payload": _redact_profile_images(payload),
@@ -1150,6 +1180,12 @@ def _emitir_solicitud_receta(
             provider_errors = summary.get("errores") or "QBI2 no devolvió PDF de receta."
             raise ValueError(str(provider_errors))
     except (Qbi2ConfigurationError, ValueError, Qbi2HTTPError) as exc:
+        response_payload = getattr(exc, "payload", {}) or {}
+        error_text = qbi2_error_text(
+            response_payload,
+            fallback=str(exc),
+            status_code=getattr(exc, "status_code", None),
+        )
         EmisionSolicitudReceta.objects.create(
             solicitud=solicitud,
             orden=1,
@@ -1157,8 +1193,8 @@ def _emitir_solicitud_receta(
             medicamentos=medicamentos,
             estado=EmisionSolicitudReceta.Estado.ERROR,
             payload_qbi2=payload,
-            respuesta_qbi2=getattr(exc, "payload", {}) or {},
-            error_qbi2=str(exc),
+            respuesta_qbi2=response_payload,
+            error_qbi2=error_text,
         )
         solicitud.marcar_error_emision(
             user,
@@ -1166,8 +1202,8 @@ def _emitir_solicitud_receta(
             posologia=posologia,
             observacion=observacion,
             payload=payload,
-            response=getattr(exc, "payload", {}) or {},
-            error=str(exc),
+            response=response_payload,
+            error=error_text,
         )
         return False
 
