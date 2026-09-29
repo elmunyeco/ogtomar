@@ -3,6 +3,7 @@ from datetime import date
 from email import policy
 from email.parser import BytesParser
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -1006,26 +1007,41 @@ class SolicitudRecetaQueueTests(TestCase):
                 summary=summarize_receta_response(provider_response),
             )
 
-        with patch("Qbi2.views.emit_rcta_payload", side_effect=fake_emit):
-            response = self.client.post(
-                f"/recetas/api/medico/solicitudes/{solicitud.id}/aprobar/",
-                {
-                    "diagnostico": "Hipertension arterial",
-                    "posologia": "Tomar segun indicacion medica.",
-                    "observacion_medico": "Autorizada",
-                    "next": "/recetas/medico/solicitudes/?estado=pendiente",
-                    "medicamentosJson": json.dumps(
-                        [
-                            {
-                                "regNo": "24818",
-                                "nombreProducto": "AMPLIAR",
-                                "nombreDroga": "droga editada",
-                                "presentacion": "20 comprimidos",
-                            }
-                        ]
-                    ),
-                },
+        with TemporaryDirectory() as profile_dir:
+            profile_dir = Path(profile_dir)
+            source_profile = (
+                Path(__file__).resolve().parents[1]
+                / "private"
+                / "qbi2"
+                / "profile.example.yaml"
             )
+            profile_path = profile_dir / "profile.yaml"
+            profile_path.write_text(source_profile.read_text(encoding="utf-8"), encoding="utf-8")
+            (profile_dir / "firma_omar.png").write_bytes(b"test-signature")
+            (profile_dir / "logo_omar.png").write_bytes(b"test-logo")
+
+            with self.settings(QBI2_PROFILE_YAML_PATH=str(profile_path)), patch(
+                "Qbi2.views.emit_rcta_payload", side_effect=fake_emit
+            ):
+                response = self.client.post(
+                    f"/recetas/api/medico/solicitudes/{solicitud.id}/aprobar/",
+                    {
+                        "diagnostico": "Hipertension arterial",
+                        "posologia": "Tomar segun indicacion medica.",
+                        "observacion_medico": "Autorizada",
+                        "next": "/recetas/medico/solicitudes/?estado=pendiente",
+                        "medicamentosJson": json.dumps(
+                            [
+                                {
+                                    "regNo": "24818",
+                                    "nombreProducto": "AMPLIAR",
+                                    "nombreDroga": "droga editada",
+                                    "presentacion": "20 comprimidos",
+                                }
+                            ]
+                        ),
+                    },
+                )
         solicitud.refresh_from_db()
 
         self.assertEqual(response.status_code, 302)
