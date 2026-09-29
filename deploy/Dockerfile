@@ -14,6 +14,13 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     libjpeg-dev \
     zlib1g-dev \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libpangoft2-1.0-0 \
+    libcairo2 \
+    libgdk-pixbuf-2.0-0 \
+    tzdata \
+    mariadb-client \
     netcat \
     pkg-config \
     && apt-get clean \
@@ -55,10 +62,16 @@ set -e
 
 DB_HOST=${DB_HOST:-db}
 DB_PORT=${DB_PORT:-3306}
+RUN_MIGRATIONS_ON_STARTUP=${RUN_MIGRATIONS_ON_STARTUP:-0}
 
 /app/wait-for-mysql.sh "$DB_HOST" "$DB_PORT" echo "Base de datos lista"
 
-python3 manage.py migrate --noinput
+if [ "$RUN_MIGRATIONS_ON_STARTUP" = "1" ]; then
+  python3 manage.py migrate --noinput
+else
+  echo "INFO: skipping migrations on startup. Run manage.py migrate as a release step, or set RUN_MIGRATIONS_ON_STARTUP=1 explicitly."
+fi
+
 python3 manage.py runserver 0.0.0.0:8000
 SH
 

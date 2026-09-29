@@ -129,6 +129,7 @@
     <div class="bg-white shadow-md rounded-lg p-8 mb-8">
         <form method="POST" novalidate>
             {% csrf_token %}
+            {% if recipe_context %}<input type="hidden" name="_recipe_context" value="1">{% endif %}
             
             <div class="grid grid-cols-1 gap-x-8 gap-y-4 md:grid-cols-2">
                 <!-- Tipo de Documento -->

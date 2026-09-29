@@ -39,6 +39,14 @@ templates/components/header.html
                     <a href="{% url 'listar_buscar_historias' %}" class="submenu-link">Buscar Historias</a>
                 </div>
             </li>
+
+            <li class="menu-item {% if request.resolver_match.view_name == 'recetas:medico_solicitudes' or request.resolver_match.view_name == 'recetas:medico_receta_nueva' %}active{% endif %}" data-menu="recetas">
+                <a href="#" class="menu-link menu-toggle">Recetas</a>
+                <div class="submenu-items hidden">
+                    <a href="{% url 'recetas:medico_solicitudes' %}" class="submenu-link">Gestión</a>
+                    <a href="{% url 'recetas:medico_receta_nueva' %}" class="submenu-link">Emisión</a>
+                </div>
+            </li>
         </ul>
         
     </nav>

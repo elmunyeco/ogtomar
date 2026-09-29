@@ -1,0 +1,14 @@
+FROM hhcc_app:latest
+
+RUN python3 -m pip install --no-cache-dir PyYAML==6.0.2
+
+COPY Qbi2/spontaneous.py /app/Qbi2/spontaneous.py
+COPY Qbi2/professional_profile.py /app/Qbi2/professional_profile.py
+COPY Qbi2/views.py /app/Qbi2/views.py
+COPY Qbi2/urls.py /app/Qbi2/urls.py
+COPY Qbi2/templates/Qbi2/poc_home.html /app/Qbi2/templates/Qbi2/poc_home.html
+COPY Qbi2/templates/Qbi2/espontanea_poc_2.html /app/Qbi2/templates/Qbi2/espontanea_poc_2.html
+COPY main/views.py /app/main/views.py
+COPY main/templates/editar_paciente.html /app/main/templates/editar_paciente.html
+COPY main/templates/editar_paciente_confirmado.html /app/main/templates/editar_paciente_confirmado.html
+COPY hhcc/settings.py /app/hhcc/settings.py

@@ -1,0 +1,36 @@
+/* estilo-informe.css
+ * Estilo "informe técnico mecanografiado" para render Markdown -> PDF.
+ * Pensado para WeasyPrint: el .md se inserta dentro de un <pre> y este
+ * CSS aporta la tipografía monoespaciada, la página carta y el pie con
+ * numeración. No convierte Markdown a HTML; preserva la alineación ASCII
+ * (diagramas y tablas) tal cual viene del texto.
+ */
+
+@page {
+  size: Letter;
+  margin: 22mm 20mm 20mm 24mm;
+
+  @bottom-center {
+    content: "DQBI2-IT-014   \2014   " counter(page) " / " counter(pages);
+    font-family: "Nimbus Mono PS", "Liberation Mono", monospace;
+    font-size: 8pt;
+    color: #000;
+  }
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
+pre {
+  font-family: "Nimbus Mono PS", "Liberation Mono", "Courier New", monospace;
+  font-size: 9.4pt;
+  line-height: 1.32;
+  color: #111;
+  white-space: pre-wrap;   /* respeta espacios y saltos del .md */
+  word-wrap: break-word;
+  margin: 0;
+  letter-spacing: 0.1px;
+}

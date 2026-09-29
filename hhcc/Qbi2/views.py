@@ -1,0 +1,1312 @@
+import base64
+import copy
+import json
+import re
+from datetime import datetime
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit
+
+from django.contrib import messages
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.models import Q
+from django.http import HttpResponse, HttpResponseRedirect
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_POST
+
+from .client import (
+    Qbi2ConfigurationError,
+    Qbi2HTTPError,
+    qbi2_error_details,
+    qbi2_error_text,
+)
+from .models import EmisionSolicitudReceta, SolicitudReceta
+from .notifications import (
+    PrescriptionNotificationError,
+    build_prescription_email_draft,
+    download_prescription_pdf,
+    prescription_draft_filename,
+)
+from .portal import (
+    create_prescription_request,
+    end_patient_session,
+    find_patient_history,
+    get_client_ip,
+    get_patient_from_session,
+    start_patient_session,
+)
+from .professional_profile import load_professional_profile, resolve_profile_asset
+from .rcta import build_rcta_payload, emit_rcta_payload
+from .services import DiagnosticoService, VademecumService
+from main.forms import PacientePortalForm
+from main.models import Paciente
+
+
+@require_GET
+def recetas_home(request):
+    return render(request, "Qbi2/home.html")
+
+
+@require_GET
+def medicamentos_page(request):
+    return render(request, "Qbi2/medicamentos.html")
+
+
+@ensure_csrf_cookie
+def receta_medico_page(request):
+    defaults = _receta_defaults()
+    return render(
+        request,
+        "Qbi2/receta_medico.html",
+        {
+            "patient": defaults["patient"],
+            "doctor": defaults["doctor"],
+            "coverage": defaults["coverage"],
+            "initial_patient": {
+                "patient": defaults["patient"],
+                "coverage": defaults["coverage"],
+            },
+            "today": timezone.localdate().isoformat(),
+        },
+    )
+
+
+@ensure_csrf_cookie
+def paciente_login_page(request):
+    paciente = get_patient_from_session(request)
+    if paciente:
+        return redirect("recetas:paciente_receta_nueva")
+
+    error = ""
+    documento = ""
+    apellido = ""
+    if request.method == "POST":
+        documento = request.POST.get("documento", "")
+        apellido = request.POST.get("apellido", "")
+        paciente, _ = find_patient_history(apellido=apellido, documento=documento)
+        if paciente:
+            start_patient_session(request, paciente)
+            return redirect("recetas:paciente_receta_nueva")
+        error = "Los datos ingresados no coinciden con un paciente activo."
+
+    return render(
+        request,
+        "Qbi2/pacientes_login.html",
+        {"error": error, "documento": documento, "apellido": apellido},
+    )
+
+
+@require_POST
+def paciente_logout(request):
+    end_patient_session(request)
+    return redirect("recetas:paciente_login")
+
+
+@ensure_csrf_cookie
+def pacientes_portal_page(request):
+    paciente = get_patient_from_session(request)
+    if not paciente:
+        return redirect("recetas:paciente_login")
+    return render(
+        request,
+        "Qbi2/pacientes_portal.html",
+        {"paciente": paciente, "perfil_form": PacientePortalForm(instance=paciente)},
+    )
+
+
+def solicitudes_receta_page(request):
+    estado = request.GET.get("estado") or SolicitudReceta.Estado.PENDIENTE
+    estados_validos = {choice[0] for choice in SolicitudReceta.Estado.choices}
+    base_queryset = SolicitudReceta.objects.select_related(
+        "paciente", "historia_clinica", "aprobado_por"
+    ).prefetch_related("emisiones")
+    queryset = base_queryset.all()
+    if estado != "todas" and estado in estados_validos:
+        queryset = queryset.filter(estado=estado)
+    elif estado != "todas":
+        estado = SolicitudReceta.Estado.PENDIENTE
+        queryset = queryset.filter(estado=estado)
+
+    counts = {
+        "pendiente": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.PENDIENTE).count(),
+        "aprobada": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.APROBADA).count(),
+        "rechazada": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.RECHAZADA).count(),
+        "emitida": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.EMITIDA).count(),
+        "error_emision": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.ERROR_EMISION).count(),
+        "todas": SolicitudReceta.objects.count(),
+    }
+    solicitudes = list(queryset[:100])
+    for solicitud in solicitudes:
+        medicamentos = solicitud.auditoria.get("medicamentos") or [
+            {
+                "regNo": solicitud.medicamento_reg_no,
+                "nombreProducto": solicitud.medicamento_nombre_producto,
+                "nombreDroga": solicitud.medicamento_nombre_droga,
+                "presentacion": solicitud.medicamento_presentacion,
+            }
+        ]
+        solicitud.medicamentos_json = json.dumps(medicamentos[:10], ensure_ascii=False)
+        solicitud.error_detalle = qbi2_error_details(
+            solicitud.respuesta_qbi2,
+            fallback=solicitud.error_qbi2,
+        )
+
+    resultado_solicitud = None
+    try:
+        resultado_id = int(request.GET.get("resultado") or 0)
+    except (TypeError, ValueError):
+        resultado_id = 0
+    if resultado_id > 0:
+        resultado_solicitud = base_queryset.filter(pk=resultado_id).first()
+        if resultado_solicitud:
+            resultado_solicitud.error_detalle = qbi2_error_details(
+                resultado_solicitud.respuesta_qbi2,
+                fallback=resultado_solicitud.error_qbi2,
+            )
+
+    return render(
+        request,
+        "Qbi2/solicitudes_receta.html",
+        {
+            "solicitudes": solicitudes,
+            "estado": estado,
+            "counts": counts,
+            "estados": SolicitudReceta.Estado,
+            "resultado_solicitud": resultado_solicitud,
+        },
+    )
+
+
+@require_GET
+def health(request):
+    return JsonResponse(
+        {
+            "status": "ok",
+            "base_url": getattr(settings, "QBI2_BASE_URL", ""),
+            "auth_mode": getattr(settings, "QBI2_AUTH_MODE", "auto"),
+            "token_configured": bool(getattr(settings, "QBI2_BEARER_TOKEN", "")),
+            "client_app_id_configured": bool(getattr(settings, "QBI2_CLIENT_APP_ID", "")),
+            "vademecum_path": getattr(settings, "QBI2_VADEMECUM_PATH", ""),
+        }
+    )
+
+
+@require_GET
+def buscar_medicamentos_api(request):
+    query = request.GET.get("q") or request.GET.get("query") or ""
+    raw = request.GET.get("raw") == "1"
+    extra_params = {
+        key.removeprefix("qbi2_"): value
+        for key, value in request.GET.items()
+        if key.startswith("qbi2_")
+    }
+
+    try:
+        page = int(request.GET.get("page") or request.GET.get("pagina") or "1")
+        result = VademecumService().buscar(query, page=page, extra_params=extra_params)
+    except ValidationError as exc:
+        return JsonResponse({"status": "error", "message": "; ".join(exc.messages)}, status=400)
+    except ValueError:
+        return JsonResponse({"status": "error", "message": "La pagina debe ser numerica."}, status=400)
+    except Qbi2ConfigurationError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
+    except Qbi2HTTPError as exc:
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": qbi2_error_text(
+                    exc.payload,
+                    fallback=str(exc),
+                    status_code=exc.status_code,
+                ),
+                "provider_status": exc.status_code,
+                "provider_payload": exc.payload,
+            },
+            status=502,
+        )
+
+    response = {
+        "status": "success",
+        "query": result["query"],
+        "page": result["page"],
+        "count": len(result["items"]),
+        "pageInfo": result["page_info"],
+        "items": result["items"],
+    }
+    if raw:
+        response["raw"] = result["raw"]
+    return JsonResponse(response)
+
+
+@require_GET
+def buscar_vademecum_portal(request):
+    if not get_patient_from_session(request):
+        return _patient_api_auth_error()
+    query = request.GET.get("q") or request.GET.get("query") or ""
+    start_page = _positive_int(request.GET.get("scanPage"), default=1)
+    try:
+        result = VademecumService().buscar_relevante(
+            query,
+            start_page=start_page,
+            extra_params=_qbi2_prefixed_params(request),
+        )
+    except ValidationError as exc:
+        return JsonResponse({"status": "error", "message": "; ".join(exc.messages)}, status=400)
+    except Qbi2ConfigurationError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
+    except Qbi2HTTPError as exc:
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": qbi2_error_text(
+                    exc.payload,
+                    fallback=str(exc),
+                    status_code=exc.status_code,
+                ),
+                "provider_status": exc.status_code,
+                "provider_payload": exc.payload,
+            },
+            status=502,
+        )
+    return JsonResponse(
+        {
+            "status": "success",
+            "query": result["query"],
+            "count": len(result["items"]),
+            "pageInfo": result["page_info"],
+            "items": result["items"],
+        }
+    )
+
+
+@require_GET
+def catalogo_api(request, catalogo):
+    query = request.GET.get("q", "")
+    page = _positive_int(request.GET.get("page"), default=1)
+    try:
+        if catalogo == "medicamentos":
+            start_page = _positive_int(request.GET.get("scanPage"), default=page)
+            result = VademecumService().buscar_relevante(
+                query,
+                start_page=start_page,
+                extra_params=_qbi2_prefixed_params(request),
+            )
+        elif catalogo == "diagnosticos":
+            result = DiagnosticoService().buscar(
+                query,
+                extra_params=_qbi2_prefixed_params(request),
+            )
+        else:
+            return JsonResponse({"status": "error", "message": "Catalogo no soportado."}, status=404)
+    except ValidationError as exc:
+        return JsonResponse({"status": "error", "message": "; ".join(exc.messages)}, status=400)
+    except Qbi2ConfigurationError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
+    except Qbi2HTTPError as exc:
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": qbi2_error_text(
+                    exc.payload,
+                    fallback=str(exc),
+                    status_code=exc.status_code,
+                ),
+                "provider_status": exc.status_code,
+                "provider_payload": exc.payload,
+            },
+            status=502,
+        )
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "catalogo": catalogo,
+            "count": len(result.get("items", []) or []),
+            "items": result.get("items", []),
+            "pageInfo": result.get("page_info"),
+            "raw": result.get("raw"),
+        }
+    )
+
+
+@require_GET
+def receta_pacientes_api(request):
+    """Search active HHCC patients and expose only fields needed by the recipe selector."""
+    raw_patient_id = str(request.GET.get("id") or "").strip()
+    query = str(request.GET.get("q") or "").strip()
+    if raw_patient_id:
+        try:
+            patient_id = int(raw_patient_id)
+        except ValueError:
+            return JsonResponse({"status": "error", "message": "El ID de paciente no es válido."}, status=400)
+        patients = Paciente.objects.select_related("idTipoDoc").filter(pk=patient_id, deBaja=False)
+    else:
+        patients_or_response = _search_recipe_patients(query)
+        if isinstance(patients_or_response, JsonResponse):
+            return patients_or_response
+        patients = patients_or_response
+
+    items = []
+    for patient_record in patients:
+        patient_data = _recipe_patient_data(patient_record)
+        items.append(
+            {
+                "patient": patient_data["patient"],
+                "coverage": patient_data["coverage"],
+            }
+        )
+    return JsonResponse({"status": "success", "count": len(items), "items": items})
+
+
+def _search_recipe_patients(query: str):
+    compact_query = re.sub(r"[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+", "", query)
+    if len(compact_query) < 3:
+        return JsonResponse(
+            {"status": "error", "message": "Ingresá al menos 3 caracteres para buscar un paciente."},
+            status=400,
+        )
+
+    filters = Q()
+    for token in query.split():
+        token_filter = Q(apellido__icontains=token) | Q(nombre__icontains=token)
+        document_token = re.sub(r"\D", "", token)
+        if document_token:
+            token_filter |= Q(numDoc__icontains=document_token)
+            if document_token.isdigit():
+                token_filter |= Q(pk=int(document_token))
+        filters &= token_filter
+
+    return (
+        Paciente.objects.select_related("idTipoDoc")
+        .filter(filters, deBaja=False)
+        .order_by("apellido", "nombre", "id")[:12]
+    )
+
+
+@csrf_protect
+@require_POST
+def receta_preview_api(request):
+    """Build the simplified recipe payload without making a QBI2 write request."""
+    data_or_response = _json_body(request)
+    if isinstance(data_or_response, JsonResponse):
+        return data_or_response
+
+    try:
+        safe_data = _safe_recipe_data(data_or_response)
+        endpoint, payload = build_rcta_payload(safe_data)
+    except (TypeError, ValueError) as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+    except Qbi2ConfigurationError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "mode": "preview_only",
+            "message": "Payload preparado localmente. No se emitió ninguna receta.",
+            "operation": "receta",
+            "endpoint": endpoint,
+            "payload": _redact_profile_images(payload),
+        }
+    )
+
+
+@csrf_protect
+@require_POST
+def receta_emit_api(request):
+    """Emit from the simplified client, with patient and professional data owned by the server."""
+    data_or_response = _json_body(request)
+    if isinstance(data_or_response, JsonResponse):
+        return data_or_response
+
+    try:
+        safe_data = _safe_recipe_data(data_or_response)
+        result = emit_rcta_payload(safe_data)
+    except (TypeError, ValueError) as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+    except Qbi2ConfigurationError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
+    except Qbi2HTTPError as exc:
+        endpoint, payload = build_rcta_payload(safe_data)
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": qbi2_error_text(
+                    exc.payload,
+                    fallback=str(exc),
+                    status_code=exc.status_code,
+                ),
+                "operation": "receta",
+                "endpoint": endpoint,
+                "payload": _redact_profile_images(payload),
+                "provider_status": exc.status_code,
+                "provider_payload": exc.payload,
+            },
+            status=502,
+        )
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "operation": result.operation,
+            "endpoint": result.endpoint,
+            "payload": _redact_profile_images(result.payload),
+            "summary": result.summary,
+            "response": result.response,
+        }
+    )
+@csrf_protect
+@require_POST
+def validar_paciente_portal(request):
+    paciente = get_patient_from_session(request)
+    if not paciente:
+        return _patient_api_auth_error()
+
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Datos invalidos."}, status=400)
+
+    historia = paciente.historias_clinicas.order_by("-fechaAlta", "-id").first()
+    if not historia:
+        return JsonResponse({"status": "rejected", "message": "No tenes Historia Clinica"}, status=404)
+
+    medicamentos = _selected_medications_from_portal_data(data)
+    if not medicamentos:
+        return JsonResponse({"status": "error", "message": "Elegí al menos un medicamento del vademécum."}, status=400)
+    if len(medicamentos) > 10:
+        return JsonResponse({"status": "error", "message": "Podés seleccionar hasta 10 medicamentos."}, status=400)
+    with transaction.atomic():
+        solicitud = create_prescription_request(
+            paciente,
+            historia,
+            medicamentos[0],
+            medicamentos=medicamentos,
+            total_medicamentos_paciente=len(medicamentos),
+            diagnostico="",
+            request_ip=get_client_ip(request),
+            request_user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        )
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "message": "Solicitud recibida. El médico revisará el pedido completo antes de emitir.",
+            "solicitud": {
+                "id": solicitud.id,
+                "estado": solicitud.estado,
+            },
+            "solicitudes": [
+                {
+                    "id": solicitud.id,
+                    "estado": solicitud.estado,
+                    "medicamentos": solicitud.auditoria.get("medicamentos", []),
+                }
+            ],
+        }
+    )
+
+
+@csrf_protect
+@require_POST
+def actualizar_perfil_paciente(request):
+    paciente = get_patient_from_session(request)
+    if not paciente:
+        return _patient_api_auth_error()
+
+    form = PacientePortalForm(request.POST, instance=paciente)
+    if not form.is_valid():
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": "Revisá los datos ingresados.",
+                "errors": {field: list(errors) for field, errors in form.errors.items()},
+            },
+            status=400,
+        )
+    form.save()
+    return JsonResponse({"status": "success", "message": "Tus datos se actualizaron correctamente."})
+
+
+@csrf_protect
+@require_POST
+def aprobar_solicitud_receta(request, solicitud_id):
+    return _decidir_solicitud_receta(request, solicitud_id, aprobar=True)
+
+
+@csrf_protect
+@require_POST
+def rechazar_solicitud_receta(request, solicitud_id):
+    return _decidir_solicitud_receta(request, solicitud_id, aprobar=False)
+
+
+@csrf_protect
+@require_POST
+def reabrir_solicitud_receta(request, solicitud_id):
+    with transaction.atomic():
+        solicitud = get_object_or_404(
+            SolicitudReceta.objects.select_for_update(),
+            pk=solicitud_id,
+        )
+        if not solicitud.reabrir_para_reintento(request.user):
+            messages.error(
+                request,
+                f"La solicitud #{solicitud.id} no está en estado de error y no fue modificada.",
+            )
+            return redirect("recetas:medico_solicitudes")
+
+    messages.success(
+        request,
+        f"La solicitud #{solicitud.id} volvió a Pendientes. Corregí los datos necesarios y revisala antes de emitir.",
+    )
+    return HttpResponseRedirect(
+        f'{reverse("recetas:medico_solicitudes")}?estado=pendiente#solicitud-{solicitud.id}'
+    )
+
+
+@require_GET
+def preparar_correo_receta(request, solicitud_id):
+    solicitud = get_object_or_404(
+        SolicitudReceta.objects.select_related("paciente").prefetch_related("emisiones"),
+        pk=solicitud_id,
+        estado=SolicitudReceta.Estado.EMITIDA,
+    )
+    emisiones = [
+        emision
+        for emision in solicitud.emisiones.all()
+        if emision.estado == EmisionSolicitudReceta.Estado.EMITIDA
+        and emision.qbi2_pdf_url
+    ]
+    pdf_sources = [
+        (
+            emision.qbi2_id_receta or f"{solicitud.pk}-{emision.orden}",
+            emision.qbi2_pdf_url,
+        )
+        for emision in emisiones
+    ]
+    if not pdf_sources and solicitud.qbi2_pdf_url:
+        pdf_sources = [(solicitud.qbi2_id_receta or solicitud.pk, solicitud.qbi2_pdf_url)]
+    if not pdf_sources:
+        return HttpResponse("La receta emitida no tiene un PDF disponible.", status=409)
+
+    try:
+        pdfs = [
+            (identifier, download_prescription_pdf(pdf_url))
+            for identifier, pdf_url in pdf_sources
+        ]
+    except PrescriptionNotificationError as exc:
+        return HttpResponse(str(exc), status=502)
+
+    draft = build_prescription_email_draft(solicitud, pdfs)
+    response = HttpResponse(draft, content_type="message/rfc822")
+    response["Content-Disposition"] = (
+        f'attachment; filename="{prescription_draft_filename(solicitud)}"'
+    )
+    return response
+
+
+def _receta_defaults(patient_record: Paciente | None = None) -> dict[str, Any]:
+    """Professional defaults plus a patient profile read from the HHCC database."""
+    patient_data = _recipe_patient_data(patient_record)
+    patient = patient_data["patient"]
+    coverage = patient_data["coverage"]
+    profile = load_professional_profile()
+    medico_profile = profile["medico"]
+    matricula = _profile_section(medico_profile, "matricula")
+    sello = _profile_section(medico_profile, "sello")
+    firma = _profile_section(medico_profile, "firma")
+    logo = _profile_section(medico_profile, "logo")
+    consultorio = profile["consultorio"]
+    consultorio_domicilio = _profile_section(consultorio, "domicilio")
+    signature_base64 = _configured_image_base64(
+        resolve_profile_asset(profile, _profile_text(firma, "archivo"))
+    )
+    logo_base64 = _configured_image_base64(
+        resolve_profile_asset(profile, _profile_text(logo, "archivo"))
+    )
+    registration_type = _profile_text(matricula, "tipo")
+    registration_number = _profile_text(matricula, "numero")
+    doctor = {
+        "name": _profile_text(medico_profile, "nombre"),
+        "last_name": _profile_text(medico_profile, "apellido"),
+        "specialty": _profile_text(medico_profile, "especialidad"),
+        "profession": _profile_text(medico_profile, "profesion"),
+        "registration_type": registration_type,
+        "registration_number": registration_number,
+        "registration_display": _profile_text(
+            matricula,
+            "display",
+            f"{registration_type} {registration_number}".strip(),
+        ),
+        "seal_line_1": _profile_text(sello, "linea_1"),
+        "seal_line_2": _profile_text(sello, "linea_2"),
+        "seal_line_3": _profile_text(sello, "linea_3"),
+        "signature_configured": bool(signature_base64),
+        "logo_configured": bool(logo_base64),
+    }
+    payload = {
+        "pacienteNombre": patient["name"],
+        "pacienteApellido": patient["last_name"],
+        "pacienteTipoDoc": patient["document_type"],
+        "pacienteNroDoc": patient["document"],
+        "pacienteSexo": patient["sex"],
+        "pacienteFechaNacimiento": patient["birth_date"],
+        "pacienteCuil": "",
+        "pacienteEmail": patient["email"],
+        "pacienteTelefono": patient["phone"],
+        "pacienteLocalidad": patient["locality"],
+        "pacienteProvincia": patient["province"],
+        "pacientePais": "AR",
+        "pacienteCalle": patient["street"],
+        "pacienteNumero": patient["street_number"],
+        "pacienteCodigoPostal": "",
+        "idFinanciador": coverage["financier_id"],
+        "nroFinanciador": "",
+        "planId": coverage["plan_id"],
+        "plan": coverage["payload_plan"],
+        "afiliadoNumero": coverage["member_number"],
+        "dniTitular": patient["document"],
+        "medicoNombre": doctor["name"],
+        "medicoApellido": doctor["last_name"],
+        "medicoTipoDoc": _profile_text(medico_profile, "tipo_documento"),
+        "medicoNroDoc": _profile_text(medico_profile, "numero_documento"),
+        "medicoSexo": _profile_text(medico_profile, "sexo"),
+        "medicoFechaNacimiento": _profile_text(medico_profile, "fecha_nacimiento"),
+        "medicoEmail": _profile_text(medico_profile, "email"),
+        "medicoTelefono": _profile_text(medico_profile, "telefono"),
+        "medicoPais": _profile_text(medico_profile, "pais"),
+        "medicoMatriculaTipo": doctor["registration_type"],
+        "medicoMatriculaNumero": doctor["registration_number"],
+        "medicoMatriculaProvincia": _profile_text(matricula, "provincia"),
+        "medicoEspecialidad": doctor["specialty"],
+        "medicoProfesion": doctor["profession"],
+        "medicoIdTributario": _profile_text(medico_profile, "id_tributario"),
+        "medicoIdRefeps": _profile_text(medico_profile, "id_refeps"),
+        "medicoFirmaLink": _profile_text(firma, "link"),
+        "medicoFirmaBase64": signature_base64,
+        "medicoLogoInstitucion": logo_base64,
+        "selloLinea1": doctor["seal_line_1"],
+        "selloLinea2": doctor["seal_line_2"],
+        "selloLinea3": doctor["seal_line_3"],
+        "consultorioNombre": _profile_text(consultorio, "nombre"),
+        "consultorioCalle": _profile_text(consultorio_domicilio, "calle"),
+        "consultorioNumero": _profile_text(consultorio_domicilio, "numero"),
+        "consultorioPiso": _profile_text(consultorio_domicilio, "piso"),
+        "consultorioDepto": _profile_text(consultorio_domicilio, "depto"),
+        "consultorioCodigoPostal": _profile_text(consultorio_domicilio, "codigo_postal"),
+        "consultorioLocalidad": _profile_text(consultorio_domicilio, "localidad"),
+        "consultorioMunicipio": _profile_text(consultorio_domicilio, "municipio"),
+        "consultorioProvincia": _profile_text(consultorio_domicilio, "provincia"),
+        "consultorioPais": _profile_text(consultorio_domicilio, "pais"),
+        "consultorioContacto": _profile_text(consultorio, "contacto"),
+        "consultorioEmail": _profile_text(consultorio, "email"),
+        "consultorioLogo": _profile_text(consultorio, "logo"),
+    }
+    return {"patient": patient, "doctor": doctor, "coverage": coverage, "payload": payload}
+
+
+def _recipe_patient_data(patient_record: Paciente | None) -> dict[str, Any]:
+    if patient_record is None:
+        patient = {
+            "id": None,
+            "name": "",
+            "last_name": "",
+            "document_type": "",
+            "document": "",
+            "birth_date": "",
+            "sex": "",
+            "sex_label": "Sin especificar",
+            "email": "",
+            "phone": "",
+            "street": "",
+            "street_number": "",
+            "locality": "",
+            "province": "",
+            "edit_url": "",
+        }
+        coverage = {
+            "name": "Sin cobertura",
+            "financier_id": "",
+            "plan_id": "",
+            "plan": "",
+            "payload_plan": "",
+            "member_number": "",
+            "environment": "HHCC",
+        }
+        return {"patient": patient, "coverage": coverage, "payload": {}}
+
+    street, street_number = _split_street_address(patient_record.direccion or "")
+    local_sex = (patient_record.sexo or "").upper()
+    qbi2_sex = "M" if local_sex == "H" else "F" if local_sex == "M" else ""
+    sex_label = "Masculino" if qbi2_sex == "M" else "Femenino" if qbi2_sex == "F" else "Sin especificar"
+    document_type = (getattr(patient_record.idTipoDoc, "nombre", "") or "DNI").strip()
+    raw_plan = (patient_record.plan or "").strip()
+
+    patient = {
+        "id": patient_record.id,
+        "name": (patient_record.nombre or "").strip(),
+        "last_name": (patient_record.apellido or "").strip(),
+        "document_type": document_type,
+        "document": (patient_record.numDoc or "").strip(),
+        "birth_date": patient_record.fechaNac.isoformat() if patient_record.fechaNac else "",
+        "sex": qbi2_sex,
+        "sex_label": sex_label,
+        "email": (patient_record.mail or "").strip(),
+        "phone": (patient_record.celular or patient_record.telefono or "").strip(),
+        "street": street,
+        "street_number": street_number,
+        "locality": (patient_record.localidad or "").strip(),
+        "province": "",
+        "edit_url": reverse("editar_paciente", args=[patient_record.id]),
+    }
+    coverage = {
+        "name": (patient_record.obraSocial or "").strip() or "Sin cobertura",
+        "financier_id": "",
+        "plan_id": "",
+        "plan": raw_plan,
+        "payload_plan": raw_plan,
+        "member_number": (patient_record.afiliado or "").strip(),
+        "environment": "HHCC",
+    }
+    payload = {
+        "pacienteNombre": patient["name"],
+        "pacienteApellido": patient["last_name"],
+        "pacienteTipoDoc": patient["document_type"],
+        "pacienteNroDoc": patient["document"],
+        "pacienteSexo": patient["sex"],
+        "pacienteFechaNacimiento": patient["birth_date"],
+        "pacienteCuil": "",
+        "pacienteEmail": patient["email"],
+        "pacienteTelefono": patient["phone"],
+        "pacienteLocalidad": patient["locality"],
+        "pacienteProvincia": patient["province"],
+        "pacientePais": "AR",
+        "pacienteCalle": patient["street"],
+        "pacienteNumero": patient["street_number"],
+        "pacienteCodigoPostal": "",
+        "idFinanciador": coverage["financier_id"],
+        "nroFinanciador": "",
+        "planId": coverage["plan_id"],
+        "plan": coverage["payload_plan"],
+        "afiliadoNumero": coverage["member_number"],
+        "dniTitular": patient["document"],
+    }
+    return {"patient": patient, "coverage": coverage, "payload": payload}
+
+
+def _safe_recipe_data(data: dict[str, Any]) -> dict[str, Any]:
+    diagnostico = str(data.get("diagnostico") or "").strip()
+    if not diagnostico:
+        raise ValueError("El diagnóstico es obligatorio.")
+    if len(diagnostico) > 255:
+        raise ValueError("El diagnóstico no puede superar los 255 caracteres.")
+    codigo_diagnostico = str(data.get("codigoDiagnostico") or "").strip()
+    try:
+        patient_id = int(data.get("pacienteId"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Seleccioná un paciente de la base de historias clínicas.") from exc
+    patient_record = (
+        Paciente.objects.select_related("idTipoDoc")
+        .filter(pk=patient_id, deBaja=False)
+        .first()
+    )
+    if patient_record is None:
+        raise ValueError("El paciente seleccionado no existe o está dado de baja.")
+
+    safe_data = {
+        "medicamentos": _safe_recipe_medications(data.get("medicamentos", [])),
+        # QBI2 resolves a general CIE-10 code to its printable description.
+        "diagnostico": codigo_diagnostico or diagnostico,
+        "codigoDiagnostico": codigo_diagnostico,
+        "imprimirDiagnostico": "S",
+        "indicaciones": data.get("indicaciones", ""),
+        "observaciones": data.get("observaciones", ""),
+        "fechaEmision": _normalize_fecha_emision(data.get("fechaEmision", "")),
+        "ocultarPaciente": data.get("ocultarPaciente", False),
+    }
+    patient_payload = _receta_defaults(patient_record)["payload"]
+    if not _uses_recipe_coverage(data.get("usarCobertura", True)):
+        for field in (
+            "idFinanciador",
+            "nroFinanciador",
+            "planId",
+            "plan",
+            "afiliadoNumero",
+            "dniTitular",
+        ):
+            patient_payload.pop(field, None)
+    safe_data.update(patient_payload)
+    return safe_data
+
+
+def _uses_recipe_coverage(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value in (None, ""):
+        return True
+    return str(value).strip().lower() in {"1", "true", "t", "yes", "s", "si", "on"}
+
+
+def _safe_recipe_medications(raw_items: Any) -> list[dict[str, Any]]:
+    """Whitelist clinical item fields and keep diagnosis only at recipe level."""
+    if not isinstance(raw_items, list):
+        raise ValueError("Los medicamentos deben enviarse como una lista.")
+
+    safe_items: list[dict[str, Any]] = []
+    for item in raw_items:
+        if not isinstance(item, dict):
+            raise ValueError("Cada medicamento debe ser un objeto.")
+        safe_items.append(
+            {
+                "regNo": item.get("regNo", ""),
+                "nombreProducto": item.get("nombreProducto", ""),
+                "nombreDroga": item.get("nombreDroga", ""),
+                "presentacion": item.get("presentacion", ""),
+                "cantidad": item.get("cantidad", 1),
+                "posologia": item.get("posologia", ""),
+                "tratamiento": item.get("tratamiento", 0),
+                "permiteSustitucion": item.get("permiteSustitucion", ""),
+                "diagnostico": "",
+                "codigoDiagnostico": "",
+                "forzarDuplicado": False,
+            }
+        )
+    return safe_items
+
+
+def _recipe_data_from_solicitud(
+    solicitud: SolicitudReceta,
+    *,
+    diagnostico: str,
+    posologia: str,
+    cantidad: int,
+    tratamiento: int,
+    medicamentos: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Adapt a patient request to the same server-owned input used by the medical form."""
+    auditoria = solicitud.auditoria if isinstance(solicitud.auditoria, dict) else {}
+    raw_medications = medicamentos or auditoria.get("medicamentos")
+    if not isinstance(raw_medications, list) or not raw_medications:
+        raw_medications = [
+            {
+                "regNo": solicitud.medicamento_reg_no,
+                "nombreProducto": solicitud.medicamento_nombre_producto,
+                "nombreDroga": solicitud.medicamento_nombre_droga,
+                "presentacion": solicitud.medicamento_presentacion,
+            }
+        ]
+
+    medications = [
+        {
+            "regNo": item.get("regNo", ""),
+            "nombreProducto": item.get("nombreProducto", ""),
+            "nombreDroga": item.get("nombreDroga", ""),
+            "presentacion": item.get("presentacion", ""),
+            "cantidad": cantidad,
+            "posologia": posologia,
+            "tratamiento": tratamiento,
+        }
+        for item in raw_medications[:10]
+        if isinstance(item, dict)
+    ]
+    return _safe_recipe_data(
+        {
+            "pacienteId": solicitud.paciente_id,
+            "usarCobertura": True,
+            "diagnostico": diagnostico,
+            "medicamentos": medications,
+        }
+    )
+
+
+def _redact_profile_images(payload: dict[str, Any]) -> dict[str, Any]:
+    redacted = copy.deepcopy(payload)
+    medico = redacted.get("medico")
+    if not isinstance(medico, dict):
+        return redacted
+    for key, label in (("firmabase64", "firma PNG configurada"), ("logoInstitucion", "logo PNG configurado")):
+        value = medico.get(key)
+        if value:
+            medico[key] = f"[{label}; {len(value)} caracteres Base64]"
+    return redacted
+
+
+def _normalize_fecha_emision(raw_value: Any) -> str:
+    value = str(raw_value or "").strip()
+    if not value:
+        return ""
+    try:
+        selected = datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError("La fecha de emisión debe tener formato AAAA-MM-DD.") from exc
+    if selected == timezone.localdate():
+        return ""
+    return f"{selected.isoformat()}T00:00:00Z"
+
+
+def _configured_image_base64(raw_path: str) -> str:
+    path = Path(raw_path).expanduser() if raw_path else None
+    if not path or path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".bmp"}:
+        return ""
+    try:
+        stat = path.stat()
+    except OSError:
+        return ""
+    return _image_file_base64(str(path.resolve()), stat.st_mtime_ns)
+
+
+def _profile_section(data: dict[str, Any], key: str) -> dict[str, Any]:
+    value = data.get(key)
+    return value if isinstance(value, dict) else {}
+
+
+def _profile_text(data: dict[str, Any], key: str, default: str = "") -> str:
+    value = data.get(key, default)
+    return str(value if value is not None else "").strip()
+
+
+@lru_cache(maxsize=8)
+def _image_file_base64(path: str, _mtime_ns: int) -> str:
+    try:
+        return base64.b64encode(Path(path).read_bytes()).decode("ascii")
+    except OSError:
+        return ""
+
+
+def _split_street_address(value: str) -> tuple[str, str]:
+    match = re.match(r"^\s*(.*?)\s+(\d+[A-Za-z]?)\s*$", value or "")
+    if not match:
+        return (value or "").strip(), ""
+    return match.group(1).strip().title(), match.group(2).strip()
+
+
+def _positive_int(value: Any, *, default: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
+def _qbi2_prefixed_params(request) -> dict[str, Any]:
+    return {
+        key.removeprefix("qbi2_"): value
+        for key, value in request.GET.items()
+        if key.startswith("qbi2_") and value not in ("", None)
+    }
+
+
+def _json_body(request) -> dict[str, Any] | JsonResponse:
+    try:
+        data = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError as exc:
+        return JsonResponse({"status": "error", "message": f"JSON invalido: {exc}"}, status=400)
+    if not isinstance(data, dict):
+        return JsonResponse({"status": "error", "message": "El cuerpo debe ser un objeto JSON."}, status=400)
+    return data
+
+
+def _selected_medications_from_portal_data(data):
+    try:
+        medicamentos = json.loads(data.get("medicamentosJson") or "[]")
+        if not isinstance(medicamentos, list):
+            medicamentos = []
+    except json.JSONDecodeError:
+        medicamentos = []
+
+    selected = []
+    seen = set()
+    for item in medicamentos[:10]:
+        if not isinstance(item, dict):
+            continue
+        medicamento = _complete_medication_from_portal_data(item)
+        reg_no = (medicamento.get("regNo") or "").strip()
+        if not reg_no or reg_no in seen:
+            continue
+        selected.append(medicamento)
+        seen.add(reg_no)
+
+    if selected:
+        return selected
+
+    medicamento = _selected_medication_from_portal_data(data)
+    return [medicamento] if (medicamento.get("regNo") or "").strip() else []
+
+
+def _selected_medication_from_portal_data(data):
+    try:
+        medicamento = json.loads(data.get("medicamentoJson") or "{}")
+        if not isinstance(medicamento, dict):
+            medicamento = {}
+    except json.JSONDecodeError:
+        medicamento = {}
+
+    return _complete_medication_from_portal_data(medicamento, data)
+
+
+def _complete_medication_from_portal_data(medicamento, data=None):
+    data = data or {}
+    fallback = {
+        "regNo": data.get("regNo", ""),
+        "nombreProducto": data.get("nombreProducto", ""),
+        "nombreDroga": data.get("nombreDroga", ""),
+        "presentacion": data.get("presentacion", ""),
+    }
+    for key, value in fallback.items():
+        medicamento[key] = medicamento.get(key) or value
+    return medicamento
+
+
+def _patient_api_auth_error():
+    return JsonResponse(
+        {"status": "error", "message": "Tu sesión venció. Volvé a ingresar."},
+        status=401,
+    )
+
+
+def _solicitudes_result_url(next_url, solicitud_id):
+    """Return to the selected tray while keeping the attempted request visible."""
+    valid_states = {choice[0] for choice in SolicitudReceta.Estado.choices} | {"todas"}
+    query = dict(parse_qsl(urlsplit(next_url).query))
+    estado = query.get("estado")
+    if estado not in valid_states:
+        estado = SolicitudReceta.Estado.PENDIENTE
+    return (
+        f'{reverse("recetas:medico_solicitudes")}?'
+        f'{urlencode({"estado": estado, "resultado": solicitud_id})}'
+        "#resultado-emision"
+    )
+
+
+def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
+    observacion = request.POST.get("observacion_medico", "")
+    next_url = request.POST.get("next") or "/recetas/medico/solicitudes/"
+    diagnostico = (request.POST.get("diagnostico") or "").strip()
+    posologia = (request.POST.get("posologia") or "Tomar segun indicacion medica.").strip()
+    cantidad = _positive_int(request.POST.get("cantidad"), default=1)
+    try:
+        tratamiento = max(0, int(request.POST.get("tratamiento") or 0))
+    except (TypeError, ValueError):
+        tratamiento = 0
+    medicamentos = None
+    if aprobar and "medicamentosJson" in request.POST:
+        medicamentos = _selected_medications_from_portal_data(request.POST)
+        if not medicamentos or len(medicamentos) > 10:
+            messages.error(request, "El pedido debe tener entre 1 y 10 medicamentos del vademécum.")
+            return HttpResponseRedirect(_solicitudes_result_url(next_url, solicitud_id))
+
+    if aprobar and not diagnostico:
+        messages.error(request, "El diagnostico es obligatorio para emitir la receta.")
+        return HttpResponseRedirect(_solicitudes_result_url(next_url, solicitud_id))
+
+    with transaction.atomic():
+        solicitud = SolicitudReceta.objects.select_for_update().get(pk=solicitud_id)
+        if solicitud.estado != SolicitudReceta.Estado.PENDIENTE:
+            messages.error(
+                request,
+                f"La solicitud #{solicitud.id} ya no está pendiente y no fue procesada nuevamente.",
+            )
+            return HttpResponseRedirect(_solicitudes_result_url(next_url, solicitud.id))
+        if aprobar:
+            if medicamentos is not None:
+                medicamento = medicamentos[0]
+                auditoria = dict(solicitud.auditoria or {})
+                auditoria["medicamento"] = medicamento
+                auditoria["medicamentos"] = medicamentos
+                auditoria["medicamentos_editados_por_medico"] = True
+                solicitud.medicamento_reg_no = (medicamento.get("regNo") or "").strip()
+                solicitud.medicamento_nombre_producto = (medicamento.get("nombreProducto") or "").strip()
+                solicitud.medicamento_nombre_droga = (medicamento.get("nombreDroga") or "").strip()
+                solicitud.medicamento_presentacion = (medicamento.get("presentacion") or "").strip()
+                solicitud.auditoria = auditoria
+                solicitud.save(
+                    update_fields=[
+                        "medicamento_reg_no",
+                        "medicamento_nombre_producto",
+                        "medicamento_nombre_droga",
+                        "medicamento_presentacion",
+                        "auditoria",
+                        "updated_at",
+                    ]
+                )
+            emitted = _emitir_solicitud_receta(
+                solicitud,
+                request.user,
+                diagnostico=diagnostico,
+                posologia=posologia,
+                cantidad=cantidad,
+                tratamiento=tratamiento,
+                observacion=observacion,
+            )
+            if emitted:
+                messages.success(
+                    request,
+                    f"La solicitud #{solicitud.id} fue emitida correctamente.",
+                )
+            else:
+                messages.error(
+                    request,
+                    f"La solicitud #{solicitud.id} no pudo emitirse. Revisá el detalle informado por RCTA.",
+                )
+            next_url = _solicitudes_result_url(next_url, solicitud.id)
+        else:
+            solicitud.rechazar(request.user, observacion=observacion)
+    return HttpResponseRedirect(next_url)
+
+
+def _emitir_solicitud_receta(
+    solicitud,
+    user,
+    *,
+    diagnostico,
+    posologia,
+    cantidad,
+    tratamiento,
+    observacion="",
+):
+    auditoria = solicitud.auditoria if isinstance(solicitud.auditoria, dict) else {}
+    medicamentos = auditoria.get("medicamentos")
+    if not isinstance(medicamentos, list) or not medicamentos:
+        medicamentos = [
+            {
+                "regNo": solicitud.medicamento_reg_no,
+                "nombreProducto": solicitud.medicamento_nombre_producto,
+                "nombreDroga": solicitud.medicamento_nombre_droga,
+                "presentacion": solicitud.medicamento_presentacion,
+            }
+        ]
+    medicamentos = [item for item in medicamentos[:10] if isinstance(item, dict)]
+    solicitud.emisiones.all().delete()
+    payload: dict[str, Any] = {}
+    try:
+        recipe_data = _recipe_data_from_solicitud(
+            solicitud,
+            diagnostico=diagnostico,
+            posologia=posologia,
+            cantidad=cantidad,
+            tratamiento=tratamiento,
+            medicamentos=medicamentos,
+        )
+        _, payload = build_rcta_payload(recipe_data)
+        result = emit_rcta_payload(recipe_data)
+        summary = result.summary
+        pdf_url = summary.get("s3Link")
+        if not pdf_url:
+            provider_errors = summary.get("errores") or "QBI2 no devolvió PDF de receta."
+            raise ValueError(str(provider_errors))
+    except (Qbi2ConfigurationError, ValueError, Qbi2HTTPError) as exc:
+        response_payload = getattr(exc, "payload", {}) or {}
+        error_text = qbi2_error_text(
+            response_payload,
+            fallback=str(exc),
+            status_code=getattr(exc, "status_code", None),
+        )
+        EmisionSolicitudReceta.objects.create(
+            solicitud=solicitud,
+            orden=1,
+            total=1,
+            medicamentos=medicamentos,
+            estado=EmisionSolicitudReceta.Estado.ERROR,
+            payload_qbi2=payload,
+            respuesta_qbi2=response_payload,
+            error_qbi2=error_text,
+        )
+        solicitud.marcar_error_emision(
+            user,
+            diagnostico=diagnostico,
+            posologia=posologia,
+            observacion=observacion,
+            payload=payload,
+            response=response_payload,
+            error=error_text,
+        )
+        return False
+
+    emisiones = _replace_emission_records(solicitud, result.payload, result.response)
+    failed_documents = [
+        emision for emision in emisiones
+        if emision.estado != EmisionSolicitudReceta.Estado.EMITIDA
+    ]
+    if summary.get("errores") or failed_documents:
+        provider_errors = summary.get("errores") or [
+            emision.error_qbi2 for emision in failed_documents
+        ]
+        solicitud.marcar_error_emision(
+            user,
+            diagnostico=diagnostico,
+            posologia=posologia,
+            observacion=observacion,
+            payload=result.payload,
+            response=result.response,
+            error=str(provider_errors),
+        )
+        return False
+    solicitud.marcar_emitida(
+        user,
+        diagnostico=diagnostico,
+        posologia=posologia,
+        observacion=observacion,
+        payload=result.payload,
+        response=result.response,
+        summary=summary,
+    )
+    return True
+
+
+def _replace_emission_records(solicitud, payload, response):
+    """Persist every prescription document returned by one RCTA request."""
+    documents = []
+    response_items = []
+    if isinstance(response, dict):
+        raw_documents = (
+            response.get("recetas")
+            or response.get("receta")
+            or response.get("documentos")
+            or []
+        )
+        if isinstance(raw_documents, dict):
+            raw_documents = [raw_documents]
+        if isinstance(raw_documents, list):
+            documents = [item for item in raw_documents if isinstance(item, dict)]
+        raw_response_items = response.get("response") or []
+        if isinstance(raw_response_items, list):
+            response_items = [item for item in raw_response_items if isinstance(item, dict)]
+
+    if not documents:
+        return []
+
+    solicitud.emisiones.all().delete()
+    total = len(documents)
+    emisiones = []
+    for index, document in enumerate(documents, start=1):
+        response_item = response_items[index - 1] if index <= len(response_items) else {}
+        medicamentos = response_item.get("medicamentos") or []
+        pdf_url = document.get("s3Link") or ""
+        emisiones.append(
+            EmisionSolicitudReceta.objects.create(
+                solicitud=solicitud,
+                orden=index,
+                total=total,
+                medicamentos=medicamentos if isinstance(medicamentos, list) else [],
+                estado=(
+                    EmisionSolicitudReceta.Estado.EMITIDA
+                    if pdf_url
+                    else EmisionSolicitudReceta.Estado.ERROR
+                ),
+                payload_qbi2=payload or {},
+                respuesta_qbi2={"receta": document, "response": response_item},
+                error_qbi2="" if pdf_url else "QBI2 no devolvió PDF para este documento.",
+                qbi2_id_receta=document.get("idReceta") or "",
+                qbi2_pdf_url=pdf_url,
+            )
+        )
+    return emisiones

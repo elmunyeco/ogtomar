@@ -30,3 +30,31 @@ class PacienteForm(forms.ModelForm):
         optional_fields = ['mail', 'direccion', 'localidad', 'plan', 'celular', 'referente']
         for field in optional_fields:
             self.fields[field].required = False
+
+
+class PacientePortalForm(forms.ModelForm):
+    """Datos no clinicos que el propio paciente puede mantener."""
+
+    class Meta:
+        model = Paciente
+        fields = ["sexo", "direccion", "telefono", "celular", "mail", "obraSocial", "afiliado"]
+        labels = {
+            "sexo": "Sexo",
+            "direccion": "Dirección",
+            "telefono": "Teléfono",
+            "celular": "Celular",
+            "mail": "Correo electrónico",
+            "obraSocial": "Cobertura",
+            "afiliado": "Número de afiliado",
+        }
+        widgets = {
+            "mail": forms.EmailInput(attrs={"autocomplete": "email"}),
+            "direccion": forms.TextInput(attrs={"autocomplete": "street-address"}),
+            "telefono": forms.TextInput(attrs={"autocomplete": "tel"}),
+            "celular": forms.TextInput(attrs={"autocomplete": "tel"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            field.required = name == "sexo"

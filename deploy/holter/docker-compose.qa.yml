@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: holter_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: holter
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: holter
+    volumes:
+      - holter_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U holter"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    mem_limit: 128m
+    memswap_limit: 192m
+    pids_limit: 128
+
+  app:
+    build: .
+    image: holter_app:qa
+    container_name: holter_app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      DATABASE_URL: postgres://holter:${DB_PASSWORD}@holter_db:5432/holter
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES: ${JWT_EXPIRES:-12h}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      ADMIN_USER: ${ADMIN_USER:-omar}
+      ADMIN_PASS: ${ADMIN_PASS}
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Omar}
+      ADMIN_APELLIDO: ${ADMIN_APELLIDO:-Prieto}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      LOCAL_STORAGE_DIR: /app/data/uploads
+      UPLOAD_TEMP_DIR: /app/data/tmp
+      MAX_FILE_MB: ${MAX_FILE_MB:-500}
+      GOOGLE_SERVICE_ACCOUNT_KEY: ${GOOGLE_SERVICE_ACCOUNT_KEY:-}
+    volumes:
+      - holter_uploads:/app/data
+    expose:
+      - "4000"
+    networks:
+      default:
+      deploy_default:
+        aliases:
+          - holter_app
+    mem_limit: 160m
+    memswap_limit: 224m
+    pids_limit: 128
+
+volumes:
+  holter_pgdata:
+  holter_uploads:
+
+networks:
+  deploy_default:
+    external: true
