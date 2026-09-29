@@ -58,4 +58,3 @@ class Migration(migrations.Migration):
             index=models.Index(fields=["refresh_locked_until"], name="qbi2_cache_lock_idx"),
         ),
     ]
-
