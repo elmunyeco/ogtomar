@@ -1,0 +1,44 @@
+medico:
+  nombre: Omar
+  apellido: Prieto
+  tipo_documento: DNI
+  numero_documento: "27147190"
+  sexo: M
+  fecha_nacimiento: null
+  email: omarprieto@hotmail.com
+  telefono: "1133097865"
+  pais: AR
+  profesion: Medico
+  especialidad: Cardiologia
+  matricula:
+    tipo: MN
+    numero: "109347"
+    provincia: null
+    display: "MN 109347 · MP 332792"
+  sello:
+    linea_1: Dr. Omar Prieto
+    linea_2: Médico Cardiólogo
+    linea_3: MN 109347 MP 332792
+  firma:
+    archivo: firma_omar.png
+    link: null
+  logo:
+    archivo: logo_omar.png
+  id_tributario: null
+  id_refeps: null
+
+consultorio:
+  nombre: Cardiología Integral
+  domicilio:
+    calle: Gral. Las Heras
+    numero: "459"
+    piso: null
+    depto: null
+    codigo_postal: "1842"
+    localidad: Monte Grande
+    municipio: null
+    provincia: Buenos Aires
+    pais: AR
+  contacto: "1133097865"
+  email: omarprieto@hotmail.com
+  logo: null

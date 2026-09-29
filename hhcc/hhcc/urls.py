@@ -16,8 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('recetas/', include(('Qbi2.urls', 'recetas'), namespace='recetas')),
     path('', include('main.urls')),
     path('ecocardiograma/', include('ecocardiograma.urls')),
     path('carotidas/', include('carotidas.urls')),

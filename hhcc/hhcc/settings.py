@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'carotidas',
     'ecostress',
     'mmii',
+    'Qbi2.apps.Qbi2Config',
 ]
 
 MIDDLEWARE = [
@@ -188,3 +189,23 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# RCTA / Innovamed. El destino debe configurarse explícitamente en cada entorno;
+# no se adopta homologación como valor implícito de una instalación productiva.
+QBI2_BASE_URL = os.getenv("QBI2_BASE_URL", "")
+QBI2_BEARER_TOKEN = os.getenv("QBI2_BEARER_TOKEN", "")
+QBI2_CLIENT_APP_ID = os.getenv("QBI2_CLIENT_APP_ID", "563")
+QBI2_TIMEOUT_SECONDS = float(os.getenv("QBI2_TIMEOUT_SECONDS", "15"))
+QBI2_AUTH_MODE = os.getenv("QBI2_AUTH_MODE", "auto")  # auto|required|none
+QBI2_VADEMECUM_PATH = os.getenv("QBI2_VADEMECUM_PATH", "/apirecipe/GetMedicamento/{search}")
+QBI2_VADEMECUM_PAGE_PARAM = os.getenv("QBI2_VADEMECUM_PAGE_PARAM", "numeroPagina")
+QBI2_CLIENT_APP_ID_PARAM = os.getenv("QBI2_CLIENT_APP_ID_PARAM", "clienteAppId")
+QBI2_INCLUDE_CLIENT_APP_ID_IN_VADEMECUM = (
+    os.getenv("QBI2_INCLUDE_CLIENT_APP_ID_IN_VADEMECUM", "1") == "1"
+)
+QBI2_VADEMECUM_MIN_QUERY_LENGTH = int(os.getenv("QBI2_VADEMECUM_MIN_QUERY_LENGTH", "2"))
+QBI2_PROFILE_YAML_PATH = os.getenv(
+    "QBI2_PROFILE_YAML_PATH",
+    str(BASE_DIR / "private" / "qbi2" / "profile.yaml"),
+)

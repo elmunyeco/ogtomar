@@ -106,6 +106,9 @@ Thumbs.db
 
 cookies.txt
 
+# Configuración privada del perfil profesional QBI2 (se versiona solo el ejemplo)
+hhcc/private/qbi2/profile.yaml
+
 # Notas operativas locales
 instrucciones.md
 

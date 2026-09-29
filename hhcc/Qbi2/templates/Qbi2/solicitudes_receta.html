@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+
+{% block title %}Cola médica de recetas - Dr. Omar Prieto{% endblock %}
+
+{% block content %}
+<section class="queue-page">
+    <header class="queue-heading">
+        <div>
+            <span>Recetas</span>
+            <h1>Cola médica</h1>
+            <p>Revisá los datos del paciente y el pedido antes de aprobar, editar o rechazar.</p>
+        </div>
+        <a href="{% url 'recetas:medico_receta_nueva' %}">Crear una receta</a>
+    </header>
+
+    {% if messages %}
+        <div class="queue-messages">
+            {% for message in messages %}<div class="queue-message {{ message.tags }}">{{ message }}</div>{% endfor %}
+        </div>
+    {% endif %}
+
+    {% if resultado_solicitud.estado == estados.EMITIDA %}
+        <section id="resultado-emision" class="emission-feedback success" role="status">
+            <div class="feedback-icon" aria-hidden="true">✓</div>
+            <div class="feedback-content">
+                <span>Emisión completada</span>
+                <h2>La solicitud #{{ resultado_solicitud.id }} fue emitida correctamente</h2>
+                <p>{{ resultado_solicitud.paciente.apellido }}, {{ resultado_solicitud.paciente.nombre }} · RCTA generó {{ resultado_solicitud.emisiones.count }} documento{{ resultado_solicitud.emisiones.count|pluralize }}.</p>
+                <div class="feedback-documents">
+                    {% for emision in resultado_solicitud.emisiones.all %}
+                        <a href="{{ emision.qbi2_pdf_url }}" target="_blank" rel="noopener">Ver PDF {{ emision.orden }} de {{ emision.total }}</a>
+                    {% endfor %}
+                    <a class="feedback-mail" href="{% url 'recetas:api_medico_solicitud_correo' resultado_solicitud.id %}">Preparar correo con todos los PDF</a>
+                </div>
+            </div>
+        </section>
+    {% elif resultado_solicitud.estado == estados.ERROR_EMISION %}
+        <section id="resultado-emision" class="emission-feedback error" role="alert">
+            <div class="feedback-icon" aria-hidden="true">!</div>
+            <div class="feedback-content">
+                <span>Emisión fallida</span>
+                <h2>No se pudo emitir la solicitud #{{ resultado_solicitud.id }}</h2>
+                <p>{{ resultado_solicitud.paciente.apellido }}, {{ resultado_solicitud.paciente.nombre }}</p>
+                <div class="feedback-error">
+                    <strong>{{ resultado_solicitud.error_detalle.message }}</strong>
+                    {% if resultado_solicitud.error_detalle.code or resultado_solicitud.error_detalle.request_id %}
+                        <small>{% if resultado_solicitud.error_detalle.code %}Código RCTA: {{ resultado_solicitud.error_detalle.code }}{% endif %}{% if resultado_solicitud.error_detalle.code and resultado_solicitud.error_detalle.request_id %} · {% endif %}{% if resultado_solicitud.error_detalle.request_id %}Referencia técnica: {{ resultado_solicitud.error_detalle.request_id }}{% endif %}</small>
+                    {% endif %}
+                </div>
+                <form class="retry-form" method="post" action="{% url 'recetas:api_medico_solicitud_reabrir' resultado_solicitud.id %}">
+                    {% csrf_token %}
+                    <button type="submit">Corregir y volver a intentar</button>
+                    <small>No emite automáticamente: devuelve la orden a Pendientes para revisarla.</small>
+                </form>
+            </div>
+        </section>
+    {% endif %}
+
+    <nav class="queue-tabs" aria-label="Elegir una bandeja de solicitudes">
+        <a class="{% if estado == 'pendiente' %}active{% endif %}" href="?estado=pendiente">Pendientes <span>{{ counts.pendiente }}</span></a>
+        <a class="{% if estado == 'emitida' %}active{% endif %}" href="?estado=emitida">Emitidas <span>{{ counts.emitida }}</span></a>
+        <a class="{% if estado == 'error_emision' %}active{% endif %}" href="?estado=error_emision">Errores <span>{{ counts.error_emision }}</span></a>
+        <a class="{% if estado == 'aprobada' %}active{% endif %}" href="?estado=aprobada">Aprobadas <span>{{ counts.aprobada }}</span></a>
+        <a class="{% if estado == 'rechazada' %}active{% endif %}" href="?estado=rechazada">Rechazadas <span>{{ counts.rechazada }}</span></a>
+        <a class="{% if estado == 'todas' %}active{% endif %}" href="?estado=todas">Todas <span>{{ counts.todas }}</span></a>
+    </nav>
+
+    <div class="queue-list">
+        {% for solicitud in solicitudes %}
+            <article id="solicitud-{{ solicitud.id }}" class="request-card">
+                <header class="request-meta">
+                    <span class="request-state state-{{ solicitud.estado }}">{{ solicitud.get_estado_display }}</span>
+                    <span>Solicitud #{{ solicitud.id }} · {{ solicitud.created_at|date:"d/m/Y H:i" }}</span>
+                </header>
+
+                <section class="patient-card">
+                    <div class="patient-avatar" aria-hidden="true">{{ solicitud.paciente.nombre|first }}{{ solicitud.paciente.apellido|first }}</div>
+                    <div class="patient-main">
+                        <span>Paciente de historias clínicas</span>
+                        <h2>{{ solicitud.paciente.apellido }}, {{ solicitud.paciente.nombre }}</h2>
+                        <p>DNI {{ solicitud.paciente.numDoc }} · HC {{ solicitud.historia_clinica.id }}{% if solicitud.paciente.sexo %} · {{ solicitud.paciente.get_sexo_display }}{% endif %}</p>
+                        <p class="patient-contact">
+                            {% if solicitud.paciente.mail %}{{ solicitud.paciente.mail }}{% else %}Sin correo{% endif %}
+                            ·
+                            {% if solicitud.paciente.celular %}{{ solicitud.paciente.celular }}{% elif solicitud.paciente.telefono %}{{ solicitud.paciente.telefono }}{% else %}Sin teléfono{% endif %}
+                        </p>
+                        <a class="edit-patient" data-patient-editor href="{% url 'editar_paciente' solicitud.paciente.id %}?recipe_context=1">Editar datos del paciente</a>
+                    </div>
+                    <div class="patient-coverage">
+                        <span>Cobertura médica</span>
+                        <strong>{{ solicitud.paciente.obraSocial|default:"Sin cobertura" }}</strong>
+                        <small>{% if solicitud.paciente.afiliado %}Afiliado {{ solicitud.paciente.afiliado }}{% else %}Sin número de afiliado{% endif %}{% if solicitud.paciente.plan %} · Plan {{ solicitud.paciente.plan }}{% endif %}</small>
+                    </div>
+                </section>
+
+                {% if solicitud.estado == estados.PENDIENTE %}
+                    <form class="review-form" method="post" action="{% url 'recetas:api_medico_solicitud_aprobar' solicitud.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="/recetas/medico/solicitudes/?estado={{ estado }}">
+                        <div class="review-columns">
+                            <div class="review-column">
+                                <section class="review-panel medications-panel">
+                                    <header class="panel-heading">
+                                        <span class="panel-icon" aria-hidden="true">💊</span>
+                                        <div><h3>Medicamentos</h3><small>Hasta 10 por pedido</small></div>
+                                    </header>
+                                    <div class="panel-body med-editor" data-catalog-url="{% url 'recetas:api_catalogo' 'medicamentos' %}">
+                                        <input class="med-editor-json" type="hidden" name="medicamentosJson" value="{{ solicitud.medicamentos_json }}">
+                                        <div class="med-editor-selected"></div>
+                                        <label class="field-label" for="medicine-query-{{ solicitud.id }}">Buscar por nombre comercial o droga</label>
+                                        <div class="search-row">
+                                            <input id="medicine-query-{{ solicitud.id }}" class="med-editor-query" type="search" placeholder="Ej.: Lotrial o enalapril" autocomplete="off">
+                                            <button class="secondary-button med-editor-button" type="button">Buscar</button>
+                                        </div>
+                                        <div class="med-editor-status" aria-live="polite"></div>
+                                        <div class="med-editor-results"></div>
+                                    </div>
+                                </section>
+
+                                <section class="review-panel">
+                                    <header class="panel-heading"><span class="panel-icon" aria-hidden="true">≡</span><h3>Indicaciones</h3></header>
+                                    <div class="panel-body">
+                                        <label class="field-label" for="posologia-{{ solicitud.id }}">Posología</label>
+                                        <textarea id="posologia-{{ solicitud.id }}" name="posologia">{{ solicitud.posologia|default:"Tomar según indicación médica." }}</textarea>
+                                        {% if solicitud.observacion_paciente %}
+                                            <div class="patient-note"><span>Observación del paciente</span><p>{{ solicitud.observacion_paciente }}</p></div>
+                                        {% endif %}
+                                    </div>
+                                </section>
+                            </div>
+
+                            <div class="review-column">
+                                <section class="review-panel">
+                                    <header class="panel-heading"><span class="panel-icon" aria-hidden="true">⌁</span><h3>Diagnóstico <span aria-hidden="true">*</span></h3></header>
+                                    <div class="panel-body">
+                                        <label class="field-label" for="diagnostico-{{ solicitud.id }}">Diagnóstico para esta receta</label>
+                                        <input id="diagnostico-{{ solicitud.id }}" type="text" name="diagnostico" value="{{ solicitud.diagnostico }}" placeholder="Ej.: Hipertensión arterial" required>
+                                        <small class="field-help">Puede escribirse como texto libre.</small>
+                                    </div>
+                                </section>
+
+                                <section class="review-panel">
+                                    <header class="panel-heading"><span class="panel-icon" aria-hidden="true">✎</span><h3>Texto adicional <small>(opcional)</small></h3></header>
+                                    <div class="panel-body">
+                                        <label class="sr-only" for="medical-note-{{ solicitud.id }}">Nota médica opcional</label>
+                                        <textarea id="medical-note-{{ solicitud.id }}" name="observacion_medico" placeholder="Aclaraciones generales de la receta">{{ solicitud.observacion_medico }}</textarea>
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+                        <input type="hidden" name="cantidad" value="1">
+                        <input type="hidden" name="tratamiento" value="0">
+                        <footer class="review-footer">
+                            <div><strong>Revisá los datos antes de emitir.</strong><span>La receta se enviará a RCTA al confirmar.</span></div>
+                            <button class="approve-button" type="submit">Aprobar y emitir</button>
+                        </footer>
+                    </form>
+                    <form class="reject-form" method="post" action="{% url 'recetas:api_medico_solicitud_rechazar' solicitud.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="/recetas/medico/solicitudes/?estado={{ estado }}">
+                        <label for="reject-note-{{ solicitud.id }}">Motivo de rechazo <small>(opcional)</small></label>
+                        <div><input id="reject-note-{{ solicitud.id }}" type="text" name="observacion_medico" placeholder="Ej.: requiere consulta"><button type="submit">Rechazar pedido</button></div>
+                    </form>
+                {% else %}
+                    <div class="review-columns readonly-columns">
+                        <section class="review-panel">
+                            <header class="panel-heading"><span class="panel-icon" aria-hidden="true">💊</span><h3>Medicamentos</h3></header>
+                            <div class="panel-body readonly-medicines">
+                                {% for medicamento in solicitud.auditoria.medicamentos %}
+                                    <div><span><strong>{{ medicamento.nombreProducto|default:"Medicamento" }}</strong><small>{{ medicamento.nombreDroga }}{% if medicamento.nombreDroga and medicamento.presentacion %} · {% endif %}{{ medicamento.presentacion }}</small></span><code>RegNo {{ medicamento.regNo }}</code></div>
+                                {% empty %}
+                                    <div><span><strong>{{ solicitud.medicamento_nombre_producto|default:"Medicamento" }}</strong><small>{{ solicitud.medicamento_nombre_droga }}{% if solicitud.medicamento_nombre_droga and solicitud.medicamento_presentacion %} · {% endif %}{{ solicitud.medicamento_presentacion }}</small></span><code>RegNo {{ solicitud.medicamento_reg_no }}</code></div>
+                                {% endfor %}
+                            </div>
+                        </section>
+                        <section class="review-panel">
+                            <header class="panel-heading"><span class="panel-icon" aria-hidden="true">✓</span><h3>Decisión médica</h3></header>
+                            <div class="panel-body decision-data">
+                                {% if solicitud.diagnostico %}<div><span>Diagnóstico</span><strong>{{ solicitud.diagnostico }}</strong></div>{% endif %}
+                                {% if solicitud.posologia %}<div><span>Indicaciones</span><p>{{ solicitud.posologia }}</p></div>{% endif %}
+                                {% if solicitud.observacion_medico %}<div><span>Observación médica</span><p>{{ solicitud.observacion_medico }}</p></div>{% endif %}
+                                <div><span>Fecha</span><strong>{{ solicitud.fecha_decision|date:"d/m/Y H:i"|default:"Sin fecha" }}</strong></div>
+                            </div>
+                        </section>
+                    </div>
+                {% endif %}
+
+                {% if solicitud.error_qbi2 %}
+                    <section class="provider-error">
+                        <strong>{% if solicitud.estado == estados.PENDIENTE %}Último intento de emisión fallido{% else %}RCTA no pudo emitir la receta{% endif %}</strong>
+                        <p>{{ solicitud.error_detalle.message }}</p>
+                        {% if solicitud.error_detalle.code or solicitud.error_detalle.request_id %}<small>{% if solicitud.error_detalle.code %}Código RCTA: {{ solicitud.error_detalle.code }}{% endif %}{% if solicitud.error_detalle.code and solicitud.error_detalle.request_id %} · {% endif %}{% if solicitud.error_detalle.request_id %}Referencia técnica: {{ solicitud.error_detalle.request_id }}{% endif %}</small>{% endif %}
+                        {% if solicitud.estado == estados.ERROR_EMISION %}
+                            <form class="retry-form" method="post" action="{% url 'recetas:api_medico_solicitud_reabrir' solicitud.id %}">
+                                {% csrf_token %}
+                                <button type="submit">Corregir y volver a intentar</button>
+                                <small>No emite automáticamente: devuelve la orden a Pendientes para revisarla.</small>
+                            </form>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                {% if solicitud.emisiones.all or solicitud.qbi2_pdf_url %}
+                    <section class="issued-result">
+                        <div>
+                            <span>Resultado de emisión</span>
+                            <h3>Documentos generados por RCTA</h3>
+                            <div class="issued-documents">
+                                {% for emision in solicitud.emisiones.all %}
+                                    <div>
+                                        <strong>Receta {{ emision.orden }} de {{ emision.total }}</strong>
+                                        {% if emision.qbi2_id_receta %}<small>ID {{ emision.qbi2_id_receta }}</small>{% endif %}
+                                        {% if emision.qbi2_pdf_url %}<a href="{{ emision.qbi2_pdf_url }}" target="_blank" rel="noopener">Ver PDF {{ emision.orden }}</a>{% elif emision.error_qbi2 %}<small class="document-error">{{ emision.error_qbi2 }}</small>{% else %}<small>Pendiente de emisión</small>{% endif %}
+                                    </div>
+                                {% empty %}
+                                    <div><strong>Receta emitida</strong>{% if solicitud.qbi2_id_receta %}<small>ID {{ solicitud.qbi2_id_receta }}</small>{% endif %}<a href="{{ solicitud.qbi2_pdf_url }}" target="_blank" rel="noopener">Ver PDF</a></div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% if solicitud.estado == estados.EMITIDA %}<div class="issued-actions"><a class="mail-button" href="{% url 'recetas:api_medico_solicitud_correo' solicitud.id %}">Preparar correo con todos los PDF</a></div>{% endif %}
+                        {% if solicitud.estado == estados.EMITIDA %}<small>Se descarga un único borrador con todos los documentos adjuntos, listo para revisar y enviar.</small>{% endif %}
+                    </section>
+                {% endif %}
+            </article>
+        {% empty %}
+            <div class="queue-empty">No hay solicitudes para este estado.</div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .queue-page { --red:#9a4035; --red-dark:#7a332b; --red-soft:#f8ece9; --red-border:#e7c8c2; --ink:#252a31; --muted:#6f7782; --line:#eadedb; color:var(--ink); margin:0 auto; max-width:82rem; padding:1.5rem 1rem 3rem; }
+    .queue-heading { align-items:center; display:flex; gap:1rem; justify-content:space-between; margin-bottom:1.15rem; }
+    .queue-heading > div > span { color:var(--red); font-size:.72rem; font-weight:850; letter-spacing:.06em; text-transform:uppercase; }
+    .queue-heading h1 { font-size:1.75rem; margin:.08rem 0; }
+    .queue-heading p { color:var(--muted); margin:0; }
+    .queue-heading > a { background:var(--red); border-radius:999px; color:white; font-weight:800; padding:.65rem 1rem; text-decoration:none; }
+    .queue-tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+    .queue-tabs a { background:white; border:1px solid var(--line); border-radius:999px; color:var(--ink); font-weight:800; padding:.48rem .8rem; text-decoration:none; }
+    .queue-tabs a.active { background:var(--red); border-color:var(--red); color:white; }
+    .queue-tabs span { opacity:.72; }
+    .queue-list,.queue-messages { display:grid; gap:1rem; }
+    .queue-messages { margin-bottom:1rem; }
+    .emission-feedback { align-items:flex-start; border:1px solid; border-radius:1rem; display:flex; gap:1rem; margin-bottom:1rem; padding:1rem 1.15rem; scroll-margin-top:1rem; }
+    .emission-feedback.success { background:#edf9f2; border-color:#a9dcc0; color:#155c3d; }
+    .emission-feedback.error { background:#fff1ef; border-color:#efb8af; color:#812f25; }
+    .feedback-icon { align-items:center; border:2px solid currentColor; border-radius:50%; display:flex; flex:0 0 auto; font-size:1.15rem; font-weight:950; height:2.35rem; justify-content:center; width:2.35rem; }
+    .feedback-content { min-width:0; width:100%; }
+    .feedback-content > span { display:block; font-size:.7rem; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
+    .feedback-content h2 { font-size:1.12rem; font-weight:900; margin:.12rem 0; }
+    .feedback-content p { margin:0; }
+    .feedback-documents { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.75rem; }
+    .feedback-documents a { background:white; border:1px solid currentColor; border-radius:999px; color:inherit; font-size:.8rem; font-weight:850; padding:.45rem .7rem; text-decoration:none; }
+    .feedback-documents a.feedback-mail { background:#176044; border-color:#176044; color:white; }
+    .feedback-error { background:rgba(255,255,255,.72); border-radius:.55rem; margin-top:.65rem; padding:.65rem .75rem; white-space:pre-wrap; }
+    .feedback-error strong,.feedback-error small { display:block; }
+    .feedback-error strong { font-weight:850; }
+    .feedback-error small,.provider-error small { margin-top:.3rem; opacity:.82; }
+    .retry-form { align-items:center; display:flex; flex-wrap:wrap; gap:.55rem .75rem; margin-top:.75rem; }
+    .retry-form button { background:var(--red); border:0; border-radius:999px; color:white; cursor:pointer; font-weight:850; min-height:2.55rem; padding:0 1rem; }
+    .emission-feedback.error .retry-form button { background:#812f25; }
+    .retry-form small { flex:1 1 18rem; margin:0; }
+    .request-card { background:#faf7f6; border:1px solid var(--line); border-radius:1.15rem; box-shadow:0 .22rem .8rem rgba(28,39,49,.08); overflow:hidden; padding:1rem; }
+    .request-meta { align-items:center; color:var(--muted); display:flex; font-size:.78rem; font-weight:750; gap:.7rem; justify-content:space-between; margin:0 .15rem .75rem; }
+    .request-state { border-radius:999px; font-size:.7rem; font-weight:900; padding:.25rem .6rem; text-transform:uppercase; }
+    .state-pendiente { background:#fff3df; color:#99580d; } .state-aprobada,.state-emitida { background:#e8f6ef; color:#176044; } .state-rechazada,.state-error_emision,.state-anulada { background:#f1e9e7; color:var(--red-dark); }
+    .patient-card,.review-panel,.review-footer,.issued-result { background:white; border:1px solid var(--line); border-radius:1rem; box-shadow:0 .16rem .6rem rgba(28,39,49,.06); }
+    .patient-card { align-items:center; display:grid; gap:1rem; grid-template-columns:auto 1fr auto; margin-bottom:1rem; padding:1rem 1.2rem; }
+    .patient-avatar { align-items:center; background:linear-gradient(145deg,#b8574b,var(--red-dark)); border-radius:50%; color:white; display:flex; font-weight:900; height:3rem; justify-content:center; text-transform:uppercase; width:3rem; }
+    .patient-main > span,.patient-coverage > span,.decision-data span,.patient-note span,.issued-result > div > span { color:var(--muted); display:block; font-size:.7rem; font-weight:800; text-transform:uppercase; }
+    .patient-main h2 { font-size:1.15rem; margin:.1rem 0; }
+    .patient-main p,.patient-coverage small { color:var(--muted); margin:0; }
+    .patient-contact { font-size:.78rem; margin-top:.15rem !important; }
+    .edit-patient { color:var(--red); display:inline-block; font-size:.78rem; font-weight:850; margin-top:.3rem; text-decoration:none; }
+    .edit-patient:hover { color:var(--red-dark); text-decoration:underline; }
+    .patient-coverage { border-left:1px solid var(--line); display:grid; gap:.08rem; min-width:15rem; padding-left:1.2rem; }
+    .patient-coverage strong { font-size:.9rem; }
+    .review-columns { display:grid; gap:1rem; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+    .review-column { display:grid; gap:1rem; align-content:start; }
+    .review-panel { overflow:hidden; }
+    .panel-heading { align-items:center; border-bottom:1px solid var(--line); display:flex; gap:.7rem; min-height:3.7rem; padding:.8rem 1rem; }
+    .panel-heading h3 { font-size:1rem; margin:0; }
+    .panel-heading h3 small,.panel-heading div small { color:var(--muted); font-size:.72rem; font-weight:600; }
+    .panel-icon { align-items:center; background:var(--red-soft); border-radius:.65rem; color:var(--red); display:flex; flex:0 0 auto; font-size:1.05rem; height:2rem; justify-content:center; width:2rem; }
+    .panel-body { padding:1rem; }
+    .field-label { color:var(--ink); display:block; font-size:.76rem; font-weight:800; margin-bottom:.32rem; }
+    .field-help { color:var(--muted); display:block; margin-top:.35rem; }
+    .panel-body input,.panel-body textarea,.reject-form input { background:white; border:1px solid #d7cac7; border-radius:.65rem; color:var(--ink); min-height:2.7rem; padding:.6rem .72rem; width:100%; }
+    .panel-body textarea { min-height:6.2rem; resize:vertical; }
+    .search-row { display:flex; gap:.55rem; }
+    .secondary-button { background:var(--red-soft); border:1px solid var(--red-border); border-radius:.65rem; color:var(--red-dark); cursor:pointer; font-weight:850; padding:0 .9rem; }
+    .med-editor-selected { display:grid; gap:.5rem; margin-bottom:1rem; }
+    .selected-medication { align-items:center; background:var(--red-soft); border:1px solid var(--red-border); border-radius:.75rem; display:flex; gap:.7rem; justify-content:space-between; padding:.65rem .75rem; }
+    .selected-medication strong,.selected-medication small,.med-editor-result strong,.med-editor-result small,.readonly-medicines strong,.readonly-medicines small { display:block; }
+    .selected-medication small,.med-editor-result small,.readonly-medicines small { color:var(--muted); margin-top:.12rem; }
+    .selected-medication button { background:white; border:1px solid var(--red-border); border-radius:50%; color:var(--red); cursor:pointer; flex:0 0 auto; height:1.9rem; width:1.9rem; }
+    .med-editor-results { display:grid; margin-top:.55rem; max-height:22rem; overflow:auto; }
+    .med-editor-result { align-items:flex-start; background:white; border:0; border-bottom:1px solid var(--line); color:var(--ink); cursor:pointer; display:flex; gap:.8rem; justify-content:space-between; padding:.72rem .2rem; text-align:left; width:100%; }
+    .med-editor-result:hover { background:#fffafa; }
+    code { background:var(--red-soft); border-radius:999px; color:var(--red-dark); font-size:.72rem; font-weight:800; padding:.22rem .5rem; white-space:nowrap; }
+    .load-more { background:var(--red-soft); border:1px solid var(--red-border); border-radius:.65rem; color:var(--red-dark); cursor:pointer; font-weight:850; margin-top:.55rem; min-height:2.5rem; width:100%; }
+    .med-editor-status { color:var(--muted); font-size:.84rem; margin-top:.45rem; }
+    .med-editor-status.error { color:#8b3030; font-weight:750; }
+    .patient-note { background:#faf7f6; border-radius:.65rem; margin-top:.8rem; padding:.7rem .8rem; }
+    .patient-note p,.decision-data p { margin:.15rem 0 0; }
+    .review-footer { align-items:center; display:flex; gap:1rem; justify-content:space-between; margin-top:1rem; padding:1rem 1.2rem; }
+    .review-footer strong,.review-footer span { display:block; } .review-footer span { color:var(--muted); font-size:.8rem; }
+    .approve-button { background:var(--red); border:0; border-radius:999px; color:white; cursor:pointer; font-weight:900; min-height:2.8rem; padding:0 1.2rem; }
+    .reject-form { align-items:flex-end; border-top:1px solid var(--line); display:grid; gap:.55rem; grid-template-columns:1fr auto; margin-top:1rem; padding:1rem .2rem .1rem; }
+    .reject-form label { color:var(--muted); font-size:.76rem; font-weight:800; grid-column:1/-1; }
+    .reject-form > div { display:flex; gap:.55rem; grid-column:1/-1; }
+    .reject-form button { background:white; border:1px solid var(--red); border-radius:999px; color:var(--red); cursor:pointer; flex:0 0 auto; font-weight:850; padding:0 1rem; }
+    .readonly-columns { grid-template-columns:1fr 1fr; }
+    .readonly-medicines,.decision-data { display:grid; gap:.65rem; }
+    .readonly-medicines > div { align-items:flex-start; border-bottom:1px solid var(--line); display:flex; gap:1rem; justify-content:space-between; padding-bottom:.6rem; }
+    .decision-data > div { background:#faf7f6; border-radius:.65rem; padding:.7rem .8rem; }
+    .provider-error { background:#fff1ef; border:1px solid #efc1ba; border-radius:.8rem; color:#812f25; margin-top:1rem; padding:.85rem 1rem; }
+    .provider-error p { margin:.2rem 0 0; white-space:pre-wrap; }
+    .issued-result { align-items:center; display:grid; gap:1rem; grid-template-columns:1fr auto; margin-top:1rem; padding:1rem 1.2rem; }
+    .issued-result h3,.issued-result p { margin:.1rem 0 0; } .issued-result p,.issued-result > small { color:var(--muted); }
+    .issued-documents { display:grid; gap:.45rem; margin-top:.7rem; }
+    .issued-documents > div { align-items:center; background:#faf7f6; border-radius:.65rem; display:flex; flex-wrap:wrap; gap:.5rem; padding:.55rem .7rem; }
+    .issued-documents small { color:var(--muted); }
+    .issued-documents a { color:var(--red); font-size:.8rem; font-weight:850; margin-left:auto; text-decoration:none; }
+    .issued-documents .document-error { color:#8b3030; flex:1 1 100%; }
+    .issued-actions { display:flex; flex-wrap:wrap; gap:.55rem; justify-content:flex-end; }
+    .issued-actions a { background:white; border:1px solid var(--red); border-radius:999px; color:var(--red); font-weight:850; padding:.55rem .85rem; text-decoration:none; }
+    .issued-actions a.mail-button { background:var(--red); color:white; }
+    .issued-result > small { grid-column:1/-1; }
+    .queue-message,.queue-empty { background:white; border:1px solid var(--line); border-radius:.8rem; padding:.8rem 1rem; }
+    .queue-message.success { background:#edf9f2; border-color:#a9dcc0; color:#155c3d; }
+    .queue-message.error { background:#fff1ef; border-color:#efc1ba; color:#812f25; }
+    .queue-empty { color:var(--muted); font-weight:750; text-align:center; }
+    @media(max-width:850px) { .patient-card { grid-template-columns:auto 1fr; } .patient-coverage { border-left:0; border-top:1px solid var(--line); grid-column:1/-1; min-width:0; padding: .8rem 0 0; } .review-columns,.readonly-columns { grid-template-columns:1fr; } }
+    @media(max-width:560px) { .queue-heading,.review-footer,.request-meta { align-items:flex-start; flex-direction:column; } .search-row,.reject-form > div,.issued-actions { flex-direction:column; } .secondary-button,.reject-form button { min-height:2.7rem; } .issued-result { grid-template-columns:1fr; } .issued-actions { justify-content:flex-start; } }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+    const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[char]);
+    const searchText = value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().trim();
+    const relevance = (item, needle) => {
+        const product = searchText(item.nombreProducto), drug = searchText(item.nombreDroga);
+        if (product === needle) return 0;
+        if (product.startsWith(needle)) return 1;
+        if (drug === needle) return 2;
+        if (drug.startsWith(needle)) return 3;
+        if (product.includes(needle)) return 4;
+        if (drug.includes(needle)) return 5;
+        return 6;
+    };
+    const medicationKey = item => String(item?.regNo || "").trim() || JSON.stringify(item);
+
+    document.querySelectorAll(".med-editor").forEach(editor => {
+        const input = editor.querySelector(".med-editor-json");
+        const selectedBox = editor.querySelector(".med-editor-selected");
+        const resultsBox = editor.querySelector(".med-editor-results");
+        const statusBox = editor.querySelector(".med-editor-status");
+        const query = editor.querySelector(".med-editor-query");
+        let selected = [], found = [], activeSearch = "", nextSearchPage = null;
+        try { selected = JSON.parse(input.value || "[]"); } catch (_) { selected = []; }
+
+        const setStatus = (message="", error=false) => { statusBox.textContent = message; statusBox.classList.toggle("error", error); };
+        const renderSelected = () => {
+            input.value = JSON.stringify(selected);
+            selectedBox.innerHTML = selected.map((item,index) => `<div class="selected-medication"><span><strong>${escapeHtml(item.nombreProducto || "Medicamento")}</strong><small>${escapeHtml([item.nombreDroga,item.presentacion,item.regNo ? `RegNo ${item.regNo}` : ""].filter(Boolean).join(" · "))}</small></span><button type="button" data-remove="${index}" aria-label="Quitar medicamento">×</button></div>`).join("");
+        };
+        const mergeFound = items => {
+            const merged = new Map(found.map(item => [medicationKey(item), item]));
+            items.forEach(item => merged.set(medicationKey(item), item));
+            const needle = searchText(activeSearch);
+            found = Array.from(merged.values()).sort((a,b) => relevance(a,needle) - relevance(b,needle) || searchText(a.nombreProducto).localeCompare(searchText(b.nombreProducto)));
+        };
+        const renderResults = () => {
+            const rows = found.length ? found.map((item,index) => `<button class="med-editor-result" type="button" data-add="${index}"><span><strong>${escapeHtml(item.nombreProducto || item.display || "Medicamento")}</strong><small>${escapeHtml([item.nombreDroga,item.presentacion].filter(Boolean).join(" · "))}</small></span><code>RegNo ${escapeHtml(item.regNo || "-")}</code></button>`).join("") : "No se encontraron medicamentos.";
+            resultsBox.innerHTML = rows + (nextSearchPage ? `<button class="load-more" type="button">Buscar más resultados</button>` : "");
+        };
+        const searchMedications = async (append=false) => {
+            const requestedQuery = query.value.trim();
+            if (!append || requestedQuery !== activeSearch) { activeSearch=requestedQuery; found=[]; nextSearchPage=null; append=false; }
+            if (!activeSearch) { resultsBox.textContent=""; setStatus("Ingresá un nombre comercial o una droga.", true); return; }
+            setStatus("Buscando…");
+            const url = new URL(editor.dataset.catalogUrl, location.origin);
+            url.searchParams.set("q", activeSearch);
+            url.searchParams.set("scanPage", append && nextSearchPage ? String(nextSearchPage) : "1");
+            try {
+                const response = await fetch(url, {credentials:"same-origin", headers:{Accept:"application/json"}});
+                const data = await response.json();
+                if (!response.ok || data.status !== "success") throw new Error(data.message || "No se pudo buscar el medicamento.");
+                mergeFound(Array.isArray(data.items) ? data.items : []);
+                nextSearchPage = data.pageInfo?.tieneMasResultados ? data.pageInfo.proximaPagina : null;
+                renderResults(); setStatus("");
+            } catch (error) { resultsBox.textContent=""; setStatus(error.message || "No se pudo buscar el medicamento.", true); }
+        };
+
+        renderSelected();
+        selectedBox.addEventListener("click", event => {
+            const button = event.target.closest("[data-remove]"); if (!button) return;
+            selected.splice(Number(button.dataset.remove), 1); renderSelected(); setStatus("");
+        });
+        editor.querySelector(".med-editor-button").addEventListener("click", () => searchMedications(false));
+        query.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); searchMedications(false); } });
+        resultsBox.addEventListener("click", event => {
+            if (event.target.closest(".load-more")) { searchMedications(true); return; }
+            const button = event.target.closest("[data-add]"); if (!button) return;
+            const item = found[Number(button.dataset.add)]; if (!item) return;
+            if (selected.length >= 10) { setStatus("El pedido admite hasta 10 medicamentos.", true); return; }
+            if (selected.some(value => medicationKey(value) === medicationKey(item))) { setStatus("Ese medicamento ya está seleccionado.", true); return; }
+            selected.push(item); renderSelected(); setStatus("");
+        });
+    });
+
+    document.querySelectorAll("[data-patient-editor]").forEach(link => {
+        link.addEventListener("click", event => {
+            event.preventDefault();
+            const popup = window.open(link.href, "hhcc_patient_editor", "popup=yes,width=980,height=820,resizable=yes,scrollbars=yes");
+            if (popup) popup.focus(); else window.alert("El navegador bloqueó la ventana para editar el paciente.");
+        });
+    });
+    window.addEventListener("message", event => {
+        if (event.origin !== window.location.origin || event.data?.type !== "hhcc:patient-updated") return;
+        window.location.reload();
+    });
+})();
+</script>
+{% endblock %}
