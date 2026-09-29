@@ -99,3 +99,17 @@ Para Docker/QA, el PDF conceptual se copia dentro de la imagen en `/app/BUSQUEDA
 ## Paso 7 - Estilo visual
 
 Se agregaron estilos en `main/static/main/css/style.css` para que la primera pantalla funcione como buscador principal del sistema, manteniendo la paleta y lenguaje visual existente.
+
+## Extension propuesta - API para clientes externos
+
+Se documento una extension para que aplicaciones externas, por ejemplo `~/omar-solo`, puedan consumir la misma busqueda por trigramas sin acceder directo a MySQL ni duplicar el algoritmo.
+
+Documento: `API_BUSQUEDA_TRIGRAMAS_PARA_CLIENTES.md`.
+
+Resumen:
+
+- Endpoint propuesto: `GET /api/v1/search/pacientes/?q=...&page=1&limit=10`.
+- Implementacion prevista con Django puro: `JsonResponse`, decorador `require_search_api_token` y reutilizacion de `main.global_search.global_search`.
+- Autenticacion servidor-a-servidor con `Authorization: Bearer <SEARCH_API_TOKEN>`.
+- Llamada backend a backend; el navegador del cliente externo no debe conocer el token.
+- HTTPS recomendado para produccion; HTTP plano solo en red privada, VPN, Docker interno o QA con firewall/allowlist.
