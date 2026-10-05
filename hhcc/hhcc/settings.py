@@ -24,9 +24,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-s6t!(@**v#55u-0bxn52i4c83q*ydsu82#_&q#0d0i&g1%=^!*'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DJANGO_DEBUG", "0") == "1"
 
 ALLOWED_HOSTS = ["*"]
+
+QBI2_PATIENT_LOGIN_MAX_FAILURES = int(os.getenv("QBI2_PATIENT_LOGIN_MAX_FAILURES", "5"))
+QBI2_PATIENT_LOGIN_BLOCK_MINUTES = int(os.getenv("QBI2_PATIENT_LOGIN_BLOCK_MINUTES", "10"))
 
 
 SHELL_PLUS = "ipython"
@@ -179,11 +182,8 @@ DATETIME_INPUT_FORMATS = [
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'main/static'),
-    os.path.join(BASE_DIR, 'ecocardiograma/static'),
-]
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -205,6 +205,10 @@ QBI2_INCLUDE_CLIENT_APP_ID_IN_VADEMECUM = (
     os.getenv("QBI2_INCLUDE_CLIENT_APP_ID_IN_VADEMECUM", "1") == "1"
 )
 QBI2_VADEMECUM_MIN_QUERY_LENGTH = int(os.getenv("QBI2_VADEMECUM_MIN_QUERY_LENGTH", "2"))
+# Swagger no publica un máximo. HML fue observado agrupando de a tres
+# medicamentos por documento; el consultorio limita cada operación a tres PDF.
+QBI2_MEDICATIONS_PER_DOCUMENT = int(os.getenv("QBI2_MEDICATIONS_PER_DOCUMENT", "3"))
+QBI2_MAX_DOCUMENTS_PER_REQUEST = int(os.getenv("QBI2_MAX_DOCUMENTS_PER_REQUEST", "3"))
 QBI2_PROFILE_YAML_PATH = os.getenv(
     "QBI2_PROFILE_YAML_PATH",
     str(BASE_DIR / "private" / "qbi2" / "profile.yaml"),

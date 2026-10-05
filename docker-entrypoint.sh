@@ -21,4 +21,6 @@ else
   echo "INFO: skipping migrations because RUN_MIGRATIONS_ON_STARTUP=0"
 fi
 
+python3 manage.py collectstatic --noinput
+
 exec python3 manage.py runserver 0.0.0.0:8000

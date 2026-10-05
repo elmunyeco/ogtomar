@@ -42,6 +42,8 @@ class Paciente(models.Model):
     localidad = models.CharField(max_length=60, null=True, blank=True)
     obraSocial = models.CharField(max_length=50, null=True, blank=True)
     plan = models.CharField(max_length=50, null=True, blank=True)
+    qbi2_financiador_id = models.PositiveIntegerField(null=True, blank=True)
+    qbi2_plan_id = models.PositiveIntegerField(null=True, blank=True)
     afiliado = models.CharField(max_length=50, null=True, blank=True)
     telefono = models.CharField(max_length=50, null=True, blank=True)
     celular = models.CharField(max_length=50, null=True, blank=True)

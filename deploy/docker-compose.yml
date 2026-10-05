@@ -16,6 +16,9 @@ services:
       - db
     env_file:
       - .env.docker
+    volumes:
+      - ${QBI2_PRIVATE_DIR:-./private/qbi2}:/app/private/qbi2:ro
+      - static_files:/app/staticfiles
 
   nginx:
     image: nginx:alpine
@@ -27,3 +30,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx:/etc/nginx/conf.d:ro
+      - static_files:/usr/share/nginx/html/static:ro
+
+volumes:
+  static_files:

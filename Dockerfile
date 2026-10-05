@@ -28,13 +28,14 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY ./hhcc /app/
 COPY ./requirements.txt /app/
-COPY ./docker-entrypoint.sh /app/docker-entrypoint.sh
-COPY ./BUSQUEDA_GLOBAL_TRIGRAMAS_CONCEPTUAL.pdf /app/BUSQUEDA_GLOBAL_TRIGRAMAS_CONCEPTUAL.pdf
 
 RUN pip3 install --upgrade pip
 RUN pip3 install -r requirements.txt
+
+COPY ./hhcc /app/
+COPY ./docker-entrypoint.sh /app/docker-entrypoint.sh
+COPY ./BUSQUEDA_GLOBAL_TRIGRAMAS_CONCEPTUAL.pdf /app/BUSQUEDA_GLOBAL_TRIGRAMAS_CONCEPTUAL.pdf
 
 RUN cat > /app/wait-for-mysql.sh <<'SH'
 #!/bin/bash

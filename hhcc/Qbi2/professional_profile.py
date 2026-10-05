@@ -64,3 +64,20 @@ def resolve_profile_asset(profile: dict[str, Any], raw_path: Any) -> str:
     if not path.is_absolute():
         path = Path(str(profile.get("_config_dir") or "")) / path
     return str(path.resolve())
+
+
+def load_patient_portal_policy() -> dict[str, Any]:
+    section = load_professional_profile().get("portal_pacientes") or {}
+    if not isinstance(section, dict):
+        raise Qbi2ConfigurationError("La sección 'portal_pacientes' del perfil QBI2 no es válida.")
+    try:
+        max_years = int(section.get("antiguedad_maxima_atencion_anios", 5))
+    except (TypeError, ValueError) as exc:
+        raise Qbi2ConfigurationError(
+            "'portal_pacientes.antiguedad_maxima_atencion_anios' debe ser un número entero."
+        ) from exc
+    if max_years < 1:
+        raise Qbi2ConfigurationError(
+            "'portal_pacientes.antiguedad_maxima_atencion_anios' debe ser mayor o igual a 1."
+        )
+    return {"max_attention_age_years": max_years}

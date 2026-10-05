@@ -18,6 +18,11 @@ urlpatterns = [
         name="api_paciente_medicamentos_directo",
     ),
     path(
+        "api/paciente/financiadores/",
+        views.buscar_financiadores_portal,
+        name="api_paciente_financiadores",
+    ),
+    path(
         "api/catalogos/<str:catalogo>/",
         login_required(views.catalogo_api),
         name="api_catalogo",

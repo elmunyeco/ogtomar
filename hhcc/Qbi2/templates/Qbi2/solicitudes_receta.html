@@ -3,12 +3,12 @@
 {% block title %}Cola médica de recetas - Dr. Omar Prieto{% endblock %}
 
 {% block content %}
-<section class="queue-page">
+<section class="queue-page" data-max-medications="{{ medication_limits.max_medications }}">
     <header class="queue-heading">
         <div>
             <span>Recetas</span>
             <h1>Cola médica</h1>
-            <p>Revisá los datos del paciente y el pedido antes de aprobar, editar o rechazar.</p>
+            <p>Revisar los datos del paciente y el pedido antes de aprobar, editar o rechazar.</p>
         </div>
         <a href="{% url 'recetas:medico_receta_nueva' %}">Crear una receta</a>
     </header>
@@ -38,8 +38,8 @@
         <section id="resultado-emision" class="emission-feedback error" role="alert">
             <div class="feedback-icon" aria-hidden="true">!</div>
             <div class="feedback-content">
-                <span>Emisión fallida</span>
-                <h2>No se pudo emitir la solicitud #{{ resultado_solicitud.id }}</h2>
+                <span>{% if resultado_solicitud.tiene_documentos_emitidos %}Emisión incompleta{% else %}Emisión fallida{% endif %}</span>
+                <h2>{% if resultado_solicitud.tiene_documentos_emitidos %}RCTA emitió sólo una parte de la solicitud #{{ resultado_solicitud.id }}{% else %}No se pudo emitir la solicitud #{{ resultado_solicitud.id }}{% endif %}</h2>
                 <p>{{ resultado_solicitud.paciente.apellido }}, {{ resultado_solicitud.paciente.nombre }}</p>
                 <div class="feedback-error">
                     <strong>{{ resultado_solicitud.error_detalle.message }}</strong>
@@ -47,11 +47,20 @@
                         <small>{% if resultado_solicitud.error_detalle.code %}Código RCTA: {{ resultado_solicitud.error_detalle.code }}{% endif %}{% if resultado_solicitud.error_detalle.code and resultado_solicitud.error_detalle.request_id %} · {% endif %}{% if resultado_solicitud.error_detalle.request_id %}Referencia técnica: {{ resultado_solicitud.error_detalle.request_id }}{% endif %}</small>
                     {% endif %}
                 </div>
-                <form class="retry-form" method="post" action="{% url 'recetas:api_medico_solicitud_reabrir' resultado_solicitud.id %}">
-                    {% csrf_token %}
-                    <button type="submit">Corregir y volver a intentar</button>
-                    <small>No emite automáticamente: devuelve la orden a Pendientes para revisarla.</small>
-                </form>
+                {% if resultado_solicitud.tiene_documentos_emitidos %}
+                    <div class="feedback-documents">
+                        {% for emision in resultado_solicitud.emisiones.all %}
+                            {% if emision.qbi2_pdf_url %}<a href="{{ emision.qbi2_pdf_url }}" target="_blank" rel="noopener">Ver PDF {{ emision.orden }} de {{ emision.total }}</a>{% endif %}
+                        {% endfor %}
+                    </div>
+                    <small>La operación no puede reintentarse automáticamente porque podría duplicar documentos ya emitidos.</small>
+                {% else %}
+                    <form class="retry-form" method="post" action="{% url 'recetas:api_medico_solicitud_reabrir' resultado_solicitud.id %}">
+                        {% csrf_token %}
+                        <button type="submit">Corregir y volver a intentar</button>
+                        <small>No emite automáticamente: devuelve la orden a Pendientes para revisarla.</small>
+                    </form>
+                {% endif %}
             </div>
         </section>
     {% endif %}
@@ -101,19 +110,24 @@
                             <div class="review-column">
                                 <section class="review-panel medications-panel">
                                     <header class="panel-heading">
-                                        <span class="panel-icon" aria-hidden="true">💊</span>
-                                        <div><h3>Medicamentos</h3><small>Hasta 10 por pedido</small></div>
+                                        <div class="panel-heading-title">
+                                            <span class="panel-icon" aria-hidden="true">💊</span>
+                                            <div><h3>Medicamentos</h3><small>Hasta {{ medication_limits.max_medications }} por pedido</small></div>
+                                        </div>
+                                        <button class="med-editor-toggle" type="button" aria-expanded="false" aria-controls="medicine-search-panel-{{ solicitud.id }}" aria-label="Agregar otro medicamento" title="Agregar otro medicamento">＋</button>
                                     </header>
                                     <div class="panel-body med-editor" data-catalog-url="{% url 'recetas:api_catalogo' 'medicamentos' %}">
                                         <input class="med-editor-json" type="hidden" name="medicamentosJson" value="{{ solicitud.medicamentos_json }}">
                                         <div class="med-editor-selected"></div>
-                                        <label class="field-label" for="medicine-query-{{ solicitud.id }}">Buscar por nombre comercial o droga</label>
-                                        <div class="search-row">
-                                            <input id="medicine-query-{{ solicitud.id }}" class="med-editor-query" type="search" placeholder="Ej.: Lotrial o enalapril" autocomplete="off">
-                                            <button class="secondary-button med-editor-button" type="button">Buscar</button>
+                                        <div class="med-editor-search-panel" id="medicine-search-panel-{{ solicitud.id }}" hidden>
+                                            <label class="field-label" for="medicine-query-{{ solicitud.id }}">Buscar por nombre comercial o droga</label>
+                                            <div class="search-row">
+                                                <input id="medicine-query-{{ solicitud.id }}" class="med-editor-query" type="search" placeholder="Ej.: Lotrial o enalapril" autocomplete="off">
+                                                <button class="secondary-button med-editor-button" type="button">Buscar</button>
+                                            </div>
+                                            <div class="med-editor-status" aria-live="polite"></div>
+                                            <div class="med-editor-results" aria-live="polite"></div>
                                         </div>
-                                        <div class="med-editor-status" aria-live="polite"></div>
-                                        <div class="med-editor-results"></div>
                                     </div>
                                 </section>
 
@@ -151,7 +165,7 @@
                         <input type="hidden" name="cantidad" value="1">
                         <input type="hidden" name="tratamiento" value="0">
                         <footer class="review-footer">
-                            <div><strong>Revisá los datos antes de emitir.</strong><span>La receta se enviará a RCTA al confirmar.</span></div>
+                            <div><strong>Revisar los datos antes de emitir.</strong><span>La receta se enviará a RCTA al confirmar.</span></div>
                             <button class="approve-button" type="submit">Aprobar y emitir</button>
                         </footer>
                     </form>
@@ -280,7 +294,8 @@
     .review-columns { display:grid; gap:1rem; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
     .review-column { display:grid; gap:1rem; align-content:start; }
     .review-panel { overflow:hidden; }
-    .panel-heading { align-items:center; border-bottom:1px solid var(--line); display:flex; gap:.7rem; min-height:3.7rem; padding:.8rem 1rem; }
+    .panel-heading { align-items:center; border-bottom:1px solid var(--line); display:flex; gap:.7rem; justify-content:space-between; min-height:3.7rem; padding:.8rem 1rem; }
+    .panel-heading-title { align-items:center; display:flex; gap:.7rem; }
     .panel-heading h3 { font-size:1rem; margin:0; }
     .panel-heading h3 small,.panel-heading div small { color:var(--muted); font-size:.72rem; font-weight:600; }
     .panel-icon { align-items:center; background:var(--red-soft); border-radius:.65rem; color:var(--red); display:flex; flex:0 0 auto; font-size:1.05rem; height:2rem; justify-content:center; width:2rem; }
@@ -291,12 +306,17 @@
     .panel-body textarea { min-height:6.2rem; resize:vertical; }
     .search-row { display:flex; gap:.55rem; }
     .secondary-button { background:var(--red-soft); border:1px solid var(--red-border); border-radius:.65rem; color:var(--red-dark); cursor:pointer; font-weight:850; padding:0 .9rem; }
+    .med-editor-toggle { align-items:center; background:var(--red); border:0; border-radius:50%; color:white; cursor:pointer; display:flex; flex:0 0 auto; font-size:1.45rem; height:2.45rem; justify-content:center; line-height:1; padding:0; transition:background .15s ease,transform .15s ease; width:2.45rem; }
+    .med-editor-toggle[aria-expanded="true"] { background:var(--red-dark); }
+    .med-editor-toggle:disabled { cursor:not-allowed; opacity:.45; }
+    .med-editor-search-panel { border-top:1px solid var(--line); overflow-anchor:none; padding-top:.85rem; }
     .med-editor-selected { display:grid; gap:.5rem; margin-bottom:1rem; }
     .selected-medication { align-items:center; background:var(--red-soft); border:1px solid var(--red-border); border-radius:.75rem; display:flex; gap:.7rem; justify-content:space-between; padding:.65rem .75rem; }
     .selected-medication strong,.selected-medication small,.med-editor-result strong,.med-editor-result small,.readonly-medicines strong,.readonly-medicines small { display:block; }
     .selected-medication small,.med-editor-result small,.readonly-medicines small { color:var(--muted); margin-top:.12rem; }
     .selected-medication button { background:white; border:1px solid var(--red-border); border-radius:50%; color:var(--red); cursor:pointer; flex:0 0 auto; height:1.9rem; width:1.9rem; }
-    .med-editor-results { display:grid; margin-top:.55rem; max-height:22rem; overflow:auto; }
+    .med-editor-results { clear:both; display:grid; margin-top:.55rem; max-height:22rem; overflow:auto; position:static; width:100%; }
+    .med-editor-results:not(:empty) { border:1px solid var(--line); border-radius:.7rem; padding:.25rem .65rem; scroll-margin-top:1rem; }
     .med-editor-result { align-items:flex-start; background:white; border:0; border-bottom:1px solid var(--line); color:var(--ink); cursor:pointer; display:flex; gap:.8rem; justify-content:space-between; padding:.72rem .2rem; text-align:left; width:100%; }
     .med-editor-result:hover { background:#fffafa; }
     code { background:var(--red-soft); border-radius:999px; color:var(--red-dark); font-size:.72rem; font-weight:800; padding:.22rem .5rem; white-space:nowrap; }
@@ -341,6 +361,7 @@
 {% block extra_js %}
 <script>
 (() => {
+    const maxMedications = Number(document.querySelector(".queue-page").dataset.maxMedications) || 9;
     const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[char]);
     const searchText = value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().trim();
     const relevance = (item, needle) => {
@@ -361,13 +382,29 @@
         const resultsBox = editor.querySelector(".med-editor-results");
         const statusBox = editor.querySelector(".med-editor-status");
         const query = editor.querySelector(".med-editor-query");
+        const searchPanel = editor.querySelector(".med-editor-search-panel");
+        const searchToggle = editor.closest(".medications-panel").querySelector(".med-editor-toggle");
         let selected = [], found = [], activeSearch = "", nextSearchPage = null;
         try { selected = JSON.parse(input.value || "[]"); } catch (_) { selected = []; }
 
         const setStatus = (message="", error=false) => { statusBox.textContent = message; statusBox.classList.toggle("error", error); };
+        const setSearchOpen = (open, focus=false) => {
+            searchPanel.hidden = !open;
+            searchToggle.setAttribute("aria-expanded", String(open));
+            if (open && focus) requestAnimationFrame(() => {
+                query.focus({preventScroll:true});
+                searchPanel.scrollIntoView({behavior:"smooth", block:"nearest"});
+            });
+        };
+        const revealResultsBelow = () => requestAnimationFrame(() => {
+            query.focus({preventScroll:true});
+            if (resultsBox.getBoundingClientRect().bottom > window.innerHeight) resultsBox.scrollIntoView({behavior:"smooth", block:"nearest"});
+        });
         const renderSelected = () => {
             input.value = JSON.stringify(selected);
             selectedBox.innerHTML = selected.map((item,index) => `<div class="selected-medication"><span><strong>${escapeHtml(item.nombreProducto || "Medicamento")}</strong><small>${escapeHtml([item.nombreDroga,item.presentacion,item.regNo ? `RegNo ${item.regNo}` : ""].filter(Boolean).join(" · "))}</small></span><button type="button" data-remove="${index}" aria-label="Quitar medicamento">×</button></div>`).join("");
+            searchToggle.disabled = selected.length >= maxMedications;
+            searchToggle.title = searchToggle.disabled ? `El pedido ya tiene ${maxMedications} medicamentos` : "Agregar otro medicamento";
         };
         const mergeFound = items => {
             const merged = new Map(found.map(item => [medicationKey(item), item]));
@@ -378,11 +415,12 @@
         const renderResults = () => {
             const rows = found.length ? found.map((item,index) => `<button class="med-editor-result" type="button" data-add="${index}"><span><strong>${escapeHtml(item.nombreProducto || item.display || "Medicamento")}</strong><small>${escapeHtml([item.nombreDroga,item.presentacion].filter(Boolean).join(" · "))}</small></span><code>RegNo ${escapeHtml(item.regNo || "-")}</code></button>`).join("") : "No se encontraron medicamentos.";
             resultsBox.innerHTML = rows + (nextSearchPage ? `<button class="load-more" type="button">Buscar más resultados</button>` : "");
+            revealResultsBelow();
         };
         const searchMedications = async (append=false) => {
             const requestedQuery = query.value.trim();
             if (!append || requestedQuery !== activeSearch) { activeSearch=requestedQuery; found=[]; nextSearchPage=null; append=false; }
-            if (!activeSearch) { resultsBox.textContent=""; setStatus("Ingresá un nombre comercial o una droga.", true); return; }
+            if (!activeSearch) { resultsBox.textContent=""; setStatus("Ingresar un nombre comercial o una droga.", true); return; }
             setStatus("Buscando…");
             const url = new URL(editor.dataset.catalogUrl, location.origin);
             url.searchParams.set("q", activeSearch);
@@ -398,6 +436,7 @@
         };
 
         renderSelected();
+        searchToggle.addEventListener("click", () => setSearchOpen(true, true));
         selectedBox.addEventListener("click", event => {
             const button = event.target.closest("[data-remove]"); if (!button) return;
             selected.splice(Number(button.dataset.remove), 1); renderSelected(); setStatus("");
@@ -408,9 +447,11 @@
             if (event.target.closest(".load-more")) { searchMedications(true); return; }
             const button = event.target.closest("[data-add]"); if (!button) return;
             const item = found[Number(button.dataset.add)]; if (!item) return;
-            if (selected.length >= 10) { setStatus("El pedido admite hasta 10 medicamentos.", true); return; }
+            if (selected.length >= maxMedications) { setStatus(`El pedido admite hasta ${maxMedications} medicamentos.`, true); return; }
             if (selected.some(value => medicationKey(value) === medicationKey(item))) { setStatus("Ese medicamento ya está seleccionado.", true); return; }
             selected.push(item); renderSelected(); setStatus("");
+            query.value=""; found=[]; activeSearch=""; nextSearchPage=null; resultsBox.replaceChildren();
+            setSearchOpen(false); searchToggle.focus({preventScroll:true});
         });
     });
 
@@ -418,7 +459,7 @@
         link.addEventListener("click", event => {
             event.preventDefault();
             const popup = window.open(link.href, "hhcc_patient_editor", "popup=yes,width=980,height=820,resizable=yes,scrollbars=yes");
-            if (popup) popup.focus(); else window.alert("El navegador bloqueó la ventana para editar el paciente.");
+            if (popup) popup.focus(); else window.alert("El navegador bloqueó la ventana para editar el paciente. Habilitar las ventanas emergentes para este sitio.");
         });
     });
     window.addEventListener("message", event => {

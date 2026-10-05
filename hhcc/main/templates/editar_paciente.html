@@ -4,6 +4,7 @@
 {% block title %}Editar Paciente - Dr. Omar Prieto{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'main/css/qbi2_coverage_selector.css' %}">
 <!-- Estilos adicionales específicos para esta página -->
 <style>
   .form-container {
@@ -291,31 +292,8 @@
                     {% endif %}
                 </div>
                 
-                <!-- Obra Social -->
-                <div class="form-field">
-                    <label for="{{ form.obraSocial.id_for_label }}" class="field-label">Obra Social</label>
-                    <input type="text" name="{{ form.obraSocial.html_name }}" id="{{ form.obraSocial.id_for_label }}" 
-                        value="{{ form.obraSocial.value|default:'' }}"
-                        class="input-field"
-                        placeholder="Ingrese obra social"
-                        {% if form.obraSocial.field.required %}required{% endif %}>
-                    {% if form.obraSocial.errors %}
-                    <p class="form-error">{{ form.obraSocial.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                
-                <!-- Plan -->
-                <div class="form-field">
-                    <label for="{{ form.plan.id_for_label }}" class="field-label">Plan</label>
-                    <input type="text" name="{{ form.plan.html_name }}" id="{{ form.plan.id_for_label }}" 
-                        value="{{ form.plan.value|default:'' }}"
-                        class="input-field"
-                        placeholder="Ingrese plan"
-                        {% if form.plan.field.required %}required{% endif %}>
-                    {% if form.plan.errors %}
-                    <p class="form-error">{{ form.plan.errors.0 }}</p>
-                    {% endif %}
-                </div>
+                {% url 'recetas:api_catalogo' 'financiadores' as financiers_url %}
+                {% include 'components/qbi2_coverage_selector.html' with form=form catalog_url=financiers_url %}
                 
                 <!-- Número de Afiliado -->
                 <div class="form-field">
@@ -378,6 +356,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'main/js/qbi2_coverage_selector.js' %}"></script>
 <script>
     // Función para calcular la edad basada en la fecha de nacimiento
     function calcularEdad(fechaNacimiento) {

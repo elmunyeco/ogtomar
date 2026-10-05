@@ -3,6 +3,8 @@
 
 {% block title %}Nuevo Paciente - CardioPrieto{% endblock %}
 
+{% block extra_css %}<link rel="stylesheet" href="{% static 'main/css/qbi2_coverage_selector.css' %}">{% endblock %}
+
 {% block content %}
 <div class="container mx-auto p-6 max-w-6xl">
     <h1 class="text-2xl font-bold mb-8 text-left">Nuevo Paciente</h1>
@@ -132,25 +134,8 @@
                 {% endif %}
             </div>
 
-            <div class="form-field">
-                <label for="{{ form.obraSocial.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Obra Social</label>
-                <input type="text" name="{{ form.obraSocial.html_name }}" id="{{ form.obraSocial.id_for_label }}"
-                    class="w-full p-2 border rounded focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
-                    placeholder="Ingrese obra social">
-                {% if form.obraSocial.errors %}
-                <p class="text-red-600 text-sm mt-1">{{ form.obraSocial.errors.0 }}</p>
-                {% endif %}
-            </div>
-
-            <div class="form-field">
-                <label for="{{ form.plan.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Plan</label>
-                <input type="text" name="{{ form.plan.html_name }}" id="{{ form.plan.id_for_label }}"
-                    class="w-full p-2 border rounded focus:ring-1 focus:ring-[#9a4035] focus:border-[#9a4035]"
-                    placeholder="Ingrese plan">
-                {% if form.plan.errors %}
-                <p class="text-red-600 text-sm mt-1">{{ form.plan.errors.0 }}</p>
-                {% endif %}
-            </div>
+            {% url 'recetas:api_catalogo' 'financiadores' as financiers_url %}
+            {% include 'components/qbi2_coverage_selector.html' with form=form catalog_url=financiers_url %}
 
             <div class="form-field">
                 <label for="{{ form.afiliado.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">Nº Afiliado</label>
@@ -203,3 +188,5 @@
     <div class="sticky-action-bar-spacer"></div>
 </div>
 {% endblock %}
+
+{% block extra_js %}<script src="{% static 'main/js/qbi2_coverage_selector.js' %}"></script>{% endblock %}

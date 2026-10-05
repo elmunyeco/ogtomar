@@ -19,6 +19,10 @@ Las rutas relativas se resuelven desde el directorio del propio YAML. Los PNG
 están excluidos por `.gitignore` y no deben publicarse mediante `static/`,
 guardarse en logs ni incluirse en respuestas de diagnóstico sin redacción.
 
+La política del portal también vive en ese único YAML. El campo
+`portal_pacientes.antiguedad_maxima_atencion_anios` define cuántos años pueden
+transcurrir desde la última actividad clínica antes de impedir un nuevo pedido.
+
 Las únicas pantallas públicas de este módulo son el ingreso y el pedido del
 paciente bajo `/recetas/paciente/`. Para el médico, el menú expone solamente
 `Gestión` y `Emisión`.
