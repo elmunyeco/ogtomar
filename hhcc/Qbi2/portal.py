@@ -184,6 +184,7 @@ def create_prescription_request(
     total_medicamentos_paciente: int | None = None,
     diagnostico: str = "",
     observacion_paciente: str = "",
+    use_coverage: bool = True,
     request_ip: str | None = None,
     request_user_agent: str = "",
 ) -> SolicitudReceta:
@@ -192,6 +193,7 @@ def create_prescription_request(
         "source": "portal-pacientes",
         "medicamento": medicamento,
         "medicamentos": medicamentos,
+        "usar_cobertura": bool(use_coverage),
     }
     if receta_orden is not None and total_recetas is not None:
         auditoria["receta_orden"] = receta_orden

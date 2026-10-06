@@ -9,7 +9,6 @@
     data-med-endpoint="{% url 'recetas:api_catalogo' 'medicamentos' %}"
     data-dx-endpoint="{% url 'recetas:api_catalogo' 'diagnosticos' %}"
     data-patient-endpoint="{% url 'recetas:api_receta_pacientes' %}"
-    data-preview-endpoint="{% url 'recetas:api_receta_preview' %}"
     data-emit-endpoint="{% url 'recetas:api_receta_emitir' %}"
     data-max-medications="{{ medication_limits.max_medications }}"
     data-max-documents="{{ medication_limits.max_documents }}"
@@ -216,18 +215,6 @@
 
         <div id="recipe-alert" class="recipe-alert hidden" role="alert"></div>
 
-        <section id="recipe-preview" class="recipe-preview hidden" aria-live="polite">
-            <div>
-                <span>Vista previa técnica</span>
-                <h2>Payload preparado, sin enviar</h2>
-                <p>Se validó localmente la receta para <strong id="recipe-preview-patient">el paciente seleccionado</strong>. No hubo una llamada de emisión a RCTA.</p>
-            </div>
-            <details>
-                <summary>Ver JSON preparado</summary>
-                <pre id="recipe-json"></pre>
-            </details>
-        </section>
-
         <section id="recipe-result" class="recipe-result-panel hidden" aria-live="polite">
             <div>
                 <span id="recipe-result-kicker">Receta emitida</span>
@@ -250,9 +237,6 @@
                 <span id="recipe-footer-patient">Seleccionar un paciente de historias clínicas.</span>
             </div>
             <div class="recipe-footer-actions">
-                <div class="recipe-review-action">
-                    <button id="preview-recipe" class="recipe-review-button" type="button">Revisar datos</button>
-                </div>
                 <button id="emit-recipe" class="recipe-emit-button" type="button">Emitir receta</button>
             </div>
         </footer>
@@ -276,7 +260,7 @@
         padding: 1.5rem 1rem 3rem;
         color: var(--v2-ink);
     }
-    .recipe-patient-card, .recipe-card, .recipe-preview, .recipe-result-panel, .recipe-footer {
+    .recipe-patient-card, .recipe-card, .recipe-result-panel, .recipe-footer {
         background: #fff;
         border: 1px solid var(--v2-border);
         border-radius: 1.15rem;
@@ -358,13 +342,6 @@
     .recipe-diagnosis > span { background: #fff; border-radius: 0.4rem; color: var(--v2-red-dark); font-size: 0.78rem; font-weight: 900; padding: 0.3rem 0.45rem; }
     .recipe-diagnosis button { background: transparent; border: 0; color: var(--v2-muted); cursor: pointer; font-size: 1.3rem; }
     .recipe-alert { background: #fff1ef; border: 1px solid #f2c7c0; border-radius: 0.8rem; color: #8e2f26; margin-top: 1.4rem; padding: 0.85rem 1rem; }
-    .recipe-preview { border-left: 0.35rem solid var(--v2-red); margin-top: 1.4rem; padding: 1rem 1.2rem; }
-    .recipe-preview > div span { color: var(--v2-red-dark); font-size: 0.72rem; font-weight: 900; text-transform: uppercase; }
-    .recipe-preview h2 { font-size: 1.15rem; font-weight: 800; margin: 0.12rem 0; }
-    .recipe-preview p { color: var(--v2-muted); margin: 0; }
-    .recipe-preview details { margin-top: 0.85rem; }
-    .recipe-preview summary { color: var(--v2-red-dark); cursor: pointer; font-weight: 800; }
-    .recipe-preview pre { background: #3a1815; border-radius: 0.7rem; color: #fde9e5; font-size: 0.72rem; margin-top: 0.65rem; max-height: 28rem; overflow: auto; padding: 0.9rem; white-space: pre-wrap; }
     .recipe-result-panel { border-left: 0.35rem solid var(--v2-red); margin-top: 1.4rem; padding: 1rem 1.2rem; }
     .recipe-result-panel > div:first-child span { color: var(--v2-red-dark); font-size: 0.72rem; font-weight: 900; text-transform: uppercase; }
     .recipe-result-panel h2 { font-size: 1.15rem; font-weight: 800; margin: 0.12rem 0 0.8rem; }
@@ -417,7 +394,6 @@
         patients: root.dataset.patientEndpoint,
         medicines: root.dataset.medEndpoint,
         diagnoses: root.dataset.dxEndpoint,
-        preview: root.dataset.previewEndpoint,
         emit: root.dataset.emitEndpoint,
     };
     const maxMedications = Number(root.dataset.maxMedications) || 9;
@@ -426,7 +402,6 @@
 
     const getCookie = (name) => document.cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`))?.split("=").slice(1).join("=") || "";
     const alertBox = document.getElementById("recipe-alert");
-    const previewBox = document.getElementById("recipe-preview");
     const resultBox = document.getElementById("recipe-result");
     const emitButton = document.getElementById("emit-recipe");
     const setAlert = (message = "") => {
@@ -859,51 +834,6 @@
 
     const bodyForEmission = () => ({...bodyForPreview(), clientRequestId: emissionRequestId});
 
-    const previewRecipe = async () => {
-        setAlert();
-        previewBox.classList.add("hidden");
-        invalidatePreview();
-        if (!state.patient?.patient?.id) {
-            setAlert("Seleccionar un paciente de historias clínicas.");
-            return;
-        }
-        if (!state.medicines.length) {
-            setAlert("Seleccionar al menos un medicamento.");
-            return;
-        }
-        if (!state.diagnosis?.text) {
-            setAlert("Elegir un diagnóstico del catálogo o escribir uno como texto libre.");
-            return;
-        }
-        const button = document.getElementById("preview-recipe");
-        button.disabled = true;
-        button.textContent = "Revisando…";
-        try {
-            const body = bodyForPreview();
-            const response = await fetch(endpoints.preview, {
-                method: "POST",
-                credentials: "same-origin",
-                headers: {
-                    Accept: "application/json",
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": decodeURIComponent(getCookie("csrftoken")),
-                },
-                body: JSON.stringify(body),
-            });
-            const data = await response.json();
-            if (!response.ok || data.status !== "success") throw new Error(data.message || "No se pudo preparar la receta.");
-            document.getElementById("recipe-json").textContent = JSON.stringify(data.payload, null, 2);
-            document.getElementById("recipe-preview-patient").textContent = patientDisplayName();
-            previewBox.classList.remove("hidden");
-            previewBox.scrollIntoView({behavior: "smooth", block: "nearest"});
-        } catch (error) {
-            setAlert(error.message || "No se pudo preparar la receta.");
-        } finally {
-            button.disabled = false;
-            button.textContent = "Revisar datos";
-        }
-    };
-
     const setResultField = (name, value) => {
         const element = resultBox.querySelector(`[data-result="${name}"]`);
         if (element) element.textContent = value || "—";
@@ -1016,7 +946,6 @@
     document.getElementById("diagnosis-search").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); requestSearch("diagnosis"); } });
     document.getElementById("diagnosis-free-text").addEventListener("keydown", (event) => { if (event.key === "Enter") { event.preventDefault(); useFreeDiagnosis(); } });
     document.getElementById("clear-diagnosis").addEventListener("click", clearDiagnosis);
-    document.getElementById("preview-recipe").addEventListener("click", previewRecipe);
     emitButton.addEventListener("click", emitRecipe);
     ["recipe-date", "long-treatment", "hide-patient", "recipe-indications", "recipe-observations"].forEach((id) => {
         document.getElementById(id).addEventListener("input", invalidatePreview);

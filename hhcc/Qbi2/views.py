@@ -235,7 +235,10 @@ def buscar_vademecum_portal(request):
     paciente = get_patient_from_session(request)
     if not paciente:
         return _patient_api_auth_error()
-    eligibility_error = _patient_request_eligibility_error(paciente)
+    eligibility_error = _patient_request_eligibility_error(
+        paciente,
+        require_canonical_coverage=False,
+    )
     if eligibility_error is not None:
         return eligibility_error
     query = request.GET.get("q") or request.GET.get("query") or ""
@@ -555,14 +558,18 @@ def validar_paciente_portal(request):
     if not paciente:
         return _patient_api_auth_error()
 
-    eligibility_error = _patient_request_eligibility_error(paciente)
-    if eligibility_error is not None:
-        return eligibility_error
-
     try:
         data = json.loads(request.body.decode("utf-8") or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"status": "error", "message": "Datos invalidos."}, status=400)
+
+    use_coverage = _uses_recipe_coverage(data.get("usarCobertura", True))
+    eligibility_error = _patient_request_eligibility_error(
+        paciente,
+        require_canonical_coverage=use_coverage,
+    )
+    if eligibility_error is not None:
+        return eligibility_error
 
     historia = paciente.historias_clinicas.order_by("-fechaAlta", "-id").first()
     if not historia:
@@ -581,6 +588,7 @@ def validar_paciente_portal(request):
             medicamentos=medicamentos,
             total_medicamentos_paciente=len(medicamentos),
             diagnostico="",
+            use_coverage=use_coverage,
             request_ip=get_client_ip(request),
             request_user_agent=request.META.get("HTTP_USER_AGENT", ""),
         )
@@ -629,7 +637,7 @@ def actualizar_perfil_paciente(request):
     return JsonResponse({"status": "success", "message": "Tus datos se actualizaron correctamente."})
 
 
-def _patient_request_eligibility_error(paciente):
+def _patient_request_eligibility_error(paciente, *, require_canonical_coverage=True):
     try:
         policy = load_patient_portal_policy()
         eligibility = patient_portal_eligibility(
@@ -638,7 +646,7 @@ def _patient_request_eligibility_error(paciente):
         )
     except Qbi2ConfigurationError as exc:
         return JsonResponse({"status": "error", "message": str(exc)}, status=503)
-    if eligibility["coverage_required"]:
+    if require_canonical_coverage and eligibility["coverage_required"]:
         return JsonResponse(
             {
                 "status": "error",
@@ -1044,7 +1052,7 @@ def _recipe_data_from_solicitud(
     return _safe_recipe_data(
         {
             "pacienteId": solicitud.paciente_id,
-            "usarCobertura": True,
+            "usarCobertura": auditoria.get("usar_cobertura", True),
             "diagnostico": diagnostico,
             "medicamentos": medications,
         }

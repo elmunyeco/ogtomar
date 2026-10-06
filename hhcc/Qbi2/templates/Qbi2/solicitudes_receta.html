@@ -97,8 +97,13 @@
                     </div>
                     <div class="patient-coverage">
                         <span>Cobertura médica</span>
-                        <strong>{{ solicitud.paciente.obraSocial|default:"Sin cobertura" }}</strong>
-                        <small>{% if solicitud.paciente.afiliado %}Afiliado {{ solicitud.paciente.afiliado }}{% else %}Sin número de afiliado{% endif %}{% if solicitud.paciente.plan %} · Plan {{ solicitud.paciente.plan }}{% endif %}</small>
+                        {% if solicitud.auditoria.usar_cobertura == False %}
+                            <strong>Sin cobertura para este pedido</strong>
+                            <small>El paciente eligió no utilizar su financiador guardado.</small>
+                        {% else %}
+                            <strong>{{ solicitud.paciente.obraSocial|default:"Sin cobertura" }}</strong>
+                            <small>{% if solicitud.paciente.afiliado %}Afiliado {{ solicitud.paciente.afiliado }}{% else %}Sin número de afiliado{% endif %}{% if solicitud.paciente.plan %} · Plan {{ solicitud.paciente.plan }}{% endif %}</small>
+                        {% endif %}
                     </div>
                 </section>
 

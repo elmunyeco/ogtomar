@@ -61,6 +61,13 @@
         .status.ok { background:#eaf7f1; color:#176044; display:block; }
         .status.error { background:#fff2f2; color:#8b3030; display:block; }
         .portal-blocker { background:#fff2f2; border:1px solid #eccaca; border-radius:10px; color:#7d2828; font-weight:750; line-height:1.45; margin-bottom:1rem; padding:.8rem; }
+        .request-coverage { background:var(--blue-soft); border:1px solid var(--line); border-radius:10px; display:grid; gap:.5rem; margin-bottom:1rem; padding:.8rem; }
+        .request-coverage > span { color:var(--blue-dark); font-size:.8rem; font-weight:800; }
+        .request-coverage label { align-items:flex-start; cursor:pointer; display:flex; gap:.55rem; }
+        .request-coverage input { margin-top:.22rem; }
+        .request-coverage strong,.request-coverage small { display:block; }
+        .request-coverage small { color:var(--muted); }
+        .request-coverage .unavailable { cursor:not-allowed; opacity:.65; }
         .qbi2-coverage { grid-column:1/-1; }
         .qbi2-coverage-label { color:var(--blue-dark); display:block; font-size:.8rem; font-weight:750; margin-bottom:.3rem; }
         .qbi2-coverage-current { background:var(--blue-soft); border-radius:8px; font-weight:750; margin-bottom:.45rem; padding:.6rem .7rem; }
@@ -127,14 +134,25 @@
                 <p class="lead">Buscá y seleccioná hasta {{ medication_limits.max_medications }} medicamentos. El Dr. Omar Prieto revisará el pedido antes de decidir.</p>
                 {% if eligibility.configuration_error %}
                 <div class="portal-blocker" role="alert">El portal de recetas no está disponible por un problema de configuración. Contactar al consultorio.</div>
-                {% elif eligibility.coverage_required %}
-                <div class="portal-blocker" role="alert">Antes de pedir una receta, actualizar obligatoriamente la cobertura y el plan desde el catálogo QBI2 en “Mis datos”.</div>
                 {% elif eligibility.attention_expired %}
                 <div class="portal-blocker" role="alert">No se puede pedir una receta sin un seguimiento médico con frecuencia mínima anual. Contactar al consultorio para solicitar una consulta.</div>
+                {% elif eligibility.coverage_required %}
+                <div class="portal-blocker" role="alert">Para utilizar la cobertura guardada, actualizarla primero desde el catálogo QBI2. También es posible pedir esta receta sin cobertura.</div>
                 {% endif %}
-                {% if eligibility.can_request %}
+                {% if not eligibility.configuration_error and not eligibility.attention_expired %}
                 <form id="request-form">
                     {% csrf_token %}
+                    <div class="request-coverage" role="radiogroup" aria-label="Cobertura para este pedido">
+                        <span>Cobertura para este pedido</span>
+                        <label{% if eligibility.coverage_required or not paciente.qbi2_financiador_id %} class="unavailable"{% endif %}>
+                            <input id="request-coverage-saved" type="radio" name="request-coverage" value="saved"{% if paciente.qbi2_financiador_id %} checked{% else %} disabled{% endif %}>
+                            <span><strong>{{ paciente.obraSocial|default:"Cobertura guardada" }}{% if paciente.plan %} · {{ paciente.plan }}{% endif %}</strong><small>{% if paciente.qbi2_financiador_id %}Usar financiador y afiliación guardados{% else %}Actualizar desde el catálogo para utilizarla{% endif %}</small></span>
+                        </label>
+                        <label>
+                            <input id="request-coverage-none" type="radio" name="request-coverage" value="none"{% if not paciente.qbi2_financiador_id %} checked{% endif %}>
+                            <span><strong>Sin cobertura</strong><small>No se enviará financiador, plan ni número de afiliado en este pedido.</small></span>
+                        </label>
+                    </div>
                     <div class="medication-heading">
                         <strong>Medicamentos</strong>
                         <button class="add-medication" id="toggle-medication-search" type="button" aria-expanded="true" aria-controls="medication-search-panel" aria-label="Agregar otro medicamento" title="Agregar otro medicamento">＋</button>
@@ -280,7 +298,7 @@
         if(!selected.length){ status("request-status","Elegí al menos un medicamento.","error"); return; }
         requestButton.disabled=true;
         try {
-            const response=await fetch(page.dataset.requestUrl,{method:"POST",credentials:"same-origin",headers:{Accept:"application/json","Content-Type":"application/json","X-CSRFToken":csrf(requestForm)},body:JSON.stringify({medicamentosJson:JSON.stringify(selected)})});
+            const response=await fetch(page.dataset.requestUrl,{method:"POST",credentials:"same-origin",headers:{Accept:"application/json","Content-Type":"application/json","X-CSRFToken":csrf(requestForm)},body:JSON.stringify({medicamentosJson:JSON.stringify(selected),usarCobertura:document.getElementById("request-coverage-saved").checked})});
             const data=await parseResponse(response);
             if(response.status===401){ location.href="{% url 'recetas:paciente_login' %}"; return; }
             status("request-status",data.message,response.ok?"ok":"error");

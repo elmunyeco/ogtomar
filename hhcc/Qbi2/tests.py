@@ -335,7 +335,7 @@ class RecetaMedicoTests(TestCase):
         self.assertIn(b"Escribir un diagn", response.content)
         self.assertIn(b"Usar texto", response.content)
         self.assertIn(b"/recetas/api/medico/recetas/pacientes/", response.content)
-        self.assertIn(b"/recetas/api/medico/recetas/preview/", response.content)
+        self.assertNotIn(b'id="preview-recipe"', response.content)
         self.assertIn(b"/recetas/api/medico/recetas/emitir/", response.content)
         self.assertLess(response.content.index(b"Medicamentos"), response.content.index(b"Indicaciones"))
         self.assertLess(response.content.index(b"Indicaciones"), response.content.index(b"Otras configuraciones"))
@@ -866,6 +866,8 @@ class PacientesPortalTests(TestCase):
         self.assertContains(response, 'id="toggle-medication-search"')
         self.assertContains(response, 'aria-label="Agregar otro medicamento"')
         self.assertContains(response, 'id="medication-search-panel"')
+        self.assertContains(response, 'id="request-coverage-saved"')
+        self.assertContains(response, 'id="request-coverage-none"')
         self.assertContains(response, "revealResultsBelow")
         self.assertContains(response, "searchOpen || selected.length === 0")
 
@@ -1018,6 +1020,28 @@ class PacientesPortalTests(TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.json()["code"], "canonical_coverage_required")
         self.assertEqual(SolicitudReceta.objects.count(), 0)
+
+    def test_patient_can_cancel_legacy_coverage_for_one_request_without_erasing_it(self):
+        self.paciente.qbi2_financiador_id = None
+        self.paciente.qbi2_plan_id = None
+        self.paciente.save(update_fields=["qbi2_financiador_id", "qbi2_plan_id"])
+        self.login_patient()
+        response = self.client.post(
+            "/recetas/api/paciente/validar-y-solicitar/",
+            data=json.dumps(
+                {
+                    "medicamentosJson": json.dumps([{"regNo": "34959"}]),
+                    "usarCobertura": False,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        solicitud = SolicitudReceta.objects.get()
+        self.assertFalse(solicitud.auditoria["usar_cobertura"])
+        self.paciente.refresh_from_db()
+        self.assertEqual(self.paciente.obraSocial, "OSDE")
+        self.assertEqual(self.paciente.afiliado, "ORIGINAL-1")
 
     def test_expired_followup_blocks_request_before_queue(self):
         self.historia.fechaAlta = timezone.localdate() - timedelta(days=6 * 366)
