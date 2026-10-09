@@ -158,6 +158,11 @@ def pacientes_portal_page(request):
 
 
 def solicitudes_receta_page(request):
+    # Consume unrelated flash notices so editing a patient does not pollute history.
+    operation_errors = [
+        message for message in messages.get_messages(request)
+        if message.extra_tags == "recipe_validation" and request.GET.get("resultado")
+    ]
     medication_limits = recipe_medication_limits()
     estado = request.GET.get("estado") or SolicitudReceta.Estado.PENDIENTE
     estados_validos = {choice[0] for choice in SolicitudReceta.Estado.choices}
@@ -237,6 +242,7 @@ def solicitudes_receta_page(request):
         "Qbi2/solicitudes_receta.html",
         {
             "solicitudes": solicitudes,
+            "operation_errors": operation_errors,
             "is_queue": True,
             "estado": estado,
             "date_filter": date_filter,
@@ -1285,11 +1291,11 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
         try:
             validate_recipe_medication_count(len(medicamentos))
         except ValueError as exc:
-            messages.error(request, str(exc))
+            messages.error(request, str(exc), extra_tags="recipe_validation")
             return HttpResponseRedirect(_solicitudes_result_url(next_url, solicitud_id))
 
     if aprobar and not diagnostico:
-        messages.error(request, "El diagnostico es obligatorio para emitir la receta.")
+        messages.error(request, "El diagnostico es obligatorio para emitir la receta.", extra_tags="recipe_validation")
         return HttpResponseRedirect(_solicitudes_result_url(next_url, solicitud_id))
 
     with transaction.atomic():
@@ -1298,6 +1304,7 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
             messages.error(
                 request,
                 f"La solicitud #{solicitud.id} ya no está pendiente y no fue procesada nuevamente.",
+                extra_tags="recipe_validation",
             )
             return HttpResponseRedirect(_solicitudes_result_url(next_url, solicitud.id))
         if aprobar:

@@ -12,9 +12,9 @@
         </div>
     </header>
 
-    {% if messages %}
-        <div class="queue-messages">
-            {% for message in messages %}<div class="queue-message {{ message.tags }}">{{ message }}</div>{% endfor %}
+    {% if operation_errors %}
+        <div class="queue-messages" role="alert">
+            {% for message in operation_errors %}<div class="queue-message error">{{ message }}</div>{% endfor %}
         </div>
     {% endif %}
 
