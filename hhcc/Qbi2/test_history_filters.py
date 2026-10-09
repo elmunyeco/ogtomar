@@ -1,0 +1,101 @@
+from datetime import date, datetime, time, timedelta
+from urllib.parse import parse_qs, urlsplit
+from unittest.mock import patch
+
+from django.contrib.auth import get_user_model
+from django.test import SimpleTestCase, TestCase, override_settings
+from django.utils import timezone
+
+from main.models import HistoriaClinica, Paciente, TipoDocumento
+from .history_filters import history_range
+from .models import SolicitudReceta
+from .views import _solicitudes_result_url
+
+
+class CalendarRangeTests(SimpleTestCase):
+    def test_calendar_months_and_leap_year(self):
+        cases = [
+            (date(2024, 3, 31), "mes", date(2024, 2, 29)),
+            (date(2024, 2, 29), "anio", date(2023, 2, 28)),
+            (date(2026, 10, 9), "seis_meses", date(2026, 4, 9)),
+            (date(2026, 10, 9), "semana", date(2026, 10, 3)),
+        ]
+        for today, period, expected in cases:
+            with self.subTest(today=today, period=period):
+                selection = history_range({"periodo": period}, today)
+                self.assertEqual(selection["start"], expected)
+                self.assertEqual(selection["end"], today)
+
+    def test_invalid_ranges_do_not_fall_back_to_all_records(self):
+        for start, end in [("", ""), ("2026-10-10", "2026-10-09"), ("bad", "2026-10-09"), ("2026-10-09", "9999-12-31")]:
+            with self.subTest(start=start, end=end):
+                self.assertTrue(history_range({"modo": "fechas", "desde": start, "hasta": end})["error"])
+
+    def test_feedback_return_keeps_filters_and_cannot_redirect_elsewhere(self):
+        result = _solicitudes_result_url(
+            "https://example.org/?estado=emitida&modo=fechas&desde=2026-10-01&hasta=2026-10-09&pagina=2", 7,
+        )
+        parsed = urlsplit(result)
+        self.assertEqual(parsed.path, "/recetas/medico/solicitudes/")
+        self.assertEqual(parsed.netloc, "")
+        self.assertEqual(parse_qs(parsed.query)["desde"], ["2026-10-01"])
+        self.assertEqual(parse_qs(parsed.query)["pagina"], ["2"])
+        self.assertEqual(parse_qs(parsed.query)["resultado"], ["7"])
+        self.assertEqual(parsed.fragment, "resultado-emision")
+
+
+@override_settings(ALLOWED_HOSTS=["testserver"])
+class HistoryViewTests(TestCase):
+    def setUp(self):
+        tipo = TipoDocumento.objects.create(nombre="DNI", descripcion="Documento")
+        self.patient = Paciente.objects.create(idTipoDoc=tipo, numDoc="12345678", nombre="Prueba", apellido="Historial")
+        self.history = HistoriaClinica.objects.create(paciente=self.patient)
+        self.client.force_login(get_user_model().objects.create_user(username="doctor", password="test"))
+        self.day = date(2026, 10, 9)
+        self.start = timezone.make_aware(datetime.combine(self.day, time.min))
+        self.params = {"modo": "fechas", "desde": self.day.isoformat(), "hasta": self.day.isoformat(), "estado": "todas"}
+
+    def create_request(self, timestamp, state="pendiente"):
+        item = SolicitudReceta.objects.create(paciente=self.patient, historia_clinica=self.history, medicamento_reg_no="test", estado=state)
+        SolicitudReceta.objects.filter(pk=item.pk).update(created_at=timestamp)
+        return item
+
+    def test_inclusive_local_dates_exclude_adjacent_days(self):
+        self.create_request(self.start - timedelta(microseconds=1))
+        first = self.create_request(self.start)
+        last = self.create_request(self.start + timedelta(days=1, microseconds=-1), "emitida")
+        self.create_request(self.start + timedelta(days=1))
+        response = self.client.get("/recetas/medico/solicitudes/", self.params)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual({item.pk for item in response.context["solicitudes"]}, {first.pk, last.pk})
+        self.assertEqual(response.context["pending_count"], 1)
+        self.assertEqual(response.context["pending_outside"], 2)
+        self.assertContains(response, "Ver todos los pendientes")
+        response = self.client.get("/recetas/medico/solicitudes/", {**self.params, "estado": "emitida"})
+        self.assertEqual([item.pk for item in response.context["solicitudes"]], [last.pk])
+
+    def test_invalid_dates_show_error_and_no_records(self):
+        self.create_request(self.start)
+        response = self.client.get("/recetas/medico/solicitudes/", {**self.params, "desde": "bad"})
+        self.assertEqual(response.context["solicitudes"], [])
+        self.assertContains(response, "Ingresar fechas válidas")
+
+    def test_pagination_keeps_filters_and_does_not_truncate_results(self):
+        for _ in range(21):
+            self.create_request(self.start)
+        first = self.client.get("/recetas/medico/solicitudes/", self.params)
+        second = self.client.get("/recetas/medico/solicitudes/", {**self.params, "pagina": "2"})
+        self.assertEqual(len(first.context["solicitudes"]), 20)
+        self.assertEqual(len(second.context["solicitudes"]), 1)
+        self.assertEqual(first.context["page"].paginator.count, 21)
+        self.assertIn("desde=2026-10-09", first.context["current_query"])
+
+    def test_default_month_warns_about_older_pending_and_feedback_stays_visible(self):
+        old = self.create_request(self.start - timedelta(days=90), "error_emision")
+        self.create_request(self.start - timedelta(days=90))
+        with patch("Qbi2.history_filters.timezone.localdate", return_value=self.day):
+            response = self.client.get("/recetas/medico/solicitudes/", {"resultado": old.pk})
+        self.assertEqual(response.context["solicitudes"], [])
+        self.assertEqual(response.context["resultado_solicitud"].pk, old.pk)
+        self.assertContains(response, "Emisión fallida")
+        self.assertContains(response, "Ver todos los pendientes")

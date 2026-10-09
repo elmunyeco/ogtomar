@@ -13,6 +13,7 @@
     data-max-medications="{{ medication_limits.max_medications }}"
     data-max-documents="{{ medication_limits.max_documents }}"
 >
+    {% include "Qbi2/_medical_navigation.html" %}
     <header id="patient-search-panel" class="recipe-patient-search" aria-label="Buscar paciente de historias clínicas">
         <form id="patient-search-form" class="global-search-form">
             <label for="patient-search" class="sr-only">Buscar paciente por apellido, nombre o documento</label>

@@ -1,0 +1,12 @@
+<nav class="prescription-navigation" aria-label="Recetas">
+    <a href="{% url 'recetas:medico_receta_nueva' %}" {% if not is_queue %}aria-current="page"{% endif %}>Nueva receta</a>
+    <a href="{% url 'recetas:medico_solicitudes' %}?{{ pending_query|default:'estado=pendiente' }}" {% if estado == 'pendiente' %}aria-current="page"{% endif %}>Pendientes <span title="{% if is_queue %}En el período seleccionado{% else %}Total pendiente{% endif %}">{{ pending_count }}</span></a>
+    <a href="{% url 'recetas:medico_solicitudes' %}?{{ history_query|default:'estado=todas' }}" {% if is_queue and estado != 'pendiente' %}aria-current="page"{% endif %}>Historial</a>
+</nav>
+<style>
+    .prescription-navigation { display:flex; flex-wrap:wrap; align-items:center; gap:.35rem 1.25rem; margin-bottom:1.2rem; border-bottom:1px solid #eadedb; }
+    .prescription-navigation a { color:#725e5b; padding:.6rem 0; text-decoration:none; font-size:.9rem; border-bottom:2px solid transparent; }
+    .prescription-navigation a[aria-current] { color:#8e362c; border-bottom-color:#9a4035; font-weight:700; }
+    .prescription-navigation span { background:#f8ece9; color:#8e362c; border-radius:1rem; padding:.1rem .4rem; font-size:.8rem; }
+    .prescription-navigation a:focus-visible { outline:2px solid #9a4035; outline-offset:3px; }
+</style>

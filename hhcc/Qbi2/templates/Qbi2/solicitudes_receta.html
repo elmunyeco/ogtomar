@@ -4,13 +4,12 @@
 
 {% block content %}
 <section class="queue-page" data-max-medications="{{ medication_limits.max_medications }}">
+    {% include "Qbi2/_medical_navigation.html" %}
     <header class="queue-heading">
         <div>
             <span>Recetas</span>
-            <h1>Cola médica</h1>
-            <p>Revisar los datos del paciente y el pedido antes de aprobar, editar o rechazar.</p>
+            <h1>{% if estado == 'pendiente' %}Pendientes{% else %}Historial de recetas{% endif %}</h1>
         </div>
-        <a href="{% url 'recetas:medico_receta_nueva' %}">Crear una receta</a>
     </header>
 
     {% if messages %}
@@ -65,14 +64,47 @@
         </section>
     {% endif %}
 
-    <nav class="queue-tabs" aria-label="Elegir una bandeja de solicitudes">
-        <a class="{% if estado == 'pendiente' %}active{% endif %}" href="?estado=pendiente">Pendientes <span>{{ counts.pendiente }}</span></a>
-        <a class="{% if estado == 'emitida' %}active{% endif %}" href="?estado=emitida">Emitidas <span>{{ counts.emitida }}</span></a>
-        <a class="{% if estado == 'error_emision' %}active{% endif %}" href="?estado=error_emision">Errores <span>{{ counts.error_emision }}</span></a>
-        <a class="{% if estado == 'aprobada' %}active{% endif %}" href="?estado=aprobada">Aprobadas <span>{{ counts.aprobada }}</span></a>
-        <a class="{% if estado == 'rechazada' %}active{% endif %}" href="?estado=rechazada">Rechazadas <span>{{ counts.rechazada }}</span></a>
-        <a class="{% if estado == 'todas' %}active{% endif %}" href="?estado=todas">Todas <span>{{ counts.todas }}</span></a>
-    </nav>
+    <form method="get" class="history-filters" aria-label="Filtrar recetas">
+        <fieldset class="history-mode">
+            <legend>Fecha de creación del pedido</legend>
+            <label><input type="radio" name="modo" value="periodo" {% if date_filter.mode == 'periodo' %}checked{% endif %}> Período</label>
+            <label><input type="radio" name="modo" value="fechas" {% if date_filter.mode == 'fechas' %}checked{% endif %}> Desde–hasta</label>
+        </fieldset>
+        <div class="history-controls">
+            <fieldset data-date-mode="periodo">
+                <legend class="sr-only">Período</legend>
+                <label>Último período
+                    <select name="periodo">
+                        <option value="semana" {% if date_filter.period == 'semana' %}selected{% endif %}>Una semana</option>
+                        <option value="mes" {% if date_filter.period == 'mes' %}selected{% endif %}>Un mes</option>
+                        <option value="seis_meses" {% if date_filter.period == 'seis_meses' %}selected{% endif %}>Seis meses</option>
+                        <option value="anio" {% if date_filter.period == 'anio' %}selected{% endif %}>Un año</option>
+                    </select>
+                </label>
+            </fieldset>
+            <fieldset data-date-mode="fechas">
+                <legend class="sr-only">Fechas exactas</legend>
+                <label>Desde <input type="date" name="desde" value="{{ date_filter.start_text }}" required></label>
+                <label>Hasta <input type="date" name="hasta" value="{{ date_filter.end_text }}" required></label>
+            </fieldset>
+            <label>Estado
+                <select name="estado">
+                    <option value="todas" {% if estado == 'todas' %}selected{% endif %}>Todos los estados</option>
+                    {% for value, label in state_choices %}<option value="{{ value }}" {% if estado == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+            </label>
+            <button type="submit">Aplicar</button>
+        </div>
+        {% if date_filter.error %}
+            <p class="history-error" role="alert">{{ date_filter.error }}</p>
+        {% else %}
+            <p class="history-range">{{ date_filter.start|date:"d/m/Y" }} – {{ date_filter.end|date:"d/m/Y" }} · Ambas fechas incluidas · {{ page.paginator.count }} resultado{{ page.paginator.count|pluralize }}</p>
+        {% endif %}
+    </form>
+
+    {% if pending_outside %}
+        <p class="history-pending-notice">{{ pending_outside }} pendiente{{ pending_outside|pluralize }} fuera del período seleccionado. <a href="?{{ all_pending_query }}">Ver todos los pendientes</a></p>
+    {% endif %}
 
     <div class="queue-list">
         {% for solicitud in solicitudes %}
@@ -110,7 +142,7 @@
                 {% if solicitud.estado == estados.PENDIENTE %}
                     <form class="review-form" method="post" action="{% url 'recetas:api_medico_solicitud_aprobar' solicitud.id %}">
                         {% csrf_token %}
-                        <input type="hidden" name="next" value="/recetas/medico/solicitudes/?estado={{ estado }}">
+                        <input type="hidden" name="next" value="{{ return_url }}">
                         <div class="review-columns">
                             <div class="review-column">
                                 <section class="review-panel medications-panel">
@@ -176,7 +208,7 @@
                     </form>
                     <form class="reject-form" method="post" action="{% url 'recetas:api_medico_solicitud_rechazar' solicitud.id %}">
                         {% csrf_token %}
-                        <input type="hidden" name="next" value="/recetas/medico/solicitudes/?estado={{ estado }}">
+                        <input type="hidden" name="next" value="{{ return_url }}">
                         <label for="reject-note-{{ solicitud.id }}">Motivo de rechazo <small>(opcional)</small></label>
                         <div><input id="reject-note-{{ solicitud.id }}" type="text" name="observacion_medico" placeholder="Ej.: requiere consulta"><button type="submit">Rechazar pedido</button></div>
                     </form>
@@ -242,9 +274,16 @@
                 {% endif %}
             </article>
         {% empty %}
-            <div class="queue-empty">No hay solicitudes para este estado.</div>
+            {% if not date_filter.error %}<div class="queue-empty">No hay solicitudes para el estado y las fechas seleccionadas.</div>{% endif %}
         {% endfor %}
     </div>
+    {% if page.has_other_pages %}
+        <nav class="history-pagination" aria-label="Páginas del historial">
+            {% if page.has_previous %}<a href="?{{ current_query }}&amp;pagina={{ page.previous_page_number }}">Anterior</a>{% endif %}
+            <span>Página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+            {% if page.has_next %}<a href="?{{ current_query }}&amp;pagina={{ page.next_page_number }}">Siguiente</a>{% endif %}
+        </nav>
+    {% endif %}
 </section>
 {% endblock %}
 
@@ -256,10 +295,23 @@
     .queue-heading h1 { font-size:1.75rem; margin:.08rem 0; }
     .queue-heading p { color:var(--muted); margin:0; }
     .queue-heading > a { background:var(--red); border-radius:999px; color:white; font-weight:800; padding:.65rem 1rem; text-decoration:none; }
-    .queue-tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
-    .queue-tabs a { background:white; border:1px solid var(--line); border-radius:999px; color:var(--ink); font-weight:800; padding:.48rem .8rem; text-decoration:none; }
-    .queue-tabs a.active { background:var(--red); border-color:var(--red); color:white; }
-    .queue-tabs span { opacity:.72; }
+    .history-filters { background:white; border:1px solid var(--line); border-radius:.75rem; padding:1rem; margin-bottom:1.25rem; }
+    .history-filters fieldset { border:0; margin:0; padding:0; min-width:0; }
+    .history-mode legend { color:var(--muted); font-size:.8rem; margin-bottom:.5rem; }
+    .history-mode label { display:inline-flex; align-items:center; gap:.3rem; margin-right:1rem; font-size:.9rem; }
+    .history-mode input { accent-color:var(--red); }
+    .history-controls { display:flex; flex-wrap:wrap; align-items:flex-end; gap:.75rem; margin-top:.75rem; }
+    .history-controls fieldset { display:flex; flex-wrap:wrap; gap:.75rem; }
+    .history-controls fieldset[hidden] { display:none; }
+    .history-controls label { display:grid; gap:.3rem; font-size:.8rem; color:var(--muted); }
+    .history-controls input,.history-controls select { border:1px solid var(--line); border-radius:.4rem; background:white; color:var(--ink); padding:.5rem .65rem; min-height:2.5rem; max-width:100%; }
+    .history-controls button { background:var(--red); color:white; border:0; border-radius:.4rem; padding:.6rem 1rem; min-height:2.5rem; }
+    .history-range { color:var(--muted); font-size:.8rem; margin:.75rem 0 0; }
+    .history-error { color:#9b2929; margin:.75rem 0 0; }
+    .history-pending-notice { font-size:.85rem; color:var(--red-dark); margin:0 0 1rem; }
+    .history-pending-notice a { color:inherit; text-decoration:underline; }
+    .history-pagination { display:flex; justify-content:center; flex-wrap:wrap; gap:1rem; padding:1.5rem 0; font-size:.9rem; }
+    .history-pagination a { color:var(--red); }
     .queue-list,.queue-messages { display:grid; gap:1rem; }
     .queue-messages { margin-bottom:1rem; }
     .emission-feedback { align-items:flex-start; border:1px solid; border-radius:1rem; display:flex; gap:1rem; margin-bottom:1rem; padding:1rem 1.15rem; scroll-margin-top:1rem; }
@@ -364,6 +416,20 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+(() => {
+    const form = document.querySelector('.history-filters');
+    const updateMode = () => {
+        const mode = form.querySelector('[name="modo"]:checked').value;
+        form.querySelectorAll('[data-date-mode]').forEach(fieldset => {
+            fieldset.hidden = fieldset.dataset.dateMode !== mode;
+            fieldset.disabled = fieldset.hidden;
+        });
+    };
+    form.querySelectorAll('[name="modo"]').forEach(input => input.addEventListener('change', updateMode));
+    updateMode();
+})();
+</script>
 <script>
 (() => {
     const maxMedications = Number(document.querySelector(".queue-page").dataset.maxMedications) || 9;

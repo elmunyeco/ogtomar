@@ -12,6 +12,7 @@ from django.http import Http404
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import resolve, Resolver404
 from django.utils import timezone
+from django.utils.html import escape
 
 from Qbi2 import views
 from Qbi2.client import Qbi2HTTPError, qbi2_error_details, qbi2_error_text
@@ -1265,7 +1266,10 @@ class SolicitudRecetaQueueTests(TestCase):
         )
         self.assertContains(feedback, "Ver PDF 1 de 1")
         self.assertContains(feedback, "Preparar correo con todos los PDF")
-        self.assertContains(feedback, 'href="?estado=pendiente"')
+        self.assertContains(
+            feedback,
+            f'href="/recetas/medico/solicitudes/?{escape(feedback.context["pending_query"])}"',
+        )
         self.assertNotContains(feedback, 'class="request-card"')
 
     def test_approval_sends_complete_patient_order_in_one_rcta_payload(self):

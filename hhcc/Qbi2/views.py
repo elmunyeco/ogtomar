@@ -13,8 +13,9 @@ from urllib.parse import parse_qsl, urlencode, urlsplit
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Count, Max, Min, Q
 from django.http import HttpResponse, HttpResponseRedirect
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -33,6 +34,7 @@ from .client import (
 )
 from .limits import recipe_medication_limits, validate_recipe_medication_count
 from .models import EmisionSolicitudReceta, SolicitudReceta
+from .history_filters import filter_history, history_range
 from .notifications import (
     PrescriptionNotificationError,
     build_prescription_email_draft,
@@ -79,6 +81,7 @@ def receta_medico_page(request):
             },
             "today": timezone.localdate().isoformat(),
             "medication_limits": medication_limits,
+            "pending_count": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.PENDIENTE).count(),
         },
     )
 
@@ -161,22 +164,35 @@ def solicitudes_receta_page(request):
     base_queryset = SolicitudReceta.objects.select_related(
         "paciente", "historia_clinica", "aprobado_por"
     ).prefetch_related("emisiones")
-    queryset = base_queryset.all()
+    date_filter = history_range(request.GET)
+    queryset = filter_history(base_queryset, date_filter)
     if estado != "todas" and estado in estados_validos:
         queryset = queryset.filter(estado=estado)
     elif estado != "todas":
         estado = SolicitudReceta.Estado.PENDIENTE
         queryset = queryset.filter(estado=estado)
 
-    counts = {
-        "pendiente": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.PENDIENTE).count(),
-        "aprobada": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.APROBADA).count(),
-        "rechazada": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.RECHAZADA).count(),
-        "emitida": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.EMITIDA).count(),
-        "error_emision": SolicitudReceta.objects.filter(estado=SolicitudReceta.Estado.ERROR_EMISION).count(),
-        "todas": SolicitudReceta.objects.count(),
+    filter_params = {
+        "modo": date_filter["mode"], "periodo": date_filter["period"],
+        "desde": date_filter["start_text"], "hasta": date_filter["end_text"],
     }
-    solicitudes = list(queryset[:100])
+    pending_query = urlencode({**filter_params, "estado": "pendiente"})
+    history_query = urlencode({**filter_params, "estado": "todas"})
+    current_query = urlencode({**filter_params, "estado": estado})
+    page = Paginator(queryset, 20).get_page(request.GET.get("pagina"))
+    solicitudes = list(page.object_list)
+    pending = base_queryset.filter(estado=SolicitudReceta.Estado.PENDIENTE)
+    pending_in_range = filter_history(pending, date_filter).count()
+    pending_summary = pending.aggregate(total=Count("pk"), first=Min("created_at"), last=Max("created_at"))
+    pending_outside = pending_summary["total"] - pending_in_range
+    all_pending_query = ""
+    if pending_outside:
+        first_date = timezone.localtime(pending_summary["first"]).date()
+        last_date = timezone.localtime(pending_summary["last"]).date()
+        all_pending_query = urlencode({
+            "estado": "pendiente", "modo": "fechas",
+            "desde": first_date.isoformat(), "hasta": last_date.isoformat(),
+        })
     for solicitud in solicitudes:
         medicamentos = solicitud.auditoria.get("medicamentos") or [
             {
@@ -221,8 +237,18 @@ def solicitudes_receta_page(request):
         "Qbi2/solicitudes_receta.html",
         {
             "solicitudes": solicitudes,
+            "is_queue": True,
             "estado": estado,
-            "counts": counts,
+            "date_filter": date_filter,
+            "pending_count": pending_in_range,
+            "pending_outside": pending_outside,
+            "all_pending_query": all_pending_query,
+            "pending_query": pending_query,
+            "history_query": history_query,
+            "current_query": current_query,
+            "return_url": f'{reverse("recetas:medico_solicitudes")}?{current_query}&pagina={page.number}',
+            "page": page,
+            "state_choices": SolicitudReceta.Estado.choices,
             "estados": SolicitudReceta.Estado,
             "resultado_solicitud": resultado_solicitud,
             "medication_limits": medication_limits,
@@ -1211,9 +1237,10 @@ def _solicitudes_result_url(next_url, solicitud_id):
     estado = query.get("estado")
     if estado not in valid_states:
         estado = SolicitudReceta.Estado.PENDIENTE
+    preserved = {key: query[key] for key in ("modo", "periodo", "desde", "hasta", "pagina") if key in query}
     return (
         f'{reverse("recetas:medico_solicitudes")}?'
-        f'{urlencode({"estado": estado, "resultado": solicitud_id})}'
+        f'{urlencode({**preserved, "estado": estado, "resultado": solicitud_id})}'
         "#resultado-emision"
     )
 
