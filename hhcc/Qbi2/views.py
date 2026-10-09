@@ -130,21 +130,7 @@ def pacientes_portal_page(request):
     paciente = get_patient_from_session(request)
     if not paciente:
         return redirect("recetas:paciente_login")
-    try:
-        policy = load_patient_portal_policy()
-        eligibility = patient_portal_eligibility(
-            paciente,
-            max_attention_age_years=policy["max_attention_age_years"],
-        )
-    except Qbi2ConfigurationError as exc:
-        eligibility = {
-            "coverage_required": False,
-            "attention_expired": True,
-            "last_attention": None,
-            "can_request": False,
-            "max_attention_age_years": None,
-            "configuration_error": str(exc),
-        }
+    eligibility = _patient_portal_status(paciente)
     return render(
         request,
         "Qbi2/pacientes_portal.html",
@@ -669,33 +655,42 @@ def actualizar_perfil_paciente(request):
     return JsonResponse({"status": "success", "message": "Tus datos se actualizaron correctamente."})
 
 
-def _patient_request_eligibility_error(paciente, *, require_canonical_coverage=True):
+def _patient_portal_status(paciente, *, use_coverage=True):
     try:
         policy = load_patient_portal_policy()
-        eligibility = patient_portal_eligibility(
+        return patient_portal_eligibility(
             paciente,
             max_attention_age_years=policy["max_attention_age_years"],
+            use_coverage=use_coverage,
         )
-    except Qbi2ConfigurationError as exc:
-        return JsonResponse({"status": "error", "message": str(exc)}, status=503)
-    if require_canonical_coverage and eligibility["coverage_required"]:
-        return JsonResponse(
-            {
-                "status": "error",
-                "code": "canonical_coverage_required",
-                "message": "Actualizar la cobertura y el plan desde el catálogo antes de pedir una receta.",
-            },
-            status=409,
-        )
-    if eligibility["attention_expired"]:
-        return JsonResponse(
-            {
-                "status": "error",
-                "code": "medical_followup_required",
-                "message": "No se puede pedir una receta sin un seguimiento médico con frecuencia mínima anual.",
-            },
-            status=403,
-        )
+    except Qbi2ConfigurationError:
+        return {
+            "can_request": False, "configuration_error": True,
+            "blockers": [{"code": "portal_unavailable", "message": "El portal tiene un problema de configuración y no puede recibir pedidos. Contactá al consultorio."}],
+        }
+
+
+@require_GET
+def paciente_habilitacion_api(request):
+    paciente = get_patient_from_session(request)
+    if not paciente:
+        return _patient_api_auth_error()
+    eligibility = _patient_portal_status(paciente, use_coverage=_uses_recipe_coverage(request.GET.get("usarCobertura", "true")))
+    response = JsonResponse({"status": "success", "eligibility": eligibility})
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+def _patient_request_eligibility_error(paciente, *, require_canonical_coverage=True):
+    eligibility = _patient_portal_status(paciente, use_coverage=require_canonical_coverage)
+    blockers = eligibility["blockers"]
+    if blockers:
+        status_code = 503 if eligibility.get("configuration_error") else (403 if eligibility.get("attention_expired") else 409)
+        return JsonResponse({
+            "status": "error", "code": blockers[0]["code"],
+            "message": "\n".join(item["message"] for item in blockers),
+            "eligibility": eligibility,
+        }, status=status_code)
     return None
 
 

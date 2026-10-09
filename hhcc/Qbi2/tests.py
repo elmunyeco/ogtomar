@@ -1061,8 +1061,48 @@ class PacientesPortalTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["code"], "medical_followup_required")
-        self.assertIn("frecuencia mínima anual", response.json()["message"])
+        self.assertIn("más de 5 años", response.json()["message"])
         self.assertEqual(SolicitudReceta.objects.count(), 0)
+
+    def test_all_blockers_are_reported_and_cleared_independently(self):
+        self.historia.fechaAlta = timezone.localdate() - timedelta(days=6 * 366)
+        self.historia.save(update_fields=["fechaAlta"])
+        self.paciente.qbi2_financiador_id = None
+        self.paciente.save(update_fields=["qbi2_financiador_id"])
+        self.login_patient()
+        endpoint = "/recetas/api/paciente/habilitacion/"
+        state = self.client.get(endpoint).json()["eligibility"]
+        self.assertEqual({b["code"] for b in state["blockers"]}, {"medical_followup_required", "canonical_coverage_required"})
+        page = self.client.get("/recetas/paciente/recetas/nueva/")
+        self.assertContains(page, 'data-blocker="medical_followup_required"')
+        self.assertContains(page, 'data-blocker="canonical_coverage_required"')
+        response = self.client.post("/recetas/api/paciente/validar-y-solicitar/", data=json.dumps({"usarCobertura":True}), content_type="application/json")
+        self.assertEqual(len(response.json()["eligibility"]["blockers"]), 2)
+        state = self.client.get(endpoint, {"usarCobertura":"false"}).json()["eligibility"]
+        self.assertEqual([b["code"] for b in state["blockers"]], ["medical_followup_required"])
+        self.assertFalse(state["can_request"])
+        self.historia.fechaAlta = timezone.localdate()
+        self.historia.save(update_fields=["fechaAlta"])
+        state = self.client.get(endpoint).json()["eligibility"]
+        self.assertEqual([b["code"] for b in state["blockers"]], ["canonical_coverage_required"])
+        state = self.client.get(endpoint, {"usarCobertura":"false"}).json()["eligibility"]
+        self.assertTrue(state["can_request"])
+        self.assertEqual(state["blockers"], [])
+        self.paciente.qbi2_financiador_id = "28"
+        self.paciente.save(update_fields=["qbi2_financiador_id"])
+        self.assertTrue(self.client.get(endpoint).json()["eligibility"]["can_request"])
+        self.assertEqual(SolicitudReceta.objects.count(), 0)
+
+    def test_eligibility_endpoint_requires_session_and_configuration_error_is_specific(self):
+        endpoint = "/recetas/api/paciente/habilitacion/"
+        self.assertEqual(self.client.get(endpoint).status_code, 401)
+        self.login_patient()
+        with patch("Qbi2.views.load_patient_portal_policy", side_effect=views.Qbi2ConfigurationError("test")):
+            state = self.client.get(endpoint).json()["eligibility"]
+            self.assertEqual([b["code"] for b in state["blockers"]], ["portal_unavailable"])
+            self.assertFalse(state["can_request"])
+            page = self.client.get("/recetas/paciente/recetas/nueva/")
+            self.assertNotContains(page, 'data-blocker="medical_followup_required"')
 
 
 @override_settings(
@@ -1535,7 +1575,7 @@ class SolicitudRecetaQueueTests(TestCase):
         emit.assert_not_called()
 
         pending = self.client.get(response.url.split("#", 1)[0])
-        self.assertContains(pending, "volvió a Pendientes")
+        self.assertNotContains(pending, "volvió a Pendientes")
         self.assertContains(pending, "Aprobar y emitir")
         self.assertContains(pending, "Hipertensión arterial")
         self.assertContains(pending, "LOTRIAL")

@@ -89,6 +89,7 @@
       data-search-url="{% url 'recetas:api_paciente_medicamentos_directo' %}"
       data-request-url="{% url 'recetas:api_paciente_validar_solicitar' %}"
       data-profile-url="{% url 'recetas:api_paciente_perfil_actualizar' %}"
+      data-eligibility-url="{% url 'recetas:api_paciente_habilitacion' %}"
       data-coverage-required="{{ eligibility.coverage_required|yesno:'true,false' }}"
       data-max-medications="{{ medication_limits.max_medications }}">
     <div class="shell">
@@ -132,27 +133,24 @@
             <section class="card">
                 <h2>Pedir una receta</h2>
                 <p class="lead">Buscá y seleccioná hasta {{ medication_limits.max_medications }} medicamentos. El Dr. Omar Prieto revisará el pedido antes de decidir.</p>
-                {% if eligibility.configuration_error %}
-                <div class="portal-blocker" role="alert">El portal de recetas no está disponible por un problema de configuración. Contactar al consultorio.</div>
-                {% elif eligibility.attention_expired %}
-                <div class="portal-blocker" role="alert">No se puede pedir una receta sin un seguimiento médico con frecuencia mínima anual. Contactar al consultorio para solicitar una consulta.</div>
-                {% elif eligibility.coverage_required %}
-                <div class="portal-blocker" role="alert">Para utilizar la cobertura guardada, actualizarla primero desde el catálogo QBI2. También es posible pedir esta receta sin cobertura.</div>
-                {% endif %}
-                {% if not eligibility.configuration_error and not eligibility.attention_expired %}
+                <div id="portal-blockers" aria-live="polite" aria-atomic="true">
+                    {% for blocker in eligibility.blockers %}<div class="portal-blocker" data-blocker="{{ blocker.code }}">{{ blocker.message }}</div>{% endfor %}
+                </div>
+                {{ eligibility|json_script:"portal-initial-eligibility" }}
                 <form id="request-form">
                     {% csrf_token %}
                     <div class="request-coverage" role="radiogroup" aria-label="Cobertura para este pedido">
                         <span>Cobertura para este pedido</span>
-                        <label{% if eligibility.coverage_required or not paciente.qbi2_financiador_id %} class="unavailable"{% endif %}>
-                            <input id="request-coverage-saved" type="radio" name="request-coverage" value="saved"{% if paciente.qbi2_financiador_id %} checked{% else %} disabled{% endif %}>
-                            <span><strong>{{ paciente.obraSocial|default:"Cobertura guardada" }}{% if paciente.plan %} · {{ paciente.plan }}{% endif %}</strong><small>{% if paciente.qbi2_financiador_id %}Usar financiador y afiliación guardados{% else %}Actualizar desde el catálogo para utilizarla{% endif %}</small></span>
+                        <label>
+                            <input id="request-coverage-saved" type="radio" name="request-coverage" value="saved"{% if eligibility.has_saved_coverage %} checked{% else %} disabled{% endif %}>
+                            <span><strong id="request-coverage-name">{{ paciente.obraSocial|default:"Cobertura guardada" }}{% if paciente.plan %} · {{ paciente.plan }}{% endif %}</strong><small>Usar la cobertura guardada en Mis datos</small></span>
                         </label>
                         <label>
-                            <input id="request-coverage-none" type="radio" name="request-coverage" value="none"{% if not paciente.qbi2_financiador_id %} checked{% endif %}>
+                            <input id="request-coverage-none" type="radio" name="request-coverage" value="none"{% if not eligibility.has_saved_coverage %} checked{% endif %}>
                             <span><strong>Sin cobertura</strong><small>No se enviará financiador, plan ni número de afiliado en este pedido.</small></span>
                         </label>
                     </div>
+                    <fieldset id="request-medications" aria-label="Medicamentos del pedido" style="border:0;padding:0;margin:0;min-width:0" {% if not eligibility.can_request %}disabled{% endif %}>
                     <div class="medication-heading">
                         <strong>Medicamentos</strong>
                         <button class="add-medication" id="toggle-medication-search" type="button" aria-expanded="true" aria-controls="medication-search-panel" aria-label="Agregar otro medicamento" title="Agregar otro medicamento">＋</button>
@@ -167,9 +165,9 @@
                     <div class="selected" id="selected-medications"></div>
                     <input id="medications-json" name="medicamentosJson" type="hidden" value="[]">
                     <div class="form-footer"><button class="button" id="request-button" type="submit">Enviar pedido</button></div>
+                    </fieldset>
                     <div class="status" id="request-status" role="status"></div>
                 </form>
-                {% endif %}
             </section>
         </div>
     </div>
@@ -182,6 +180,49 @@
     const csrf = (form) => form.querySelector("[name=csrfmiddlewaretoken]").value;
     const status = (id, message, kind) => { const node=document.getElementById(id); node.textContent=message || ""; node.className=`status ${kind || ""}`; };
     const parseResponse = async (response) => { try { return await response.json(); } catch (_) { return {message:"El servidor respondió en un formato inesperado."}; } };
+    const blockersBox = document.getElementById("portal-blockers");
+    const medicationFields = document.getElementById("request-medications");
+    const savedCoverage = document.getElementById("request-coverage-saved");
+    const noCoverage = document.getElementById("request-coverage-none");
+    let eligibility = JSON.parse(document.getElementById("portal-initial-eligibility").textContent);
+    let eligibilitySequence = 0;
+    const applyEligibility = (value) => {
+        eligibility = value;
+        blockersBox.replaceChildren();
+        for (const blocker of value.blockers || []) {
+            const banner = document.createElement("div");
+            banner.className = "portal-blocker";
+            banner.dataset.blocker = blocker.code;
+            banner.textContent = blocker.message;
+            blockersBox.append(banner);
+        }
+        medicationFields.disabled = !value.can_request;
+        if (typeof value.has_saved_coverage === "boolean") {
+            savedCoverage.disabled = !value.has_saved_coverage;
+            if (!value.has_saved_coverage) { savedCoverage.checked = false; noCoverage.checked = true; }
+            document.getElementById("request-coverage-name").textContent = [value.coverage_name, value.coverage_plan].filter(Boolean).join(" · ");
+        }
+    };
+    const refreshEligibility = async () => {
+        const sequence = ++eligibilitySequence;
+        medicationFields.disabled = true;
+        try {
+            const url = new URL(page.dataset.eligibilityUrl, location.origin);
+            url.searchParams.set("usarCobertura", savedCoverage.checked ? "true" : "false");
+            const response = await fetch(url, {credentials:"same-origin", cache:"no-store"});
+            const data = await parseResponse(response);
+            if (sequence !== eligibilitySequence) return;
+            if (response.status === 401) { location.href="{% url 'recetas:paciente_login' %}"; return; }
+            if (!response.ok || !data.eligibility) throw new Error();
+            applyEligibility(data.eligibility);
+        } catch (_) {
+            if (sequence !== eligibilitySequence) return;
+            applyEligibility({can_request:false, blockers:[{code:"eligibility_unavailable", message:"No pudimos comprobar si podés pedir recetas. Revisá la conexión y volvé a intentar."}]});
+        }
+    };
+    [savedCoverage, noCoverage].forEach(input => input.addEventListener("change", refreshEligibility));
+    window.addEventListener("focus", refreshEligibility);
+    window.addEventListener("pageshow", event => { if (event.persisted) refreshEligibility(); });
     profileForm.addEventListener("submit", async event => {
         event.preventDefault();
         const button=profileForm.querySelector("button[type=submit]"); button.disabled=true;
@@ -190,7 +231,7 @@
             const data=await parseResponse(response);
             if(response.status===401){ location.href="{% url 'recetas:paciente_login' %}"; return; }
             status("profile-status",data.message,response.ok?"ok":"error");
-            if(response.ok && page.dataset.coverageRequired === "true") location.reload();
+            if(response.ok) { status("request-status", "", ""); await refreshEligibility(); }
         } catch (_) { status("profile-status","No se pudieron guardar los datos.","error"); }
         finally { button.disabled=false; }
     });
@@ -268,6 +309,7 @@
             const response = await fetch(url, {credentials:"same-origin",headers:{Accept:"application/json"}});
             const data = await parseResponse(response);
             if (response.status === 401) { location.href="{% url 'recetas:paciente_login' %}"; return; }
+            if (data.eligibility) { results.replaceChildren(); await refreshEligibility(); return; }
             if (!response.ok) throw new Error(data.message || "No se pudo buscar el medicamento.");
             mergeFound(Array.isArray(data.items) ? data.items : []);
             nextSearchPage=data.pageInfo?.tieneMasResultados ? data.pageInfo.proximaPagina : null;
@@ -295,13 +337,15 @@
 
     requestForm.addEventListener("submit", async event => {
         event.preventDefault();
+        if(medicationFields.disabled || !eligibility.can_request) return;
         if(!selected.length){ status("request-status","Elegí al menos un medicamento.","error"); return; }
         requestButton.disabled=true;
         try {
             const response=await fetch(page.dataset.requestUrl,{method:"POST",credentials:"same-origin",headers:{Accept:"application/json","Content-Type":"application/json","X-CSRFToken":csrf(requestForm)},body:JSON.stringify({medicamentosJson:JSON.stringify(selected),usarCobertura:document.getElementById("request-coverage-saved").checked})});
             const data=await parseResponse(response);
             if(response.status===401){ location.href="{% url 'recetas:paciente_login' %}"; return; }
-            status("request-status",data.message,response.ok?"ok":"error");
+            if(data.eligibility) { applyEligibility(data.eligibility); status("request-status", "", ""); }
+            else status("request-status",data.message,response.ok?"ok":"error");
             if(response.ok){ selected=[]; renderSelected(); results.textContent=""; query.value=""; setSearchOpen(true); }
         } catch (_) { status("request-status","No se pudo enviar el pedido.","error"); }
         finally { requestButton.disabled=false; }

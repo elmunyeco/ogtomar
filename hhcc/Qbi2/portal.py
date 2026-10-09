@@ -153,7 +153,7 @@ def latest_patient_attention(paciente: Paciente):
     return max(normalized) if normalized else None
 
 
-def patient_portal_eligibility(paciente: Paciente, *, max_attention_age_years: int) -> dict:
+def patient_portal_eligibility(paciente: Paciente, *, max_attention_age_years: int, use_coverage=True) -> dict:
     coverage_required = bool(
         not patient_has_private_coverage(paciente) and not paciente.qbi2_financiador_id
     )
@@ -164,11 +164,30 @@ def patient_portal_eligibility(paciente: Paciente, *, max_attention_age_years: i
     except ValueError:  # 29 de febrero
         threshold = today.replace(month=2, day=28, year=today.year - max_attention_age_years)
     attention_expired = last_attention is None or last_attention < threshold
+    blockers = []
+    if coverage_required and use_coverage:
+        blockers.append({
+            "code": "canonical_coverage_required",
+            "message": f"La cobertura {paciente.obraSocial} todavía no está actualizada en el catálogo. Buscala en Mis datos, seleccioná el plan si corresponde y guardá los cambios. También podés elegir Sin cobertura para este pedido.",
+        })
+    if attention_expired:
+        detail = (
+            f"La última atención registrada es del {last_attention:%d/%m/%Y}, hace más de {max_attention_age_years} años."
+            if last_attention else "No encontramos una atención médica registrada en tu historia clínica."
+        )
+        blockers.append({
+            "code": "medical_followup_required",
+            "message": f"{detail} Para pedir recetas necesitás mantener el seguimiento médico. Contactá al consultorio para actualizarlo; si tuviste una consulta reciente, pedí que revisen el registro.",
+        })
     return {
         "coverage_required": coverage_required,
         "attention_expired": attention_expired,
         "last_attention": last_attention,
-        "can_request": not coverage_required and not attention_expired,
+        "can_request": not blockers,
+        "blockers": blockers,
+        "has_saved_coverage": not patient_has_private_coverage(paciente),
+        "coverage_name": paciente.obraSocial or "Cobertura guardada",
+        "coverage_plan": paciente.plan or "",
         "max_attention_age_years": max_attention_age_years,
     }
 

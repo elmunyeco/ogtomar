@@ -7,6 +7,7 @@ from . import views
 app_name = "recetas"
 
 urlpatterns = [
+    path("api/paciente/habilitacion/", views.paciente_habilitacion_api, name="api_paciente_habilitacion"),
     path("paciente/ingresar/", views.paciente_login_page, name="paciente_login"),
     path("paciente/salir/", views.paciente_logout, name="paciente_logout"),
     path("paciente/recetas/nueva/", views.pacientes_portal_page, name="paciente_receta_nueva"),
