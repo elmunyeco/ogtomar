@@ -163,7 +163,7 @@ def solicitudes_receta_page(request):
     estados_validos = {choice[0] for choice in SolicitudReceta.Estado.choices}
     base_queryset = SolicitudReceta.objects.select_related(
         "paciente", "historia_clinica", "aprobado_por"
-    ).prefetch_related("emisiones")
+    ).prefetch_related("emisiones").filter(hidden_from_history_at__isnull=True)
     date_filter = history_range(request.GET)
     queryset = filter_history(base_queryset, date_filter)
     if estado != "todas" and estado in estados_validos:
@@ -703,6 +703,30 @@ def aprobar_solicitud_receta(request, solicitud_id):
 @require_POST
 def rechazar_solicitud_receta(request, solicitud_id):
     return _decidir_solicitud_receta(request, solicitud_id, aprobar=False)
+
+
+@csrf_protect
+@require_POST
+def quitar_error_historial(request, solicitud_id):
+    with transaction.atomic():
+        solicitud = get_object_or_404(
+            SolicitudReceta.objects.select_for_update(), pk=solicitud_id,
+        )
+        if solicitud.estado != SolicitudReceta.Estado.ERROR_EMISION:
+            return HttpResponse("Sólo se pueden quitar del historial las recetas con error.", status=409)
+        if solicitud.hidden_from_history_at is None:
+            solicitud.hidden_from_history_at = timezone.now()
+            solicitud.auditoria = {
+                **solicitud.auditoria,
+                "history_removed_by": request.user.pk,
+            }
+            solicitud.save(update_fields=["hidden_from_history_at", "auditoria", "updated_at"])
+    messages.success(request, f"La solicitud #{solicitud.id} se quitó del historial.")
+    # Reuse the allowlisted local return path, without redisplaying the removed item.
+    target = _solicitudes_result_url(request.POST.get("next", "?estado=error_emision"), solicitud.id)
+    query = dict(parse_qsl(urlsplit(target).query))
+    query.pop("resultado", None)
+    return HttpResponseRedirect(f'{reverse("recetas:medico_solicitudes")}?{urlencode(query)}')
 
 
 @csrf_protect

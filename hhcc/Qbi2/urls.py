@@ -64,6 +64,11 @@ urlpatterns = [
         name="api_medico_solicitud_reabrir",
     ),
     path(
+        "api/medico/solicitudes/<int:solicitud_id>/quitar-error/",
+        login_required(views.quitar_error_historial),
+        name="api_medico_solicitud_quitar_error",
+    ),
+    path(
         "api/medico/solicitudes/<int:solicitud_id>/correo/",
         login_required(views.preparar_correo_receta),
         name="api_medico_solicitud_correo",

@@ -3,12 +3,12 @@ from urllib.parse import parse_qs, urlsplit
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
 from main.models import HistoriaClinica, Paciente, TipoDocumento
 from .history_filters import history_range
-from .models import SolicitudReceta
+from .models import EmisionSolicitudReceta, SolicitudReceta
 from .views import _solicitudes_result_url
 
 
@@ -99,3 +99,47 @@ class HistoryViewTests(TestCase):
         self.assertEqual(response.context["resultado_solicitud"].pk, old.pk)
         self.assertContains(response, "Emisión fallida")
         self.assertContains(response, "Ver todos los pendientes")
+
+    def test_remove_error_preserves_audit_documents_and_filters(self):
+        item = self.create_request(self.start, "error_emision")
+        emission = EmisionSolicitudReceta.objects.create(
+            solicitud=item, orden=1, total=2, estado="emitida",
+            qbi2_pdf_url="https://example.com/receta.pdf",
+        )
+        before = self.client.get("/recetas/medico/solicitudes/", self.params)
+        self.assertContains(before, "Quitar del historial")
+        self.assertContains(before, "Esta acción no los anula")
+        url = f"/recetas/api/medico/solicitudes/{item.pk}/quitar-error/"
+        response = self.client.post(url, {"next": "/recetas/medico/solicitudes/?estado=error_emision&modo=fechas&desde=2026-10-09&hasta=2026-10-09"})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("desde=2026-10-09", response.url)
+        self.assertNotIn("resultado", response.url)
+        item.refresh_from_db()
+        self.assertIsNotNone(item.hidden_from_history_at)
+        self.assertIn("history_removed_by", item.auditoria)
+        self.assertTrue(EmisionSolicitudReceta.objects.filter(pk=emission.pk).exists())
+        after = self.client.get("/recetas/medico/solicitudes/", {**self.params, "resultado": item.pk})
+        self.assertEqual(after.context["solicitudes"], [])
+        self.assertIsNone(after.context["resultado_solicitud"])
+        self.assertEqual(self.client.post(url).status_code, 302)
+
+    def test_remove_is_authenticated_post_and_csrf_protected(self):
+        item = self.create_request(self.start, "error_emision")
+        url = f"/recetas/api/medico/solicitudes/{item.pk}/quitar-error/"
+        self.assertEqual(self.client.get(url).status_code, 405)
+        anonymous = Client()
+        self.assertEqual(anonymous.post(url).status_code, 302)
+        protected = Client(enforce_csrf_checks=True)
+        protected.force_login(get_user_model().objects.get(username="doctor"))
+        self.assertEqual(protected.post(url).status_code, 403)
+        item.refresh_from_db()
+        self.assertIsNone(item.hidden_from_history_at)
+
+    def test_only_error_state_can_be_removed(self):
+        for state in ["pendiente", "emitida", "aprobada", "rechazada", "anulada"]:
+            with self.subTest(state=state):
+                item = self.create_request(self.start, state)
+                response = self.client.post(f"/recetas/api/medico/solicitudes/{item.pk}/quitar-error/")
+                self.assertEqual(response.status_code, 409)
+                item.refresh_from_db()
+                self.assertIsNone(item.hidden_from_history_at)

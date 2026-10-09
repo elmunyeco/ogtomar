@@ -56,6 +56,7 @@ class SolicitudReceta(models.Model):
     auditoria = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    hidden_from_history_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "qbi2_solicitudes_receta"

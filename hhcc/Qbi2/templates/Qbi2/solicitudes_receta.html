@@ -114,6 +114,15 @@
                     <span>Solicitud #{{ solicitud.id }} · {{ solicitud.created_at|date:"d/m/Y H:i" }}</span>
                 </header>
 
+                {% if solicitud.estado == estados.ERROR_EMISION %}
+                    <form class="history-remove" method="post" action="{% url 'recetas:api_medico_solicitud_quitar_error' solicitud.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ return_url }}">
+                        <button type="submit">Quitar del historial</button>
+                        {% if solicitud.tiene_documentos_emitidos or solicitud.qbi2_pdf_url %}<small>Los documentos emitidos siguen vigentes. Esta acción no los anula.</small>{% endif %}
+                    </form>
+                {% endif %}
+
                 <section class="patient-card">
                     <div class="patient-avatar" aria-hidden="true">{{ solicitud.paciente.nombre|first }}{{ solicitud.paciente.apellido|first }}</div>
                     <div class="patient-main">
@@ -312,6 +321,10 @@
     .history-pending-notice a { color:inherit; text-decoration:underline; }
     .history-pagination { display:flex; justify-content:center; flex-wrap:wrap; gap:1rem; padding:1.5rem 0; font-size:.9rem; }
     .history-pagination a { color:var(--red); }
+    .history-remove { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem 1rem; margin:0 0 .75rem; }
+    .history-remove button { background:transparent; border:1px solid var(--red-border); border-radius:.4rem; color:var(--red-dark); cursor:pointer; padding:.4rem .65rem; font-size:.85rem; }
+    .history-remove button:hover { background:var(--red-soft); }
+    .history-remove small { color:var(--muted); }
     .queue-list,.queue-messages { display:grid; gap:1rem; }
     .queue-messages { margin-bottom:1rem; }
     .emission-feedback { align-items:flex-start; border:1px solid; border-radius:1rem; display:flex; gap:1rem; margin-bottom:1rem; padding:1rem 1.15rem; scroll-margin-top:1rem; }
