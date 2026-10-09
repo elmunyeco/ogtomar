@@ -168,7 +168,7 @@ def patient_portal_eligibility(paciente: Paciente, *, max_attention_age_years: i
     if coverage_required and use_coverage:
         blockers.append({
             "code": "canonical_coverage_required",
-            "message": f"La cobertura {paciente.obraSocial} todavía no está actualizada en el catálogo. Buscala en Mis datos, seleccioná el plan si corresponde y guardá los cambios. También podés elegir Sin cobertura para este pedido.",
+            "message": 'A partir de 2016 Cardiología Integral Dr. Omar Prieto está asociado al Catálogo Nacional de Financiadores Médicos (Obras Sociales y Prepagas). Los datos del tuyo no coinciden con este catálogo. Por favor, buscá el tuyo en la sección correspondiente de "Mis datos", seleccioná también el plan si corresponde y guardá los cambios. También podés elegir Sin cobertura para este pedido.',
         })
     if attention_expired:
         detail = (
