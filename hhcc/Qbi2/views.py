@@ -33,7 +33,8 @@ from .client import (
     qbi2_error_text,
 )
 from .limits import recipe_medication_limits, validate_recipe_medication_count
-from .models import EmisionSolicitudReceta, SolicitudReceta
+from .models import EmisionSolicitudReceta, MedicamentoHabitualOculto, SolicitudReceta
+from .patient_history import patient_order_data, usual_medications
 from .history_filters import filter_history, history_range
 from .notifications import (
     PrescriptionNotificationError,
@@ -671,6 +672,50 @@ def _patient_portal_status(paciente, *, use_coverage=True):
 
 
 @require_GET
+def paciente_habituales_api(request):
+    patient = get_patient_from_session(request)
+    if not patient:
+        return _patient_api_auth_error()
+    response = JsonResponse({"items": usual_medications(patient)})
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@csrf_protect
+@require_POST
+def paciente_quitar_habitual_api(request):
+    patient = get_patient_from_session(request)
+    if not patient:
+        return _patient_api_auth_error()
+    data = _json_body(request)
+    if isinstance(data, JsonResponse):
+        return data
+    key = str(data.get("regNo") or "").strip()
+    if not key or len(key) > 50:
+        return JsonResponse({"message": "Medicamento no válido."}, status=400)
+    if not MedicamentoHabitualOculto.objects.filter(paciente=patient, reg_no=key).exists():
+        if key not in {item["regNo"] for item in usual_medications(patient)}:
+            return JsonResponse({"message": "El medicamento no está en tu lista habitual."}, status=404)
+        MedicamentoHabitualOculto.objects.get_or_create(paciente=patient, reg_no=key)
+    return JsonResponse({"status": "success"})
+
+
+@require_GET
+def paciente_pedidos_api(request):
+    patient = get_patient_from_session(request)
+    if not patient:
+        return _patient_api_auth_error()
+    orders = SolicitudReceta.objects.filter(paciente=patient).prefetch_related("emisiones")
+    page = Paginator(orders, 10).get_page(request.GET.get("pagina"))
+    response = JsonResponse({
+        "items": [patient_order_data(order) for order in page],
+        "page": page.number, "pages": page.paginator.num_pages, "count": page.paginator.count,
+    })
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+@require_GET
 def paciente_habilitacion_api(request):
     paciente = get_patient_from_session(request)
     if not paciente:
@@ -1273,6 +1318,9 @@ def _solicitudes_result_url(next_url, solicitud_id):
 def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
     observacion = request.POST.get("observacion_medico", "")
     next_url = request.POST.get("next") or "/recetas/medico/solicitudes/"
+    if not aprobar and not observacion.strip():
+        messages.error(request, "Indicar el motivo del rechazo. El paciente verá este texto.", extra_tags="recipe_validation")
+        return HttpResponseRedirect(_solicitudes_result_url(next_url, solicitud_id))
     diagnostico = (request.POST.get("diagnostico") or "").strip()
     posologia = (request.POST.get("posologia") or "Tomar segun indicacion medica.").strip()
     cantidad = _positive_int(request.POST.get("cantidad"), default=1)
@@ -1346,6 +1394,7 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
             next_url = _solicitudes_result_url(next_url, solicitud.id)
         else:
             solicitud.rechazar(request.user, observacion=observacion)
+            next_url = _solicitudes_result_url(next_url, solicitud.id)
     return HttpResponseRedirect(next_url)
 
 

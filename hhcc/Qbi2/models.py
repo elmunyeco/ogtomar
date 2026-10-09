@@ -193,6 +193,15 @@ class PatientLoginThrottle(models.Model):
         db_table = "qbi2_patient_login_throttle"
 
 
+class MedicamentoHabitualOculto(models.Model):
+    paciente = models.ForeignKey("main.Paciente", on_delete=models.CASCADE)
+    reg_no = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["paciente", "reg_no"], name="qbi2_habitual_oculto_unique")]
+
+
 class EmisionSolicitudReceta(models.Model):
     class Estado(models.TextChoices):
         PENDIENTE = "pendiente", "Pendiente"

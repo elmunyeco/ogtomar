@@ -64,6 +64,12 @@
         </section>
     {% endif %}
 
+    {% if resultado_solicitud.estado == estados.RECHAZADA %}
+        <section id="resultado-emision" class="emission-feedback error" role="status">
+            <div class="feedback-content"><h2>Pedido #{{ resultado_solicitud.id }} rechazado</h2><span>Motivo visible para el paciente</span><p style="white-space:pre-wrap">{{ resultado_solicitud.observacion_medico }}</p></div>
+        </section>
+    {% endif %}
+
     <form method="get" class="history-filters" aria-label="Filtrar recetas">
         <fieldset class="history-mode">
             <legend>Fecha de creación del pedido</legend>
@@ -218,8 +224,8 @@
                     <form class="reject-form" method="post" action="{% url 'recetas:api_medico_solicitud_rechazar' solicitud.id %}">
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ return_url }}">
-                        <label for="reject-note-{{ solicitud.id }}">Motivo de rechazo <small>(opcional)</small></label>
-                        <div><input id="reject-note-{{ solicitud.id }}" type="text" name="observacion_medico" placeholder="Ej.: requiere consulta"><button type="submit">Rechazar pedido</button></div>
+                        <label for="reject-note-{{ solicitud.id }}">Motivo de rechazo <small>(obligatorio; el paciente verá este texto)</small></label>
+                        <div><textarea id="reject-note-{{ solicitud.id }}" name="observacion_medico" placeholder="Explicar el motivo al paciente" required></textarea><button type="submit">Rechazar pedido</button></div>
                     </form>
                 {% else %}
                     <div class="review-columns readonly-columns">
@@ -372,7 +378,7 @@
     .panel-body { padding:1rem; }
     .field-label { color:var(--ink); display:block; font-size:.76rem; font-weight:800; margin-bottom:.32rem; }
     .field-help { color:var(--muted); display:block; margin-top:.35rem; }
-    .panel-body input,.panel-body textarea,.reject-form input { background:white; border:1px solid #d7cac7; border-radius:.65rem; color:var(--ink); min-height:2.7rem; padding:.6rem .72rem; width:100%; }
+    .panel-body input,.panel-body textarea,.reject-form textarea { background:white; border:1px solid #d7cac7; border-radius:.65rem; color:var(--ink); min-height:2.7rem; padding:.6rem .72rem; width:100%; }
     .panel-body textarea { min-height:6.2rem; resize:vertical; }
     .search-row { display:flex; gap:.55rem; }
     .secondary-button { background:var(--red-soft); border:1px solid var(--red-border); border-radius:.65rem; color:var(--red-dark); cursor:pointer; font-weight:850; padding:0 .9rem; }
