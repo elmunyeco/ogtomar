@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal de pacientes · Pedido de receta</title>
-    <link rel="stylesheet" href="{% static 'main/css/qbi2_coverage_selector.css' %}">
+    <link rel="stylesheet" href="{% static 'main/css/qbi2_coverage_selector.css' %}?v=20261010-coverage-switch-v2">
     <style>
         :root { --blue:#175c91; --blue-dark:#0e3e64; --blue-soft:#eef6fc; --line:#cfe0ec; --text:#172b3a; --muted:#627786; }
         * { box-sizing:border-box; }
@@ -48,6 +48,8 @@
         .results { clear:both; display:grid; margin-top:.55rem; max-height:20rem; overflow:auto; position:static; width:100%; }
         .results:not(:empty) { border:1px solid var(--line); border-radius:10px; padding:.25rem .65rem; scroll-margin-top:1rem; }
         .result { align-items:flex-start; background:white; border:0; border-bottom:1px solid var(--line); cursor:pointer; display:flex; gap:.8rem; justify-content:space-between; padding:.7rem .2rem; text-align:left; }
+        .result:disabled { cursor:default; opacity:.5; }
+        .result.is-added { background:#eaf7f1; color:#176044; opacity:1; }
         .result strong,.result small { display:block; }
         .result small { color:var(--muted); margin-top:.15rem; }
         .load-more { background:var(--blue-soft); border:1px solid var(--line); border-radius:9px; color:var(--blue-dark); cursor:pointer; font-weight:800; margin-top:.55rem; min-height:2.5rem; width:100%; }
@@ -73,8 +75,12 @@
         .qbi2-coverage-current { background:var(--blue-soft); border-radius:8px; font-weight:750; margin-bottom:.45rem; padding:.6rem .7rem; }
         .qbi2-coverage-search-row { display:grid; gap:.45rem; grid-template-columns:1fr auto auto; }
         .qbi2-coverage-query,.qbi2-plan-select { border:1px solid #b9cedd; border-radius:8px; min-height:2.65rem; padding:.55rem .7rem; width:100%; }
-        .qbi2-coverage-search,.qbi2-coverage-none { background:var(--blue); border:0; border-radius:8px; color:white; cursor:pointer; font-weight:750; padding:.55rem .75rem; }
+        .qbi2-coverage-search { background:var(--blue); border:0; border-radius:8px; color:white; cursor:pointer; font-weight:750; padding:.55rem .75rem; }
         .qbi2-coverage-none { background:white; border:1px solid var(--blue); color:var(--blue); }
+        .qbi2-coverage-none-input:checked + .qbi2-coverage-none-track { background:var(--blue); }
+        .qbi2-coverage-none-input:focus-visible + .qbi2-coverage-none-track { outline-color:#176b9a66; }
+        .qbi2-coverage-query:disabled,.qbi2-plan-select:disabled,.qbi2-coverage-search:disabled,.field input:disabled { background:#edf1f4; color:#71818c; cursor:not-allowed; opacity:.65; }
+        .qbi2-coverage.is-no-coverage .qbi2-coverage-current { background:#edf1f4; color:#667783; }
         .qbi2-coverage-results { display:grid; margin-top:.35rem; max-height:16rem; overflow:auto; }
         .qbi2-coverage-results button { background:white; border:0; border-bottom:1px solid var(--line); cursor:pointer; padding:.6rem; text-align:left; }
         .qbi2-coverage-results strong,.qbi2-coverage-results small { display:block; }
@@ -85,13 +91,19 @@
         .medication-sources { display:flex; flex-wrap:wrap; gap:.5rem; margin:.8rem 0; }
         .medication-sources button,.patient-history button { border:1px solid #bed4e5; background:white; color:#174b70; border-radius:.5rem; padding:.5rem .75rem; cursor:pointer; }
         .medication-sources button[aria-pressed="true"] { background:#e6f2fb; font-weight:700; }
-        .habitual-row { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; padding:.75rem 0; border-bottom:1px solid #dbe8f0; }
+        .habitual-row { align-items:stretch; border-bottom:1px solid #dbe8f0; display:grid; gap:.5rem; grid-template-columns:minmax(0,1fr) auto; padding:.5rem 0; }
+        .habitual-pick { align-items:center; background:white; border:1px solid transparent; border-radius:.65rem; color:#173b55; cursor:pointer; display:flex; gap:.7rem; justify-content:space-between; min-height:3.7rem; padding:.55rem .65rem; text-align:left; width:100%; }
+        .habitual-pick:hover { background:#f2f8fc; border-color:#bed4e5; }
+        .habitual-pick:disabled { cursor:default; }
+        .habitual-pick.is-added { background:#eaf7f1; border-color:#b9ddca; color:#176044; }
         .habitual-copy { flex:1 1 12rem; }
         .habitual-copy strong,.habitual-copy small { display:block; }
         .habitual-copy small,.habitual-help { color:#617b8e; font-size:.8rem; }
-        .habitual-remove { background:white; border:1px solid #c6d9e6; color:#6b4444; border-radius:50%; min-width:2rem; min-height:2rem; cursor:pointer; }
-        .habitual-add { background:#e6f2fb; border:1px solid #bed4e5; color:#174b70; border-radius:.5rem; padding:.45rem .65rem; cursor:pointer; }
-        .habitual-add:disabled { opacity:.5; cursor:default; }
+        .habitual-pick-state { color:#195d91; flex:0 0 auto; font-size:.78rem; font-weight:800; }
+        .habitual-pick.is-added .habitual-pick-state { color:#176044; }
+        .habitual-summary { color:#46677f; font-size:.78rem; font-weight:700; margin:.45rem 0; min-height:1rem; }
+        .habitual-list { border-top:1px solid #dbe8f0; }
+        .habitual-remove { align-self:center; background:white; border:1px solid #c6d9e6; border-radius:50%; color:#6b4444; cursor:pointer; min-height:2rem; min-width:2rem; }
         .patient-history { margin-top:1.5rem; }
         .patient-history-header { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:.6rem; }
         .patient-order { border-top:1px solid #dbe8f0; padding:1rem 0; }
@@ -185,9 +197,9 @@
                             <button type="button" id="source-catalog" aria-pressed="true">Buscar medicamento</button>
                         </div>
                         <section id="habitual-panel" hidden aria-label="Mi medicación habitual">
-                            <p class="habitual-help">Los medicamentos de tus recetas emitidas al menos dos veces, ordenados del más pedido al menos pedido. Esta lista no reemplaza las indicaciones del médico.</p>
-                            <div id="habitual-list" aria-live="polite">Cargando…</div>
-                            <button type="button" id="habitual-more" class="habitual-add" hidden>Ver más habituales</button>
+                            <p class="habitual-help">Hasta 9 de tus medicamentos más pedidos en recetas emitidas, ordenados del más pedido al menos pedido. Esta lista no reemplaza las indicaciones del médico.</p>
+                            <div id="habitual-summary" class="habitual-summary" aria-live="polite"></div>
+                            <div id="habitual-list" class="habitual-list" aria-live="polite">Cargando…</div>
                             <div id="habitual-status" class="status" role="status"></div>
                         </section>
                         <div id="catalog-panel">
@@ -245,6 +257,7 @@
             if (!value.has_saved_coverage) { savedCoverage.checked = false; noCoverage.checked = true; }
             document.getElementById("request-coverage-name").textContent = [value.coverage_name, value.coverage_plan].filter(Boolean).join(" · ");
         }
+        if (requestForm) syncAddButton();
     };
     const refreshEligibility = async () => {
         const sequence = ++eligibilitySequence;
@@ -286,33 +299,42 @@
     const requestButton = document.getElementById("request-button");
     const searchPanel = document.getElementById("medication-search-panel");
     const searchToggle = document.getElementById("toggle-medication-search");
+    const catalogSearchButton = document.getElementById("search-button");
     const usualPanel = document.getElementById("habitual-panel");
+    const usualList = document.getElementById("habitual-list");
+    const usualSummary = document.getElementById("habitual-summary");
     const catalogPanel = document.getElementById("catalog-panel");
     let usualItems = [];
-    let showAllUsual = false;
     let ordersPage = 1;
     let found = [];
     let selected = [];
     const maxMedications = Number(page.dataset.maxMedications) || 9;
     let nextSearchPage = null;
     let activeSearch = "";
+    let activeSource = "catalog";
+    let catalogSlotMedicationKey = "";
     const esc = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[c]);
     const medicationKey = (item) => String(item.regNo || "").trim();
     const syncAddButton = () => {
-        const searchOpen = !searchPanel.hidden;
-        searchToggle.disabled = searchOpen || selected.length === 0 || selected.length >= maxMedications;
+        const limitReached = selected.length >= maxMedications;
+        const catalogSlotComplete = Boolean(catalogSlotMedicationKey);
+        searchToggle.disabled = medicationFields.disabled || activeSource !== "catalog" || !catalogSlotComplete || limitReached;
         searchToggle.title = selected.length >= maxMedications
             ? `Ya seleccionaste ${maxMedications} medicamentos`
-            : searchOpen
-                ? "Terminá de elegir este medicamento"
-                : "Agregar otro medicamento";
+            : activeSource !== "catalog"
+                ? "Elegí los medicamentos directamente de la lista habitual"
+                : catalogSlotComplete
+                    ? "Agregar otro medicamento"
+                    : "Primero elegí un medicamento";
+        query.disabled = medicationFields.disabled || catalogSlotComplete || limitReached;
+        catalogSearchButton.disabled = medicationFields.disabled || catalogSlotComplete || limitReached;
     };
     const setSearchOpen = (open, focus=false) => {
         searchPanel.hidden = !open;
         searchToggle.setAttribute("aria-expanded", String(open));
         syncAddButton();
         if (open && focus) requestAnimationFrame(() => {
-            const target = usualPanel.hidden ? query : (usualPanel.querySelector('[data-usual-add]:not(:disabled)') || document.getElementById("source-catalog"));
+            const target = usualPanel.hidden ? query : (usualList.querySelector('[data-usual-add]:not(:disabled)') || document.getElementById("source-catalog"));
             target.focus({preventScroll:true});
             searchPanel.scrollIntoView({behavior:"smooth", block:"nearest"});
         });
@@ -335,9 +357,13 @@
         found=Array.from(merged.values()).sort((a,b) => relevance(a,needle)-relevance(b,needle) || searchText(a.nombreProducto).localeCompare(searchText(b.nombreProducto)));
     };
     const renderResults = () => {
-        const rows=found.length ? found.map((item,index) => `<button class="result" type="button" data-index="${index}"><span><strong>${esc(item.nombreProducto || item.display || "Medicamento")}</strong><small>${esc([item.nombreDroga,item.presentacion].filter(Boolean).join(" · "))}</small></span><code>RegNo ${esc(item.regNo || "-")}</code></button>`).join("") : "No se encontraron medicamentos.";
-        results.innerHTML=rows+(nextSearchPage ? `<button class="load-more" type="button">Buscar más resultados</button>` : "");
-        revealResultsBelow();
+        const catalogSlotComplete = Boolean(catalogSlotMedicationKey);
+        const rows=found.length ? found.map((item,index) => {
+            const isAdded = medicationKey(item) === catalogSlotMedicationKey;
+            return `<button class="result${isAdded ? " is-added" : ""}" type="button" data-index="${index}" ${catalogSlotComplete ? "disabled" : ""}><span><strong>${esc(item.nombreProducto || item.display || "Medicamento")}</strong><small>${esc([item.nombreDroga,item.presentacion].filter(Boolean).join(" · "))}</small></span><code>${isAdded ? "✓ Agregado" : `RegNo ${esc(item.regNo || "-")}`}</code></button>`;
+        }).join("") : "No se encontraron medicamentos.";
+        results.innerHTML=rows+(nextSearchPage ? `<button class="load-more" type="button" ${catalogSlotComplete ? "disabled" : ""}>Buscar más resultados</button>` : "");
+        if(!catalogSlotComplete) revealResultsBelow();
     };
     const renderSelected = () => {
         selectedInput.value = JSON.stringify(selected);
@@ -347,21 +373,28 @@
     };
 
     const chooseSource = (source) => {
+        activeSource = source;
         usualPanel.hidden = source !== "usual";
         catalogPanel.hidden = source !== "catalog";
         document.getElementById("source-usual").setAttribute("aria-pressed", String(source === "usual"));
         document.getElementById("source-catalog").setAttribute("aria-pressed", String(source === "catalog"));
+        syncAddButton();
     };
-    document.getElementById("source-usual").addEventListener("click", () => chooseSource("usual"));
+    document.getElementById("source-usual").addEventListener("click", () => {
+        chooseSource("usual");
+        (usualList.querySelector('[data-usual-add]:not(:disabled)') || document.getElementById("source-catalog")).focus();
+    });
     document.getElementById("source-catalog").addEventListener("click", () => { chooseSource("catalog"); query.focus(); });
     const displayDate = value => value ? new Date(value).toLocaleDateString("es-AR") : "";
     const renderUsual = () => {
-        const visible = showAllUsual ? usualItems : usualItems.slice(0,6);
-        document.getElementById("habitual-list").innerHTML = visible.length ? visible.map((item,index) => {
+        const selectedUsual = usualItems.filter(item => selected.some(medicine => medicationKey(medicine) === medicationKey(item))).length;
+        usualSummary.textContent = usualItems.length
+            ? `${usualItems.length} medicamentos habituales${selectedUsual ? ` · ${selectedUsual} agregados al pedido` : ""}`
+            : "";
+        usualList.innerHTML = usualItems.length ? usualItems.map((item,index) => {
             const included = selected.some(medicine => medicationKey(medicine) === medicationKey(item));
-            return `<div class="habitual-row"><span class="habitual-copy"><strong>${index+1}. ${esc(item.nombreProducto || "Medicamento")}</strong><small>${esc([item.nombreDroga,item.presentacion].filter(Boolean).join(" · "))}</small><small>${item.frequency} pedidos emitidos · Última vez: ${esc(displayDate(item.last_issued))}</small></span><button type="button" class="habitual-add" data-usual-add="${index}" ${included || selected.length >= maxMedications ? "disabled" : ""}>${included ? "Agregado" : "Agregar al pedido"}</button><button type="button" class="habitual-remove" data-usual-remove="${index}" aria-label="Quitar ${esc(item.nombreProducto)} de mi medicación habitual" title="Quitar de mi medicación habitual">×</button></div>`;
-        }).join("") : '<p class="habitual-help">Todavía no hay medicamentos habituales. Aparecerán cuando se hayan emitido en al menos dos pedidos distintos. Podés buscarlos en «Buscar medicamento».</p>';
-        document.getElementById("habitual-more").hidden = showAllUsual || usualItems.length <= 6;
+            return `<div class="habitual-row"><button type="button" class="habitual-pick${included ? " is-added" : ""}" data-usual-add="${index}" ${included || selected.length >= maxMedications ? "disabled" : ""} aria-label="${included ? "Ya agregado" : "Agregar al pedido"}: ${esc(item.nombreProducto || "Medicamento")}"><span class="habitual-copy"><strong>${index+1}. ${esc(item.nombreProducto || "Medicamento")}</strong><small>${esc([item.nombreDroga,item.presentacion].filter(Boolean).join(" · "))}</small><small>${item.frequency} pedidos emitidos · Última vez: ${esc(displayDate(item.last_issued))}</small></span><span class="habitual-pick-state">${included ? "✓ Agregado" : "Agregar al pedido"}</span></button><button type="button" class="habitual-remove" data-usual-remove="${index}" aria-label="Quitar ${esc(item.nombreProducto)} de mi medicación habitual" title="Quitar de mi medicación habitual">×</button></div>`;
+        }).join("") : '<p class="habitual-help">Todavía no hay medicamentos habituales. Aparecerán después de que se emita una receta. Podés buscarlos en «Buscar medicamento».</p>';
     };
     const loadUsual = async (initial=false) => {
         try {
@@ -373,18 +406,26 @@
             if(initial && usualItems.length && !query.value && !selected.length) chooseSource("usual");
         } catch (_) { status("habitual-status", "No pudimos cargar tu medicación habitual. Podés usar el buscador.", "error"); }
     };
-    document.getElementById("habitual-more").addEventListener("click", () => { showAllUsual=true; renderUsual(); });
-    const addToOrder = (item) => {
+    const addToOrder = (item, keepChoosing=false) => {
         if(medicationFields.disabled) return;
         if(selected.length >= maxMedications) { status("request-status",`Podés seleccionar hasta ${maxMedications} medicamentos.`,"error"); return; }
         if(selected.some(value => medicationKey(value) === medicationKey(item))) { status("request-status","Ese medicamento ya está seleccionado.","error"); return; }
+        if(!keepChoosing) catalogSlotMedicationKey = medicationKey(item);
         selected.push(item); renderSelected(); status("request-status","","");
-        query.value=""; found=[]; nextSearchPage=null; results.replaceChildren();
-        setSearchOpen(false); searchToggle.focus({preventScroll:true});
+        if(keepChoosing) {
+            const limitReached = selected.length >= maxMedications;
+            status("habitual-status", `${item.nombreProducto || "El medicamento"} fue agregado al pedido.${limitReached ? ` Alcanzaste el límite de ${maxMedications}.` : " Podés elegir otro de la lista."}`, "ok");
+            setSearchOpen(true);
+            requestAnimationFrame(() => (usualList.querySelector('[data-usual-add]:not(:disabled)') || document.getElementById("source-catalog")).focus({preventScroll:true}));
+            return;
+        }
+        renderResults();
+        status("request-status", `${item.nombreProducto || "El medicamento"} fue agregado al pedido. Para buscar otro en QBI2, tocá +. También podés elegirlo de tu lista habitual.`, "ok");
+        setSearchOpen(true); searchToggle.focus({preventScroll:true});
     };
-    document.getElementById("habitual-list").addEventListener("click", async event => {
+    usualList.addEventListener("click", async event => {
         const add = event.target.closest("[data-usual-add]");
-        if(add) { addToOrder(usualItems[Number(add.dataset.usualAdd)]); return; }
+        if(add) { addToOrder(usualItems[Number(add.dataset.usualAdd)], true); return; }
         const remove = event.target.closest("[data-usual-remove]");
         if(!remove) return;
         const item = usualItems[Number(remove.dataset.usualRemove)];
@@ -419,6 +460,7 @@
     window.addEventListener("focus",()=>{loadOrders();loadUsual();});
 
     const searchMedications = async (append=false) => {
+        if(catalogSlotMedicationKey || selected.length >= maxMedications || medicationFields.disabled) return;
         status("request-status", "", "");
         const requestedQuery=query.value.trim();
         if(!append){ activeSearch=requestedQuery; found=[]; nextSearchPage=null; }
@@ -438,8 +480,12 @@
             renderResults();
         } catch (error) { results.textContent=""; status("request-status",error.message,"error"); }
     };
-    document.getElementById("search-button").addEventListener("click", () => searchMedications(false));
-    searchToggle.addEventListener("click", () => setSearchOpen(true, true));
+    catalogSearchButton.addEventListener("click", () => searchMedications(false));
+    searchToggle.addEventListener("click", () => {
+        if(activeSource !== "catalog" || !catalogSlotMedicationKey || selected.length >= maxMedications) return;
+        catalogSlotMedicationKey=""; query.value=""; found=[]; activeSearch=""; nextSearchPage=null; results.replaceChildren();
+        status("request-status", "", ""); setSearchOpen(true); syncAddButton(); query.focus({preventScroll:true});
+    });
     query.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); document.getElementById("search-button").click(); } });
     results.addEventListener("click", event => {
         if(event.target.closest(".load-more")){ searchMedications(true); return; }
@@ -449,7 +495,11 @@
     });
     selectedBox.addEventListener("click", event => {
         const button=event.target.closest(".remove"); if(!button) return;
-        selected.splice(Number(button.dataset.index),1); renderSelected();
+        const removed = selected[Number(button.dataset.index)];
+        selected.splice(Number(button.dataset.index),1);
+        if(medicationKey(removed) === catalogSlotMedicationKey) catalogSlotMedicationKey="";
+        renderSelected();
+        if(found.length) renderResults();
         if(!selected.length) setSearchOpen(true, true);
     });
 
@@ -464,7 +514,7 @@
             if(response.status===401){ location.href="{% url 'recetas:paciente_login' %}"; return; }
             if(data.eligibility) { applyEligibility(data.eligibility); status("request-status", "", ""); }
             else status("request-status",data.message,response.ok?"ok":"error");
-            if(response.ok){ selected=[]; renderSelected(); results.textContent=""; query.value=""; setSearchOpen(true); loadOrders(1); }
+            if(response.ok){ selected=[]; catalogSlotMedicationKey=""; renderSelected(); results.textContent=""; query.value=""; setSearchOpen(true); loadOrders(1); }
         } catch (_) { status("request-status","No se pudo enviar el pedido.","error"); }
         finally { requestButton.disabled=false; }
     });
@@ -474,6 +524,6 @@
     loadOrders(1);
 })();
 </script>
-<script src="{% static 'main/js/qbi2_coverage_selector.js' %}"></script>
+<script src="{% static 'main/js/qbi2_coverage_selector.js' %}?v=20261010-coverage-switch-v2"></script>
 </body>
 </html>

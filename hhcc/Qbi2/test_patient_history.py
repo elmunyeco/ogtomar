@@ -35,7 +35,7 @@ class PatientHistoryTests(TestCase):
             EmisionSolicitudReceta.objects.create(solicitud=item,orden=1,total=1,medicamentos=meds,estado="emitida",qbi2_pdf_url="https://example.com/p.pdf")
         return item
 
-    def test_ranking_counts_distinct_complete_issued_orders_not_occasional_requests(self):
+    def test_ranking_counts_distinct_complete_issued_orders_including_single_requests(self):
         self.order(["A", "B"], days=3)
         self.order(["A", "B"], days=2)
         self.order(["A", "occasional"], days=1)
@@ -45,8 +45,8 @@ class PatientHistoryTests(TestCase):
         self.order(["private"], patient=self.other)
         self.order(["private"], patient=self.other)
         items=usual_medications(self.patient)
-        self.assertEqual([i["regNo"] for i in items], ["A","B"])
-        self.assertEqual([i["frequency"] for i in items], [3,2])
+        self.assertEqual([i["regNo"] for i in items], ["A","B","occasional"])
+        self.assertEqual([i["frequency"] for i in items], [3,2,1])
 
     def test_split_documents_duplicates_count_once_and_actual_issued_items_win(self):
         for _ in range(2):
@@ -61,14 +61,28 @@ class PatientHistoryTests(TestCase):
         self.assertEqual(result[0]["regNo"],"actual")
         self.assertEqual(result[0]["frequency"],2)
 
-    def test_ranking_tie_uses_recency_and_library_can_exceed_order_limit(self):
+    def test_ranking_tie_uses_recency_and_library_is_limited_to_nine(self):
         for _ in range(2):
             self.order([str(i) for i in range(12)], days=2)
         self.order(["recent"],days=1)
         self.order(["recent"])
         items=usual_medications(self.patient)
-        self.assertEqual(len(items),13)
+        self.assertEqual(len(items),9)
         self.assertEqual(items[0]["regNo"],"recent")
+
+    def test_patient_portal_has_individual_usual_medication_picker(self):
+        response = self.client.get("/recetas/paciente/recetas/nueva/")
+
+        self.assertContains(response, 'id="habitual-summary"')
+        self.assertContains(response, 'class="habitual-pick${included ? " is-added" : ""}"')
+        self.assertContains(response, "✓ Agregado")
+        self.assertContains(response, "addToOrder(usualItems[Number(add.dataset.usualAdd)], true)")
+        self.assertContains(response, "Podés elegir otro de la lista")
+        self.assertNotContains(response, 'id="habitual-query"')
+        self.assertNotContains(response, "setSearchOpen(false)")
+        self.assertContains(response, 'activeSource !== "catalog" || !catalogSlotComplete')
+        self.assertContains(response, 'catalogSlotMedicationKey=""; query.value=""')
+        self.assertContains(response, "Para buscar otro en QBI2, tocá +")
 
     def test_remove_is_patient_scoped_persistent_and_preserves_history(self):
         for patient in [self.patient,self.other]:

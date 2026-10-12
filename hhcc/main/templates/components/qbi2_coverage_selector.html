@@ -8,7 +8,11 @@
   <div class="qbi2-coverage-search-row">
     <input class="qbi2-coverage-query" id="qbi2-coverage-query-{{ form.prefix|default:'patient' }}" type="search" placeholder="Buscar financiador" autocomplete="off">
     <button class="qbi2-coverage-search" type="button">Buscar</button>
-    <button class="qbi2-coverage-none" type="button">Sin cobertura</button>
+    <label class="qbi2-coverage-none">
+      <input class="qbi2-coverage-none-input" type="checkbox" role="switch">
+      <span class="qbi2-coverage-none-track" aria-hidden="true"><span></span></span>
+      <span>Sin cobertura</span>
+    </label>
   </div>
   <div class="qbi2-coverage-results" aria-live="polite"></div>
   <div class="qbi2-plan-wrap" hidden>

@@ -1354,9 +1354,30 @@ def _decidir_solicitud_receta(request, solicitud_id, *, aprobar):
             if medicamentos is not None:
                 medicamento = medicamentos[0]
                 auditoria = dict(solicitud.auditoria or {})
+                medicamentos_solicitados = auditoria.get("medicamentos") or [
+                    {
+                        "regNo": solicitud.medicamento_reg_no,
+                        "nombreProducto": solicitud.medicamento_nombre_producto,
+                        "nombreDroga": solicitud.medicamento_nombre_droga,
+                        "presentacion": solicitud.medicamento_presentacion,
+                    }
+                ]
+                claves_medicamento = ("regNo", "nombreProducto", "nombreDroga", "presentacion")
+                def firma_medicamentos(items):
+                    return [
+                        tuple(str(item.get(clave) or "").strip() for clave in claves_medicamento)
+                        for item in items
+                        if isinstance(item, dict)
+                    ]
+
+                if firma_medicamentos(medicamentos) != firma_medicamentos(medicamentos_solicitados):
+                    auditoria.setdefault(
+                        "medicamentos_solicitados_por_paciente",
+                        medicamentos_solicitados,
+                    )
+                    auditoria["medicamentos_editados_por_medico"] = True
                 auditoria["medicamento"] = medicamento
                 auditoria["medicamentos"] = medicamentos
-                auditoria["medicamentos_editados_por_medico"] = True
                 solicitud.medicamento_reg_no = (medicamento.get("regNo") or "").strip()
                 solicitud.medicamento_nombre_producto = (medicamento.get("nombreProducto") or "").strip()
                 solicitud.medicamento_nombre_droga = (medicamento.get("nombreDroga") or "").strip()

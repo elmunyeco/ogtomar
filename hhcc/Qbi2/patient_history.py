@@ -3,6 +3,8 @@ from urllib.parse import urlsplit
 
 from .models import MedicamentoHabitualOculto, SolicitudReceta
 
+USUAL_MEDICATION_LIMIT = 9
+
 
 def medication_items(raw):
     if not isinstance(raw, list):
@@ -47,9 +49,9 @@ def usual_medications(patient):
             ranking[key]["frequency"] += 1
             ranking[key]["last_issued"] = max(ranking[key]["last_issued"], issued_at)
     return sorted(
-        (item for item in ranking.values() if item["frequency"] >= 2),
+        ranking.values(),
         key=lambda item: (-item["frequency"], -item["last_issued"].timestamp(), item["nombreProducto"].casefold(), item["regNo"]),
-    )
+    )[:USUAL_MEDICATION_LIMIT]
 
 
 def safe_pdf_url(value):

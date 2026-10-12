@@ -4,7 +4,7 @@
 {% block title %}Editar Paciente - Dr. Omar Prieto{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'main/css/qbi2_coverage_selector.css' %}">
+<link rel="stylesheet" href="{% static 'main/css/qbi2_coverage_selector.css' %}?v=20261010-coverage-switch-v2">
 <!-- Estilos adicionales específicos para esta página -->
 <style>
   .form-container {
@@ -356,7 +356,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'main/js/qbi2_coverage_selector.js' %}"></script>
+<script src="{% static 'main/js/qbi2_coverage_selector.js' %}?v=20261010-coverage-switch-v2"></script>
 <script>
     // Función para calcular la edad basada en la fecha de nacimiento
     function calcularEdad(fechaNacimiento) {

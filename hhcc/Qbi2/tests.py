@@ -870,7 +870,21 @@ class PacientesPortalTests(TestCase):
         self.assertContains(response, 'id="request-coverage-saved"')
         self.assertContains(response, 'id="request-coverage-none"')
         self.assertContains(response, "revealResultsBelow")
-        self.assertContains(response, "searchOpen || selected.length === 0")
+        self.assertContains(response, '!catalogSlotComplete || limitReached')
+        self.assertContains(response, "Primero elegí un medicamento")
+        coverage_script = (
+            Path(__file__).resolve().parents[1]
+            / "main"
+            / "static"
+            / "main"
+            / "js"
+            / "qbi2_coverage_selector.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn('affiliate.disabled = mode !== "covered"', coverage_script)
+        self.assertIn('searchButton.disabled = withoutCoverage', coverage_script)
+        self.assertIn('noneToggle.checked = withoutCoverage', coverage_script)
+        self.assertIn('field.disabled = withoutCoverage', coverage_script)
+        self.assertNotIn('affiliate.value=""', coverage_script)
 
     @patch("Qbi2.services.FinanciadorService.resolve_selection")
     def test_profile_update_saves_canonical_coverage_but_ignores_identity(self, resolve):
@@ -1184,6 +1198,13 @@ class SolicitudRecetaQueueTests(TestCase):
         self.assertContains(response, 'aria-label="Agregar otro medicamento"')
         self.assertContains(response, 'class="med-editor-search-panel"')
         self.assertContains(response, "revealResultsBelow")
+        self.assertContains(response, 'class="edit-medication"')
+        self.assertContains(response, '>Editar</button>')
+        self.assertContains(response, "Cancelar edición")
+        self.assertContains(response, "Reemplazar ${item.nombreProducto")
+        self.assertContains(response, "selected[editingIndex] = item")
+        self.assertContains(response, "index !== editingIndex")
+        self.assertContains(response, "item.nombreDroga || item.nombreProducto")
 
     def test_reject_pending_request(self):
         solicitud = SolicitudReceta.objects.create(
@@ -1285,6 +1306,10 @@ class SolicitudRecetaQueueTests(TestCase):
         self.assertEqual(solicitud.medicamento_reg_no, "24818")
         self.assertEqual(solicitud.auditoria["medicamentos"][0]["nombreProducto"], "AMPLIAR")
         self.assertTrue(solicitud.auditoria["medicamentos_editados_por_medico"])
+        self.assertEqual(
+            solicitud.auditoria["medicamentos_solicitados_por_paciente"][0]["nombreProducto"],
+            "LOTRIAL",
+        )
         self.assertEqual(solicitud.payload_qbi2["paciente"]["cobertura"]["numero"], "23200126801")
         self.assertEqual(solicitud.payload_qbi2["paciente"]["cobertura"]["plan"], "310")
         self.assertNotIn("idFinanciador", solicitud.payload_qbi2["paciente"]["cobertura"])
