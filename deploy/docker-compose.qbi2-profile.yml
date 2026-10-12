@@ -1,6 +1,0 @@
-services:
-  app:
-    environment:
-      QBI2_PROFILE_YAML_PATH: /run/hhcc/qbi2/profile.yaml
-    volumes:
-      - ./config/qbi2:/run/hhcc/qbi2:ro

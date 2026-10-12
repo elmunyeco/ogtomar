@@ -42,3 +42,6 @@ consultorio:
   contacto: "1133097865"
   email: omarprieto@hotmail.com
   logo: null
+
+portal_pacientes:
+  antiguedad_maxima_atencion_anios: 5

@@ -1,0 +1,13 @@
+.git
+.gitignore
+recetas-ui-fechas/
+**/__pycache__/
+**/*.py[cod]
+
+# Historical material must not be shipped in the production image.
+hhcc/_archive_pre_integracion_20260403/
+hhcc/main/_archive_templates/
+
+# Local or exported data never belongs in an application image.
+hhcc/db.sqlite3
+deploy/cardioprieto_dump.sql

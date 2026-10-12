@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 from email import policy
 from email.parser import BytesParser
 from pathlib import Path
@@ -12,18 +12,19 @@ from django.http import Http404
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import resolve, Resolver404
 from django.utils import timezone
+from django.utils.html import escape
 
 from Qbi2 import views
 from Qbi2.client import Qbi2HTTPError, qbi2_error_details, qbi2_error_text
-from Qbi2.models import EmisionSolicitudReceta, SolicitudReceta
+from Qbi2.models import EmisionSolicitudReceta, PatientLoginThrottle, SolicitudReceta
 from Qbi2.notifications import (
     PRESCRIPTION_EMAIL_BODY,
     PRESCRIPTION_EMAIL_SUBJECT,
     PrescriptionNotificationError,
     download_prescription_pdf,
 )
-from Qbi2.portal import find_patient_history, normalize_document
-from Qbi2.services import VademecumService
+from Qbi2.portal import find_patient_history, normalize_document, patient_portal_eligibility
+from Qbi2.services import FinanciadorService, VademecumService
 from Qbi2.rcta import (
     RctaResult,
     build_rcta_payload,
@@ -31,47 +32,6 @@ from Qbi2.rcta import (
 )
 from main.models import HistoriaClinica, Paciente, TipoDocumento
 from main import views as main_views
-
-
-class MedicamentosViewTests(TestCase):
-    def setUp(self):
-        user_model = get_user_model()
-        self.user = user_model.objects.create_user(username="medicamentos", password="test")
-
-    def test_page_requires_login(self):
-        response = self.client.get("/recetas/medicamentos/")
-
-        self.assertEqual(response.status_code, 302)
-
-    def test_page_renders_after_login(self):
-        request = RequestFactory().get("/recetas/medicamentos/")
-        request.user = self.user
-
-        response = views.medicamentos_page(request)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"RCTA", response.content)
-
-    @patch("Qbi2.views.VademecumService")
-    def test_api_uses_direct_service_shape(self, service_class):
-        service = service_class.return_value
-        service.buscar.return_value = {
-            "query": "atorva",
-            "page": 1,
-            "items": [{"regNo": "1", "nombreProducto": "Atorva"}],
-            "page_info": {"numeroPagina": 1, "cantidadPaginas": 1, "tieneMasResultados": False},
-            "raw": {"items": [{"regNo": "1"}]},
-        }
-        self.client.force_login(self.user)
-
-        response = self.client.get("/recetas/api/medicamentos/", {"q": "atorva", "page": "1"})
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertEqual(payload["status"], "success")
-        self.assertEqual(payload["count"], 1)
-        self.assertEqual(payload["items"][0]["nombreProducto"], "Atorva")
-        service.buscar.assert_called_once_with("atorva", page=1, extra_params={})
 
 
 class VademecumRelevantSearchTests(SimpleTestCase):
@@ -199,14 +159,11 @@ class VademecumRelevantSearchTests(SimpleTestCase):
 class RecetasRoutingTests(TestCase):
     def test_canonical_routes_resolve_under_single_prefix(self):
         expected = {
-            "/recetas/": "recetas:home",
-            "/recetas/medicamentos/": "recetas:medicamentos",
             "/recetas/paciente/ingresar/": "recetas:paciente_login",
             "/recetas/paciente/salir/": "recetas:paciente_logout",
             "/recetas/paciente/recetas/nueva/": "recetas:paciente_receta_nueva",
             "/recetas/medico/solicitudes/": "recetas:medico_solicitudes",
             "/recetas/medico/recetas/nueva/": "recetas:medico_receta_nueva",
-            "/recetas/api/medicamentos/": "recetas:api_medicamentos",
             "/recetas/api/paciente/perfil/actualizar/": "recetas:api_paciente_perfil_actualizar",
             "/recetas/api/catalogos/medicamentos/": "recetas:api_catalogo",
             "/recetas/api/medico/recetas/preview/": "recetas:api_receta_preview",
@@ -221,6 +178,10 @@ class RecetasRoutingTests(TestCase):
 
     def test_old_legacy_routes_do_not_resolve(self):
         old_paths = [
+            "/recetas/",
+            "/recetas/medicamentos/",
+            "/recetas/api/health/",
+            "/recetas/api/medicamentos/",
             "/vademecum/",
             "/qbi2/vademecum-demo/",
             "/receta-poc/",
@@ -278,15 +239,6 @@ class RecetaPortalViewTests(TestCase):
         user_model = get_user_model()
         self.user = user_model.objects.create_user(username="medico", password="test")
 
-    def test_home_does_not_link_removed_recipe_lab(self):
-        request = RequestFactory().get("/recetas/")
-        request.user = self.user
-
-        response = views.recetas_home(request)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn(b"/recetas/lab/receta/", response.content)
-
     def test_pacientes_portal_requires_patient_session(self):
         response = self.client.get("/recetas/paciente/recetas/nueva/")
 
@@ -338,6 +290,7 @@ class RecetaMedicoTests(TestCase):
             afiliado="62333891101",
             celular="1558467544",
         )
+        self.historia = HistoriaClinica.objects.create(paciente=self.patient)
 
     def test_page_starts_without_patient_and_keeps_two_step_flow(self):
         request = RequestFactory().get("/recetas/medico/recetas/nueva/")
@@ -348,7 +301,7 @@ class RecetaMedicoTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotIn(b"Bergonzi", response.content)
         self.assertNotIn(b"23101065", response.content)
-        self.assertIn("Seleccioná un paciente".encode(), response.content)
+        self.assertIn("Seleccionar un paciente".encode(), response.content)
         self.assertNotIn(b"Cambiar paciente", response.content)
         self.assertIn(b'id="patient-search-panel" class="recipe-patient-search"', response.content)
         self.assertIn(b'class="global-search-input-wrap"', response.content)
@@ -359,24 +312,31 @@ class RecetaMedicoTests(TestCase):
         self.assertIn(b"Sin cobertura", response.content)
         self.assertIn(b"usarCobertura: state.useCoverage", response.content)
         self.assertIn(b"Editar datos del paciente", response.content)
-        self.assertIn(b"QBI2 homologaci", response.content)
+        self.assertNotIn(b"homologaci", response.content)
+        self.assertIn(b"La receta se enviar\xc3\xa1 a RCTA", response.content)
         self.assertNotIn(b"Perfil de receta", response.content)
         self.assertNotIn(b"recipe-heading", response.content)
         self.assertNotIn(b"recipe-safe-badge", response.content)
         self.assertNotIn(b"<h1>Crear receta</h1>", response.content)
         self.assertIn("💊".encode(), response.content)
-        self.assertIn(b"exclusivo Ezequiel", response.content)
+        self.assertIn(b'id="toggle-medicine-search"', response.content)
+        self.assertIn(b'aria-label="Agregar otro medicamento"', response.content)
+        self.assertIn(b"setMedicineSearchOpen(false)", response.content)
+        self.assertIn(b"revealResultsBelow", response.content)
+        self.assertNotIn(b"exclusivo Ezequiel", response.content)
         self.assertNotIn(b"sin mapeo QBI2", response.content)
         self.assertIn(
-            b'<button id="emit-recipe" class="recipe-emit-button" type="button">Emitir en HML</button>',
+            b'<button id="emit-recipe" class="recipe-emit-button" type="button">Emitir receta</button>',
             response.content,
         )
         self.assertNotIn(b"Revis\xc3\xa1 nuevamente el payload antes de emitir", response.content)
-        self.assertNotIn(b"emitButton.disabled", response.content)
+        self.assertIn(b"emitButton.disabled = true", response.content)
+        self.assertIn(b"emitButton.disabled = false", response.content)
+        self.assertIn(b'data-max-medications="9"', response.content)
         self.assertIn(b"Escribir un diagn", response.content)
         self.assertIn(b"Usar texto", response.content)
         self.assertIn(b"/recetas/api/medico/recetas/pacientes/", response.content)
-        self.assertIn(b"/recetas/api/medico/recetas/preview/", response.content)
+        self.assertNotIn(b'id="preview-recipe"', response.content)
         self.assertIn(b"/recetas/api/medico/recetas/emitir/", response.content)
         self.assertLess(response.content.index(b"Medicamentos"), response.content.index(b"Indicaciones"))
         self.assertLess(response.content.index(b"Indicaciones"), response.content.index(b"Otras configuraciones"))
@@ -563,7 +523,7 @@ class RecetaMedicoTests(TestCase):
             response={
                 "recetas": [{"id": "hash-v2", "idReceta": "100-v2", "s3Link": "https://example.invalid/v2.pdf"}],
                 "errores": [],
-                "response": [{"status": "OK"}],
+                "response": [{"status": "OK", "medicamentos": [{"regNo": "34959"}]}],
             },
             summary={"id": "hash-v2", "idReceta": "100-v2", "status": "OK"},
         )
@@ -590,6 +550,90 @@ class RecetaMedicoTests(TestCase):
         self.assertEqual(safe_data["pacienteNombre"], "Ezequiel")
         self.assertEqual(safe_data["pacienteApellido"], "Bergonzi")
         self.assertEqual(safe_data["pacienteNroDoc"], "23101065")
+        stored = SolicitudReceta.objects.get()
+        self.assertEqual(stored.estado, SolicitudReceta.Estado.EMITIDA)
+        self.assertEqual(stored.auditoria["source"], "emision-medica-espontanea")
+        self.assertEqual(stored.emisiones.count(), 1)
+
+    @patch("Qbi2.views.emit_rcta_payload")
+    def test_simplified_emit_is_idempotent_for_same_client_request(self, emit):
+        provider_response = {
+            "recetas": [{"idReceta": "IDEMP-1", "s3Link": "https://example.invalid/idemp.pdf"}],
+            "errores": [],
+            "response": [{"status": "OK", "medicamentos": [{"regNo": "34959"}]}],
+        }
+        emit.return_value = RctaResult(
+            operation="receta",
+            endpoint="/apirecipe/Receta",
+            payload={"medicamentos": [{"regNo": "34959"}]},
+            response=provider_response,
+            summary=summarize_receta_response(provider_response),
+        )
+        body = {
+            "clientRequestId": "same-request-123",
+            "pacienteId": self.patient.id,
+            "diagnostico": "Hipertensión arterial",
+            "medicamentos": [{"regNo": "34959", "nombreProducto": "LOTRIAL"}],
+        }
+
+        first = self.client.post(
+            "/recetas/api/medico/recetas/emitir/",
+            data=json.dumps(body),
+            content_type="application/json",
+        )
+        second = self.client.post(
+            "/recetas/api/medico/recetas/emitir/",
+            data=json.dumps(body),
+            content_type="application/json",
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertTrue(second.json()["replayed"])
+        self.assertEqual(emit.call_count, 1)
+        self.assertEqual(SolicitudReceta.objects.count(), 1)
+
+    @patch("Qbi2.views.emit_rcta_payload")
+    def test_simplified_emit_rejects_tenth_medication_before_provider_call(self, emit):
+        response = self.client.post(
+            "/recetas/api/medico/recetas/emitir/",
+            data=json.dumps(
+                {
+                    "pacienteId": self.patient.id,
+                    "diagnostico": "Hipertensión arterial",
+                    "medicamentos": [
+                        {"regNo": str(1000 + index), "nombreProducto": f"MED {index}"}
+                        for index in range(10)
+                    ],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("hasta 9 medicamentos", response.json()["message"])
+        emit.assert_not_called()
+        self.assertEqual(SolicitudReceta.objects.count(), 0)
+
+    @override_settings(QBI2_MEDICATIONS_PER_DOCUMENT=4, QBI2_MAX_DOCUMENTS_PER_REQUEST=3)
+    def test_operation_limit_tracks_configured_document_capacity(self):
+        response = self.client.post(
+            "/recetas/api/medico/recetas/preview/",
+            data=json.dumps(
+                {
+                    "pacienteId": self.patient.id,
+                    "diagnostico": "Hipertensión arterial",
+                    "medicamentos": [
+                        {"regNo": str(1000 + index), "nombreProducto": f"MED {index}"}
+                        for index in range(12)
+                    ],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()["payload"]["medicamentos"]), 12)
 
     def test_simplified_preview_requires_diagnosis_and_medicine(self):
         no_diagnosis = self.client.post(
@@ -707,6 +751,39 @@ class RecetaMedicoTests(TestCase):
         self.assertEqual(summary["idReceta"], "R-100")
 
 
+class FinanciadorServiceTests(SimpleTestCase):
+    def test_searches_and_resolves_canonical_financier_and_plan(self):
+        class Client:
+            def get(self, path, params):
+                self.call = (path, params)
+                return {
+                    "financiadores": [
+                        {
+                            "idfinanciador": 28,
+                            "nombreComercial": "OSDE",
+                            "planes": [{"id": 43, "nombre": "310"}],
+                        },
+                        {"idfinanciador": 96, "nombreComercial": "ACCORD SALUD", "planes": []},
+                    ]
+                }
+
+        client = Client()
+        with self.settings(QBI2_CLIENT_APP_ID="test-financiers-canonical"):
+            service = FinanciadorService(client=client)
+            result = service.listar("osd")
+            selected = service.resolve_selection(28, 43)
+
+        self.assertEqual(client.call[0], "/apirecipe/GetFinanciadores")
+        self.assertEqual(result["items"][0]["idFinanciador"], 28)
+        self.assertEqual(selected["nombreComercial"], "OSDE")
+        self.assertEqual(selected["plan"], {"id": 43, "nombre": "310"})
+
+
+@override_settings(
+    QBI2_PROFILE_YAML_PATH=str(
+        Path(__file__).resolve().parents[1] / "private" / "qbi2" / "profile.example.yaml"
+    )
+)
 class PacientesPortalTests(TestCase):
     def setUp(self):
         tipo_doc = TipoDocumento.objects.create(nombre="DNI", descripcion="Documento")
@@ -717,8 +794,12 @@ class PacientesPortalTests(TestCase):
             apellido="De la Fuente",
             sexo="M",
             obraSocial="OSDE",
+            plan="310",
+            qbi2_financiador_id=28,
+            qbi2_plan_id=43,
             afiliado="ORIGINAL-1",
         )
+        self.historia = self.paciente.historias_clinicas.get()
 
     def login_patient(self, apellido="De la Fuente"):
         return self.client.post(
@@ -739,6 +820,17 @@ class PacientesPortalTests(TestCase):
             "/recetas/paciente/recetas/nueva/",
             fetch_redirect_response=False,
         )
+
+    def test_fifth_failed_login_blocks_document_for_ten_minutes(self):
+        for _ in range(4):
+            response = self.login_patient(apellido="Incorrecto")
+            self.assertContains(response, "no coinciden")
+        response = self.login_patient(apellido="Incorrecto")
+        self.assertContains(response, "Volvé a intentar en 10 minutos")
+        response = self.login_patient()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Volvé a intentar en 10 minutos")
+        self.assertEqual(PatientLoginThrottle.objects.count(), 1)
 
     def test_authenticated_page_only_exposes_non_clinical_patient_fields(self):
         self.login_patient()
@@ -772,8 +864,36 @@ class PacientesPortalTests(TestCase):
         self.assertNotContains(response, "QBI2 PoC")
         self.assertNotContains(response, ">Gestión</a>")
         self.assertNotContains(response, ">Emisión</a>")
+        self.assertContains(response, 'id="toggle-medication-search"')
+        self.assertContains(response, 'aria-label="Agregar otro medicamento"')
+        self.assertContains(response, 'id="medication-search-panel"')
+        self.assertContains(response, 'id="request-coverage-saved"')
+        self.assertContains(response, 'id="request-coverage-none"')
+        self.assertContains(response, "revealResultsBelow")
+        self.assertContains(response, '!catalogSlotComplete || limitReached')
+        self.assertContains(response, "Primero elegí un medicamento")
+        coverage_script = (
+            Path(__file__).resolve().parents[1]
+            / "main"
+            / "static"
+            / "main"
+            / "js"
+            / "qbi2_coverage_selector.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn('affiliate.disabled = mode !== "covered"', coverage_script)
+        self.assertIn('searchButton.disabled = withoutCoverage', coverage_script)
+        self.assertIn('noneToggle.checked = withoutCoverage', coverage_script)
+        self.assertIn('field.disabled = withoutCoverage', coverage_script)
+        self.assertNotIn('affiliate.value=""', coverage_script)
 
-    def test_profile_update_changes_coverage_but_ignores_identity_and_plan(self):
+    @patch("Qbi2.services.FinanciadorService.resolve_selection")
+    def test_profile_update_saves_canonical_coverage_but_ignores_identity(self, resolve):
+        resolve.return_value = {
+            "idFinanciador": 96,
+            "nombreComercial": "ACCORD SALUD",
+            "planes": [],
+            "plan": None,
+        }
         self.login_patient()
         response = self.client.post(
             "/recetas/api/paciente/perfil/actualizar/",
@@ -786,9 +906,11 @@ class PacientesPortalTests(TestCase):
                 "nombre": "Nombre alterado",
                 "apellido": "Apellido alterado",
                 "numDoc": "99999999",
-                "obraSocial": "Cobertura alterada",
+                "obraSocial": "texto manipulado",
+                "qbi2_financiador_id": "96",
+                "qbi2_plan_id": "",
                 "afiliado": "ALTERADO",
-                "plan": "Plan alterado",
+                "plan": "texto manipulado",
             },
         )
         self.paciente.refresh_from_db()
@@ -802,9 +924,10 @@ class PacientesPortalTests(TestCase):
         self.assertEqual(self.paciente.nombre, "Ana")
         self.assertEqual(self.paciente.apellido, "De la Fuente")
         self.assertEqual(self.paciente.numDoc, "12345678")
-        self.assertEqual(self.paciente.obraSocial, "Cobertura alterada")
+        self.assertEqual(self.paciente.obraSocial, "ACCORD SALUD")
+        self.assertEqual(self.paciente.qbi2_financiador_id, 96)
         self.assertEqual(self.paciente.afiliado, "ALTERADO")
-        self.assertIsNone(self.paciente.plan)
+        self.assertEqual(self.paciente.plan, "")
 
     @patch("Qbi2.views.VademecumService")
     def test_patient_medication_search_uses_relevant_multi_page_scan(self, service_class):
@@ -852,15 +975,14 @@ class PacientesPortalTests(TestCase):
             content_type="application/json",
         )
 
-        self.assertEqual(response.status_code, 404, response.content)
-        self.assertEqual(response.json()["message"], "No tenes Historia Clinica")
+        self.assertEqual(response.status_code, 403, response.content)
+        self.assertIn("seguimiento médico", response.json()["message"])
 
-    def test_accepts_patient_request_as_one_order_with_up_to_ten_medications(self):
-        HistoriaClinica.objects.create(paciente=self.paciente)
+    def test_accepts_patient_request_as_one_order_with_up_to_nine_medications(self):
         self.login_patient()
         selected_medications = [
             {"regNo": str(34959 + index), "nombreProducto": f"MEDICAMENTO {index + 1}"}
-            for index in range(10)
+            for index in range(9)
         ]
         response = self.client.post(
             "/recetas/api/paciente/validar-y-solicitar/",
@@ -878,10 +1000,123 @@ class PacientesPortalTests(TestCase):
         self.assertEqual(data["status"], "success")
         self.assertEqual(len(data["solicitudes"]), 1)
         self.assertEqual(len(solicitudes), 1)
-        self.assertEqual(len(solicitudes[0].auditoria["medicamentos"]), 10)
+        self.assertEqual(len(solicitudes[0].auditoria["medicamentos"]), 9)
         self.assertNotIn("receta_orden", solicitudes[0].auditoria)
         self.assertEqual(solicitudes[0].medicamento_reg_no, "34959")
         self.assertEqual(solicitudes[0].diagnostico, "")
+
+    def test_rejects_patient_request_above_configured_operation_limit(self):
+        self.login_patient()
+        selected_medications = [
+            {"regNo": str(34959 + index), "nombreProducto": f"MEDICAMENTO {index + 1}"}
+            for index in range(10)
+        ]
+
+        response = self.client.post(
+            "/recetas/api/paciente/validar-y-solicitar/",
+            data=json.dumps({"medicamentosJson": json.dumps(selected_medications)}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("hasta 9 medicamentos", response.json()["message"])
+        self.assertEqual(SolicitudReceta.objects.count(), 0)
+
+    def test_noncanonical_legacy_coverage_blocks_request_before_queue(self):
+        self.paciente.qbi2_financiador_id = None
+        self.paciente.qbi2_plan_id = None
+        self.paciente.save(update_fields=["qbi2_financiador_id", "qbi2_plan_id"])
+        self.login_patient()
+        response = self.client.post(
+            "/recetas/api/paciente/validar-y-solicitar/",
+            data=json.dumps({"medicamentosJson": json.dumps([{"regNo": "34959"}])}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "canonical_coverage_required")
+        self.assertEqual(SolicitudReceta.objects.count(), 0)
+
+    def test_patient_can_cancel_legacy_coverage_for_one_request_without_erasing_it(self):
+        self.paciente.qbi2_financiador_id = None
+        self.paciente.qbi2_plan_id = None
+        self.paciente.save(update_fields=["qbi2_financiador_id", "qbi2_plan_id"])
+        self.login_patient()
+        response = self.client.post(
+            "/recetas/api/paciente/validar-y-solicitar/",
+            data=json.dumps(
+                {
+                    "medicamentosJson": json.dumps([{"regNo": "34959"}]),
+                    "usarCobertura": False,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        solicitud = SolicitudReceta.objects.get()
+        self.assertFalse(solicitud.auditoria["usar_cobertura"])
+        self.paciente.refresh_from_db()
+        self.assertEqual(self.paciente.obraSocial, "OSDE")
+        self.assertEqual(self.paciente.afiliado, "ORIGINAL-1")
+
+    def test_expired_followup_blocks_request_before_queue(self):
+        self.historia.fechaAlta = timezone.localdate() - timedelta(days=6 * 366)
+        self.historia.save(update_fields=["fechaAlta"])
+        self.assertTrue(
+            patient_portal_eligibility(
+                self.paciente,
+                max_attention_age_years=5,
+            )["attention_expired"]
+        )
+        self.login_patient()
+        response = self.client.post(
+            "/recetas/api/paciente/validar-y-solicitar/",
+            data=json.dumps({"medicamentosJson": json.dumps([{"regNo": "34959"}])}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "medical_followup_required")
+        self.assertIn("más de 5 años", response.json()["message"])
+        self.assertEqual(SolicitudReceta.objects.count(), 0)
+
+    def test_all_blockers_are_reported_and_cleared_independently(self):
+        self.historia.fechaAlta = timezone.localdate() - timedelta(days=6 * 366)
+        self.historia.save(update_fields=["fechaAlta"])
+        self.paciente.qbi2_financiador_id = None
+        self.paciente.save(update_fields=["qbi2_financiador_id"])
+        self.login_patient()
+        endpoint = "/recetas/api/paciente/habilitacion/"
+        state = self.client.get(endpoint).json()["eligibility"]
+        self.assertEqual({b["code"] for b in state["blockers"]}, {"medical_followup_required", "canonical_coverage_required"})
+        page = self.client.get("/recetas/paciente/recetas/nueva/")
+        self.assertContains(page, 'data-blocker="medical_followup_required"')
+        self.assertContains(page, 'data-blocker="canonical_coverage_required"')
+        response = self.client.post("/recetas/api/paciente/validar-y-solicitar/", data=json.dumps({"usarCobertura":True}), content_type="application/json")
+        self.assertEqual(len(response.json()["eligibility"]["blockers"]), 2)
+        state = self.client.get(endpoint, {"usarCobertura":"false"}).json()["eligibility"]
+        self.assertEqual([b["code"] for b in state["blockers"]], ["medical_followup_required"])
+        self.assertFalse(state["can_request"])
+        self.historia.fechaAlta = timezone.localdate()
+        self.historia.save(update_fields=["fechaAlta"])
+        state = self.client.get(endpoint).json()["eligibility"]
+        self.assertEqual([b["code"] for b in state["blockers"]], ["canonical_coverage_required"])
+        state = self.client.get(endpoint, {"usarCobertura":"false"}).json()["eligibility"]
+        self.assertTrue(state["can_request"])
+        self.assertEqual(state["blockers"], [])
+        self.paciente.qbi2_financiador_id = "28"
+        self.paciente.save(update_fields=["qbi2_financiador_id"])
+        self.assertTrue(self.client.get(endpoint).json()["eligibility"]["can_request"])
+        self.assertEqual(SolicitudReceta.objects.count(), 0)
+
+    def test_eligibility_endpoint_requires_session_and_configuration_error_is_specific(self):
+        endpoint = "/recetas/api/paciente/habilitacion/"
+        self.assertEqual(self.client.get(endpoint).status_code, 401)
+        self.login_patient()
+        with patch("Qbi2.views.load_patient_portal_policy", side_effect=views.Qbi2ConfigurationError("test")):
+            state = self.client.get(endpoint).json()["eligibility"]
+            self.assertEqual([b["code"] for b in state["blockers"]], ["portal_unavailable"])
+            self.assertFalse(state["can_request"])
+            page = self.client.get("/recetas/paciente/recetas/nueva/")
+            self.assertNotContains(page, 'data-blocker="medical_followup_required"')
 
 
 @override_settings(
@@ -949,7 +1184,7 @@ class SolicitudRecetaQueueTests(TestCase):
             f'/pacientes/{self.paciente.id}/editar/?recipe_context=1',
         )
         self.assertContains(response, "Buscar por nombre comercial o droga")
-        self.assertContains(response, "Hasta 10 por pedido")
+        self.assertContains(response, "Hasta 9 por pedido")
         self.assertContains(response, "Preparar correo con PDF", count=0)
         self.assertContains(response, "product === needle")
         self.assertContains(response, "product.startsWith(needle)")
@@ -959,6 +1194,17 @@ class SolicitudRecetaQueueTests(TestCase):
         self.assertContains(response, "drug.includes(needle)")
         self.assertContains(response, "hhcc:patient-updated")
         self.assertContains(response, "scanPage")
+        self.assertContains(response, 'class="med-editor-toggle"')
+        self.assertContains(response, 'aria-label="Agregar otro medicamento"')
+        self.assertContains(response, 'class="med-editor-search-panel"')
+        self.assertContains(response, "revealResultsBelow")
+        self.assertContains(response, 'class="edit-medication"')
+        self.assertContains(response, '>Editar</button>')
+        self.assertContains(response, "Cancelar edición")
+        self.assertContains(response, "Reemplazar ${item.nombreProducto")
+        self.assertContains(response, "selected[editingIndex] = item")
+        self.assertContains(response, "index !== editingIndex")
+        self.assertContains(response, "item.nombreDroga || item.nombreProducto")
 
     def test_reject_pending_request(self):
         solicitud = SolicitudReceta.objects.create(
@@ -997,7 +1243,7 @@ class SolicitudRecetaQueueTests(TestCase):
                     {"idReceta": "9600000255038", "s3Link": "https://example.invalid/receta.pdf"}
                 ],
                 "errores": [],
-                "response": [{"status": "OK"}],
+                "response": [{"status": "OK", "medicamentos": [{"regNo": "24818"}]}],
             }
             return RctaResult(
                 operation="receta",
@@ -1060,6 +1306,10 @@ class SolicitudRecetaQueueTests(TestCase):
         self.assertEqual(solicitud.medicamento_reg_no, "24818")
         self.assertEqual(solicitud.auditoria["medicamentos"][0]["nombreProducto"], "AMPLIAR")
         self.assertTrue(solicitud.auditoria["medicamentos_editados_por_medico"])
+        self.assertEqual(
+            solicitud.auditoria["medicamentos_solicitados_por_paciente"][0]["nombreProducto"],
+            "LOTRIAL",
+        )
         self.assertEqual(solicitud.payload_qbi2["paciente"]["cobertura"]["numero"], "23200126801")
         self.assertEqual(solicitud.payload_qbi2["paciente"]["cobertura"]["plan"], "310")
         self.assertNotIn("idFinanciador", solicitud.payload_qbi2["paciente"]["cobertura"])
@@ -1081,7 +1331,10 @@ class SolicitudRecetaQueueTests(TestCase):
         )
         self.assertContains(feedback, "Ver PDF 1 de 1")
         self.assertContains(feedback, "Preparar correo con todos los PDF")
-        self.assertContains(feedback, 'href="?estado=pendiente"')
+        self.assertContains(
+            feedback,
+            f'href="/recetas/medico/solicitudes/?{escape(feedback.context["pending_query"])}"',
+        )
         self.assertNotContains(feedback, 'class="request-card"')
 
     def test_approval_sends_complete_patient_order_in_one_rcta_payload(self):
@@ -1091,7 +1344,7 @@ class SolicitudRecetaQueueTests(TestCase):
                 "nombreProducto": f"MEDICAMENTO {index}",
                 "nombreDroga": f"droga {index}",
             }
-            for index in range(1, 11)
+            for index in range(1, 10)
         ]
         solicitud = SolicitudReceta.objects.create(
             paciente=self.paciente,
@@ -1102,14 +1355,14 @@ class SolicitudRecetaQueueTests(TestCase):
         )
         self.client.force_login(self.user)
 
-        groups = [medicamentos[0:3], medicamentos[3:6], medicamentos[6:9], medicamentos[9:10]]
+        groups = [medicamentos[0:3], medicamentos[3:6], medicamentos[6:9]]
         provider_response = {
             "recetas": [
                 {
                     "idReceta": f"RECETA-{index}",
                     "s3Link": f"https://example.invalid/receta-{index}.pdf",
                 }
-                for index in range(1, 5)
+                for index in range(1, 4)
             ],
             "errores": [],
             "response": [
@@ -1139,16 +1392,16 @@ class SolicitudRecetaQueueTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(solicitud.estado, SolicitudReceta.Estado.EMITIDA)
         self.assertEqual(emit.call_count, 1)
-        self.assertEqual(len(emisiones), 4)
+        self.assertEqual(len(emisiones), 3)
         self.assertEqual(
             [len(item.medicamentos) for item in emisiones],
-            [3, 3, 3, 1],
+            [3, 3, 3],
         )
         self.assertEqual(
             [item.qbi2_id_receta for item in emisiones],
-            ["RECETA-1", "RECETA-2", "RECETA-3", "RECETA-4"],
+            ["RECETA-1", "RECETA-2", "RECETA-3"],
         )
-        self.assertEqual(len(emit.call_args.args[0]["medicamentos"]), 10)
+        self.assertEqual(len(emit.call_args.args[0]["medicamentos"]), 9)
 
     def test_complete_order_preserves_provider_error_without_splitting(self):
         medicamentos = [
@@ -1197,6 +1450,61 @@ class SolicitudRecetaQueueTests(TestCase):
         self.assertContains(feedback, "emission-feedback error")
         self.assertContains(feedback, f"No se pudo emitir la solicitud #{solicitud.id}")
         self.assertContains(feedback, "Medicamento inválido")
+
+    def test_partial_provider_response_is_saved_but_never_marked_complete_or_retried(self):
+        medicamentos = [
+            {"regNo": str(3000 + index), "nombreProducto": f"MED {index}"}
+            for index in range(4)
+        ]
+        solicitud = SolicitudReceta.objects.create(
+            paciente=self.paciente,
+            historia_clinica=self.historia,
+            medicamento_reg_no=medicamentos[0]["regNo"],
+            auditoria={"medicamentos": medicamentos},
+        )
+        self.client.force_login(self.user)
+        provider_response = {
+            "recetas": [{"idReceta": "PARCIAL-1", "s3Link": "https://example.invalid/parcial.pdf"}],
+            "errores": [],
+            "response": [{"status": "OK", "medicamentos": medicamentos[:3]}],
+        }
+        result = RctaResult(
+            operation="receta",
+            endpoint="/apirecipe/Receta",
+            payload={"medicamentos": medicamentos},
+            response=provider_response,
+            summary=summarize_receta_response(provider_response),
+        )
+
+        with patch("Qbi2.views.emit_rcta_payload", return_value=result) as emit:
+            response = self.client.post(
+                f"/recetas/api/medico/solicitudes/{solicitud.id}/aprobar/",
+                {
+                    "diagnostico": "Hipertensión arterial",
+                    "medicamentosJson": json.dumps(medicamentos),
+                    "next": "/recetas/medico/solicitudes/?estado=pendiente",
+                },
+            )
+
+        solicitud.refresh_from_db()
+        self.assertEqual(emit.call_count, 1)
+        self.assertEqual(solicitud.estado, SolicitudReceta.Estado.ERROR_EMISION)
+        self.assertIn("3 de 4", solicitud.error_qbi2)
+        self.assertIn("3003", solicitud.error_qbi2)
+        self.assertEqual(solicitud.emisiones.count(), 1)
+        self.assertEqual(solicitud.emisiones.get().estado, EmisionSolicitudReceta.Estado.EMITIDA)
+
+        feedback = self.client.get(response.url.split("#", 1)[0])
+        self.assertContains(feedback, "Emisión incompleta")
+        self.assertContains(feedback, "Ver PDF 1 de 1")
+        self.assertNotContains(feedback, "Corregir y volver a intentar")
+
+        retry = self.client.post(
+            f"/recetas/api/medico/solicitudes/{solicitud.id}/reabrir/"
+        )
+        solicitud.refresh_from_db()
+        self.assertEqual(retry.status_code, 302)
+        self.assertEqual(solicitud.estado, SolicitudReceta.Estado.ERROR_EMISION)
 
     def test_existing_generic_error_renders_saved_provider_detail(self):
         solicitud = SolicitudReceta.objects.create(
@@ -1292,7 +1600,7 @@ class SolicitudRecetaQueueTests(TestCase):
         emit.assert_not_called()
 
         pending = self.client.get(response.url.split("#", 1)[0])
-        self.assertContains(pending, "volvió a Pendientes")
+        self.assertNotContains(pending, "volvió a Pendientes")
         self.assertContains(pending, "Aprobar y emitir")
         self.assertContains(pending, "Hipertensión arterial")
         self.assertContains(pending, "LOTRIAL")

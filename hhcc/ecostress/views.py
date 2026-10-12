@@ -237,7 +237,10 @@ def listar_estudios(request, historia_id):
         .order_by("-id_stress")
         .values_list("id_stress", "fecha_estudio")
     )
-    lines = [f"<div>{eid} - {fecha.strftime('%Y-%m-%d')}</div>" for eid, fecha in estudios]
+    lines = [
+        f"<div>{eid} - {fecha.strftime('%Y-%m-%d') if fecha else 'Sin fecha'}</div>"
+        for eid, fecha in estudios
+    ]
     if not lines:
         lines = ["<div>Sin estudios</div>"]
     return HttpResponse("\n".join(lines))

@@ -19,6 +19,9 @@ services:
       - db
     env_file:
       - .env.docker
+    volumes:
+      - ${QBI2_PRIVATE_DIR:-../hhcc/private/qbi2}:/app/private/qbi2:ro
+      - static_files:/app/staticfiles
     mem_limit: 192m
     memswap_limit: 256m
     pids_limit: 128
@@ -33,6 +36,10 @@ services:
       - "80:80"
     volumes:
       - ./nginx:/etc/nginx/conf.d:ro
+      - static_files:/usr/share/nginx/html/static:ro
     mem_limit: 48m
     memswap_limit: 64m
     pids_limit: 64
+
+volumes:
+  static_files:

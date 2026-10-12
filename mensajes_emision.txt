@@ -1,0 +1,110 @@
+MENSAJES DE LA EMISIÓN ESPONTÁNEA
+Fecha de relevamiento: 09/10/2026
+
+Textos actuales para revisar. Se agrupan variantes; las expresiones entre
+llaves representan datos variables. No se incluyen los nombres de campos
+y botones. No se han aplicado cambios de redacción.
+
+Los avisos generales, como «Paciente actualizado exitosamente», no se
+muestran en la emisión espontánea. Esta pantalla tiene mensajes propios,
+incluido «Datos del paciente actualizados desde historias clínicas».
+
+PACIENTE Y BÚSQUEDA
+
+1. Seleccionar un paciente.
+2. Buscar por apellido, nombre o documento.
+3. Seleccionar un paciente de historias clínicas.
+4. Paciente seleccionado desde historias clínicas.
+5. Datos del paciente actualizados desde historias clínicas.
+6. Ingresar al menos 3 caracteres.
+7. Ingresar al menos 3 caracteres para buscar un paciente.
+8. Buscando en historias clínicas…
+9. {Cantidad} paciente/s.
+10. No se encontraron pacientes.
+11. No se pudo buscar el paciente.
+12. No se pudo actualizar el paciente.
+13. No se pudieron recargar los datos del paciente.
+14. El navegador bloqueó la ventana de edición. Habilitar las ventanas emergentes para este sitio.
+15. Sin cobertura / Sin cobertura cargada.
+16. Sin número de afiliado.
+
+MEDICAMENTOS Y DIAGNÓSTICO
+
+17. Ingresar al menos {2 o 3} caracteres.
+18. Buscando…
+19. {Cantidad} resultado/s.
+20. Sin resultados.
+21. Sin descripción.
+22. No se pudo consultar el catálogo.
+23. No se pudo completar la búsqueda.
+24. Medicamento añadido.
+25. Ese medicamento ya está incluido en la receta.
+26. La operación admite hasta {máximo} medicamentos.
+27. {Cantidad} de {máximo} seleccionados.
+28. Ninguno seleccionado · máximo {máximo}.
+29. Aún no hay medicamentos seleccionados para esta receta.
+30. Diagnóstico seleccionado del catálogo.
+31. Diagnóstico de texto libre seleccionado.
+32. Escribir un diagnóstico para usar como texto libre.
+33. Texto libre.
+
+CONFIRMACIÓN Y RESULTADO
+
+34. Revisar los datos y luego confirmar la emisión.
+35. La receta se enviará a RCTA para {paciente}.
+36. Se emitirá una receta en RCTA para {paciente}. ¿Continuar?
+37. Emitiendo…
+38. Receta emitida.
+39. RCTA confirmó la operación.
+40. No se pudo emitir la receta.
+41. QBI2 devolvió errores al emitir.
+42. Emisión incompleta.
+43. RCTA devolvió documentos, pero no cubrió el pedido completo.
+
+VALIDACIONES DEL SERVIDOR QUE TAMBIÉN PUEDEN APARECER
+
+44. Seleccionar un paciente de la base de historias clínicas.
+45. El paciente seleccionado no existe o está dado de baja.
+46. El paciente debe tener una historia clínica activa.
+47. El diagnóstico es obligatorio.
+48. El diagnóstico no puede superar los 255 caracteres.
+49. Debe seleccionar al menos un medicamento.
+50. La operación admite hasta {máximo} medicamentos en un máximo de {cantidad} recetas de RCTA.
+51. La fecha de emisión debe tener formato AAAA-MM-DD.
+52. Cada medicamento debe tener RegNo y nombre de producto.
+53. La busqueda debe tener al menos {cantidad} caracteres.
+54. La busqueda de diagnostico debe tener al menos 3 caracteres.
+
+PROBLEMAS DE CONEXIÓN O EMISIÓN PARCIAL
+
+55. No se pudo conectar con QBI2.
+56. Timeout esperando respuesta de QBI2.
+57. RCTA devolvió un error HTTP sin más detalle.
+58. RCTA no informó el motivo del rechazo.
+59. RCTA no devolvió ningún documento de receta.
+60. RCTA devolvió {cantidad} documentos; la operación admite como máximo {máximo}. No reemitir automáticamente.
+61. RCTA informó {cantidad} de {total} medicamentos solicitados.
+62. Faltan RegNo: {identificadores}.
+63. RegNo no solicitados: {identificadores}.
+64. Los documentos devueltos quedaron guardados; no reemitir automáticamente.
+
+OTROS ERRORES TÉCNICOS IDENTIFICADOS
+
+65. El ID de paciente no es válido.
+66. La clave de la operación no es válida.
+67. Los medicamentos deben enviarse como una lista.
+68. Cada medicamento debe ser un objeto.
+
+También pueden llegar errores de JSON y de configuración de QBI2, y mensajes
+técnicos del navegador ante fallas de conexión. Esta categoría no es un
+inventario exhaustivo de todas las excepciones posibles.
+
+MENSAJES EXTERNOS DE RCTA
+
+Los rechazos redactados por RCTA no tienen un listado cerrado: se muestra
+el motivo recibido del proveedor. Su texto depende de la respuesta de QBI2.
+
+CRITERIO DE REDACCIÓN ACORDADO
+
+Usar un lenguaje más cotidiano y natural, manteniendo los infinitivos
+y evitando tutear al médico.

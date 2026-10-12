@@ -50,6 +50,11 @@ docker-compose down
 ## Notas
 - `ALLOWED_HOSTS = ["*"]`.
 - `Dockerfile` incluye librerías para PDF (pango/cairo) y `tzdata`.
+- El perfil privado RCTA se monta desde `../hhcc/private/qbi2` por defecto. Para
+  otra ubicación, definir `QBI2_PRIVATE_DIR` antes de ejecutar Compose.
+- El arranque normal aplica migraciones y recolecta los estáticos. Durante una
+  restauración se puede definir `RUN_MIGRATIONS_ON_STARTUP=0` y migrar luego de
+  verificar la base restaurada.
 - El entrypoint ejecuta Django con `--noreload` para evitar un segundo proceso
   residente en QA.
 - Ver `QA_RUNBOOK.md` para limites de recursos, preflight y rollback. La suite

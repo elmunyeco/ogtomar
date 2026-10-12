@@ -22,6 +22,13 @@ class SolicitudReceta(models.Model):
         on_delete=models.RESTRICT,
         related_name="qbi2_solicitudes_receta",
     )
+    client_request_id = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        unique=True,
+        help_text="Clave de idempotencia enviada por el cliente médico.",
+    )
     medicamento_reg_no = models.CharField(max_length=50)
     medicamento_nombre_producto = models.CharField(max_length=255, blank=True)
     medicamento_nombre_droga = models.CharField(max_length=255, blank=True)
@@ -49,6 +56,7 @@ class SolicitudReceta(models.Model):
     auditoria = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    hidden_from_history_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "qbi2_solicitudes_receta"
@@ -135,6 +143,10 @@ class SolicitudReceta(models.Model):
         """Return a failed request to review while preserving the failed attempt."""
         if self.estado != self.Estado.ERROR_EMISION:
             return False
+        if self.emisiones.filter(estado=EmisionSolicitudReceta.Estado.EMITIDA).exists():
+            # A partial provider response may already represent legal prescriptions.
+            # Retrying it blindly could duplicate those documents.
+            return False
 
         auditoria = dict(self.auditoria or {})
         intentos = auditoria.get("intentos_emision")
@@ -167,6 +179,27 @@ class SolicitudReceta(models.Model):
         )
         self.emisiones.filter(estado=EmisionSolicitudReceta.Estado.ERROR).delete()
         return True
+
+
+class PatientLoginThrottle(models.Model):
+    """Failed portal logins keyed by a non-reversible document fingerprint."""
+
+    document_hash = models.CharField(max_length=64, unique=True)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    blocked_until = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "qbi2_patient_login_throttle"
+
+
+class MedicamentoHabitualOculto(models.Model):
+    paciente = models.ForeignKey("main.Paciente", on_delete=models.CASCADE)
+    reg_no = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["paciente", "reg_no"], name="qbi2_habitual_oculto_unique")]
 
 
 class EmisionSolicitudReceta(models.Model):

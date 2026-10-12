@@ -3,6 +3,7 @@ from typing import Any
 from urllib.parse import quote
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 
 from .client import Qbi2Client
@@ -10,6 +11,7 @@ from .client import Qbi2Client
 
 COMMON_LIST_KEYS = ("medicamentos", "items", "data", "result", "results", "medicines")
 DIAGNOSTICO_LIST_KEYS = ("diagnosticos", "items", "data", "result", "results")
+FINANCIADOR_LIST_KEYS = ("financiadores", "items", "data", "result", "results")
 
 
 class VademecumService:
@@ -147,6 +149,64 @@ class DiagnosticoService:
         }
 
 
+class FinanciadorService:
+    """Read and validate canonical financiers and plans from QBI2."""
+
+    def __init__(self, client: Qbi2Client | None = None):
+        self.client = client or Qbi2Client()
+
+    def listar(self, query: str = "", *, financier_id: str | int | None = None) -> dict[str, Any]:
+        query = (query or "").strip()
+        if not financier_id and len(query) < 2:
+            raise ValidationError("La búsqueda de cobertura debe tener al menos 2 caracteres.")
+        items = self._all()
+        if financier_id not in (None, ""):
+            wanted = str(financier_id).strip()
+            filtered = [item for item in items if str(item["idFinanciador"]) == wanted]
+        else:
+            needle = _search_text(query)
+            filtered = [item for item in items if needle in _search_text(item["nombreComercial"])]
+            filtered.sort(key=lambda item: _financier_relevance(item, query))
+        return {"query": query, "items": filtered[:50]}
+
+    def resolve_selection(
+        self,
+        financier_id: str | int,
+        plan_id: str | int | None = None,
+    ) -> dict[str, Any]:
+        matches = self.listar(financier_id=financier_id)["items"]
+        if not matches:
+            raise ValidationError("La cobertura seleccionada no existe en el catálogo QBI2.")
+        financier = matches[0]
+        plans = financier["planes"]
+        selected_plan = None
+        if plans:
+            wanted = str(plan_id or "").strip()
+            selected_plan = next((plan for plan in plans if str(plan["id"]) == wanted), None)
+            if selected_plan is None:
+                raise ValidationError("Seleccionar un plan válido para la cobertura.")
+        elif plan_id not in (None, ""):
+            raise ValidationError("La cobertura seleccionada no posee ese plan.")
+        return {**financier, "plan": selected_plan}
+
+    def _all(self) -> list[dict[str, Any]]:
+        client_app_id = getattr(settings, "QBI2_CLIENT_APP_ID", "")
+        cache_key = f"qbi2:financiers:{client_app_id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+        params = {"clienteAppId": client_app_id} if client_app_id else {}
+        raw = self.client.get("/apirecipe/GetFinanciadores", params=params)
+        normalized = [
+            normalize_financiador(item)
+            for item in normalize_list_response(raw, FINANCIADOR_LIST_KEYS)
+            if isinstance(item, dict)
+        ]
+        normalized = [item for item in normalized if item["idFinanciador"] not in (None, "")]
+        cache.set(cache_key, normalized, int(getattr(settings, "QBI2_FINANCIERS_CACHE_SECONDS", 300)))
+        return normalized
+
+
 def normalize_vademecum_response(raw_response: Any) -> list[Any]:
     return normalize_list_response(raw_response, COMMON_LIST_KEYS)
 
@@ -190,6 +250,13 @@ def _medication_relevance(item: dict[str, Any], query: str) -> tuple[Any, ...]:
         _search_text(item.get("presentacion")),
         str(item.get("regNo") or ""),
     )
+
+
+def _financier_relevance(item: dict[str, Any], query: str) -> tuple[Any, ...]:
+    needle = _search_text(query)
+    name = _search_text(item.get("nombreComercial"))
+    rank = 0 if name == needle else 1 if name.startswith(needle) else 2
+    return rank, name, str(item.get("idFinanciador") or "")
 
 
 def normalize_list_response(raw_response: Any, list_keys: tuple[str, ...]) -> list[Any]:
@@ -257,4 +324,21 @@ def normalize_diagnostico(item: Any) -> Any:
         "iddiagnostico": item.get("iddiagnostico") or item.get("id"),
         "coddiagnostico": codigo,
         "descdiagnostico": descripcion,
+    }
+
+
+def normalize_financiador(item: dict[str, Any]) -> dict[str, Any]:
+    raw_plans = item.get("planes") if isinstance(item.get("planes"), list) else []
+    plans = []
+    for plan in raw_plans:
+        if not isinstance(plan, dict):
+            continue
+        plan_id = plan.get("id") if plan.get("id") is not None else plan.get("idPlan")
+        name = plan.get("nombre") or plan.get("nombrePlan") or ""
+        if plan_id not in (None, ""):
+            plans.append({"id": plan_id, "nombre": str(name).strip()})
+    return {
+        "idFinanciador": item.get("idfinanciador") if item.get("idfinanciador") is not None else item.get("idFinanciador"),
+        "nombreComercial": str(item.get("nombreComercial") or item.get("nombre") or "").strip(),
+        "planes": plans,
     }

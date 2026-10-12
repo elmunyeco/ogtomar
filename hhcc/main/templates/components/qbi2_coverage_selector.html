@@ -1,0 +1,23 @@
+<div class="qbi2-coverage" data-catalog-url="{{ catalog_url }}">
+  {{ form.obraSocial }}
+  {{ form.plan }}
+  {{ form.qbi2_financiador_id }}
+  {{ form.qbi2_plan_id }}
+  <label class="qbi2-coverage-label" for="qbi2-coverage-query-{{ form.prefix|default:'patient' }}">Cobertura</label>
+  <div class="qbi2-coverage-current" aria-live="polite"></div>
+  <div class="qbi2-coverage-search-row">
+    <input class="qbi2-coverage-query" id="qbi2-coverage-query-{{ form.prefix|default:'patient' }}" type="search" placeholder="Buscar financiador" autocomplete="off">
+    <button class="qbi2-coverage-search" type="button">Buscar</button>
+    <label class="qbi2-coverage-none">
+      <input class="qbi2-coverage-none-input" type="checkbox" role="switch">
+      <span class="qbi2-coverage-none-track" aria-hidden="true"><span></span></span>
+      <span>Sin cobertura</span>
+    </label>
+  </div>
+  <div class="qbi2-coverage-results" aria-live="polite"></div>
+  <div class="qbi2-plan-wrap" hidden>
+    <label class="qbi2-coverage-label">Plan</label>
+    <select class="qbi2-plan-select"><option value="">Seleccionar plan</option></select>
+  </div>
+  {% if form.obraSocial.errors %}<p class="qbi2-coverage-error">{{ form.obraSocial.errors.0 }}</p>{% endif %}
+</div>
